@@ -1,0 +1,14 @@
+=====================================
+ Application-developer Documentation
+=====================================
+
+This contains documentation mostly generated from kernel-doc-style comments in
+the library code.
+
+.. toctree::
+   :maxdepth: 1
+
+   nvme/index
+   pci/index
+   vfio/index
+   util/index

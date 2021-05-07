@@ -1,0 +1,16 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[scripts/checkpatch.pl]
+indent_style = tab
+
+[{*.c,*.h}]
+max_line_lenght = 100
+indent_style = tab
+indent_size = 8
+
+[{*.md,*.rst}]
+max_line_length = 80

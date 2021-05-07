@@ -1,0 +1,3 @@
+ccan/** linguist-vendored
+scripts/checkpatch.pl linguist-vendored
+scripts/kernel-doc linguist-vendored

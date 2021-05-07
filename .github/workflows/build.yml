@@ -1,0 +1,36 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install meson, ninja
+        run: pip install meson ninja
+
+      - name: install sparse
+        run: sudo apt install -y sparse
+
+      - name: configure
+        run: meson setup build
+
+      - name: compile
+        run: meson compile -C build
+
+      - name: run sparse
+        run: meson compile -C build sparse
+
+      - name: upload log
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: meson log
+          path: build/meson-logs/meson-log.txt

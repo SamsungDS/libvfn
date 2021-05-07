@@ -1,0 +1,20 @@
+name: pr
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 100
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: checkpatch
+        run: ./.github/scripts/checkpatch.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
