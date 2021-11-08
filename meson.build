@@ -152,6 +152,16 @@ if ctags.found()
   ])
 endif
 
+# sparse
+sparse = find_program('cgcc', required: false)
+if sparse.found()
+  run_target('sparse', command: [
+    find_program('scripts/sparse.py'), 'compile_commands.json', sparse.full_path(),
+    '-Wbitwise-pointer', '-Wconstant-suffix', '-Wshadow', '-Wundef', '-Wunion-cast',
+    '-Wdeclaration-after-statement',
+  ], depends: [trace_events_h, trace_events_c, crc64table_h])
+endif
+
 
 ##
 ##  Summaries
