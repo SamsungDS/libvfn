@@ -64,7 +64,6 @@ my $spelling_file = "$D/spelling.txt";
 my $codespell = 0;
 my $codespellfile = "/usr/share/codespell/dictionary.txt";
 my $user_codespellfile = "";
-my $conststructsfile = "$D/const_structs.checkpatch";
 my $docsfile = "$D/../Documentation/dev-tools/checkpatch.rst";
 my $typedefsfile;
 my $color = "auto";
@@ -442,20 +441,20 @@ if ($terse) {
 
 if ($tree) {
 	if (defined $root) {
-		if (!top_of_kernel_tree($root)) {
+		if (!top_of_tree($root)) {
 			die "$P: $root: --root does not point at a valid tree\n";
 		}
 	} else {
-		if (top_of_kernel_tree('.')) {
+		if (top_of_tree('.')) {
 			$root = '.';
 		} elsif ($0 =~ m@(.*)/scripts/[^/]*$@ &&
-						top_of_kernel_tree($1)) {
+						top_of_tree($1)) {
 			$root = $1;
 		}
 	}
 
 	if (!defined $root) {
-		print "Must be run from the top-level dir. of a kernel tree\n";
+		print "Must be run from the top-level dir\n";
 		exit(2);
 	}
 }
@@ -966,12 +965,6 @@ sub read_words {
 	return 0;
 }
 
-my $const_structs;
-if (show_type("CONST_STRUCT")) {
-	read_words(\$const_structs, $conststructsfile)
-	    or warn "No structs that should be const will be found - file '$conststructsfile': $!\n";
-}
-
 if (defined($typedefsfile)) {
 	my $typeOtherTypedefs;
 	read_words(\$typeOtherTypedefs, $typedefsfile)
@@ -1331,13 +1324,12 @@ EOM
 
 exit($exit);
 
-sub top_of_kernel_tree {
+sub top_of_tree {
 	my ($root) = @_;
 
 	my @tree_check = (
-		"COPYING", "CREDITS", "Kbuild", "MAINTAINERS", "Makefile",
-		"README", "Documentation", "arch", "include", "drivers",
-		"fs", "init", "ipc", "kernel", "lib", "scripts",
+		"CONTRIBUTING.rst", "COPYING", "docs", "meson.build",
+                "meson_options.txt", "README.rst",
 	);
 
 	foreach my $check (@tree_check) {
@@ -3271,26 +3263,6 @@ sub process {
 			}
 			#don't report the next line if this line ends in commit and the sha1 hash is the next line
 			$last_git_commit_id_linenr = $linenr if ($line =~ /\bcommit\s*$/i);
-		}
-
-# Check for added, moved or deleted files
-		if (!$reported_maintainer_file && !$in_commit_log &&
-		    ($line =~ /^(?:new|deleted) file mode\s*\d+\s*$/ ||
-		     $line =~ /^rename (?:from|to) [\w\/\.\-]+\s*$/ ||
-		     ($line =~ /\{\s*([\w\/\.\-]*)\s*\=\>\s*([\w\/\.\-]*)\s*\}/ &&
-		      (defined($1) || defined($2))))) {
-			$is_patch = 1;
-			$reported_maintainer_file = 1;
-			WARN("FILE_PATH_CHANGES",
-			     "added, moved or deleted file(s), does MAINTAINERS need updating?\n" . $herecurr);
-		}
-
-# Check for adding new DT bindings not in schema format
-		if (!$in_commit_log &&
-		    ($line =~ /^new file mode\s*\d+\s*$/) &&
-		    ($realfile =~ m@^Documentation/devicetree/bindings/.*\.txt$@)) {
-			WARN("DT_SCHEMA_BINDING_PATCH",
-			     "DT bindings should be in DT schema format. See: Documentation/devicetree/bindings/writing-schema.rst\n");
 		}
 
 # Check for wrappage within a valid hunk of the file
@@ -5855,6 +5827,7 @@ sub process {
 			    $dstat !~ /^for\s*$Constant$/ &&				# for (...)
 			    $dstat !~ /^for\s*$Constant\s+(?:$Ident|-?$Constant)$/ &&	# for (...) bar()
 			    $dstat !~ /^do\s*{/ &&					# do {...
+			    $dstat !~ /^asm/ &&						# asm ...
 			    $dstat !~ /^\(\{/ &&						# ({...
 			    $ctx !~ /^.\s*#\s*define\s+TRACE_(?:SYSTEM|INCLUDE_FILE|INCLUDE_PATH)\b/)
 			{
@@ -6114,9 +6087,10 @@ sub process {
 
 # no volatiles please
 		my $asm_volatile = qr{\b(__asm__|asm)\s+(__volatile__|volatile)\b};
-		if ($line =~ /\bvolatile\b/ && $line !~ /$asm_volatile/) {
-			WARN("VOLATILE",
-			     "Use of volatile is usually wrong: see Documentation/process/volatile-considered-harmful.rst\n" . $herecurr);
+		if ($line =~ /\bvolatile\b/ && $line !~ /$asm_volatile/ &&
+		    !ctx_has_comment($first_line, $linenr)) {
+			ERROR("VOLATILE",
+			     "Use of volatile is usually wrong, please add a comment\n" . $herecurr);
 		}
 
 # Check for user-visible strings broken across lines, which breaks the ability
@@ -6524,7 +6498,7 @@ sub process {
 			virt_(?:$barrier_stems)
 		}x;
 
-		if ($line =~ /\b(?:$all_barriers)\s*\(/) {
+		if ($line =~ /\b(?:$all_barriers)\s*\(/ && $line !~ /^\+#\s*define/) {
 			if (!ctx_has_comment($first_line, $linenr)) {
 				WARN("MEMORY_BARRIER",
 				     "memory barrier without comment\n" . $herecurr);
@@ -6597,7 +6571,7 @@ sub process {
 		}
 
 # Check for compiler attributes
-		if ($realfile !~ m@\binclude/uapi/@ &&
+		if ($realfile !~ m@\binclude/@ &&
 		    $rawline =~ /\b__attribute__\s*\(\s*($balanced_parens)\s*\)/) {
 			my $attr = $1;
 			$attr =~ s/\s*\(\s*(.*)\)\s*/$1/;
@@ -7224,15 +7198,6 @@ sub process {
 			my $new_api = $deprecated_apis{$deprecated_api};
 			WARN("DEPRECATED_API",
 			     "Deprecated use of '$deprecated_api', prefer '$new_api' instead\n" . $herecurr);
-		}
-
-# check for various structs that are normally const (ops, kgdb, device_tree)
-# and avoid what seem like struct definitions 'struct foo {'
-		if (defined($const_structs) &&
-		    $line !~ /\bconst\b/ &&
-		    $line =~ /\bstruct\s+($const_structs)\b(?!\s*\{)/) {
-			WARN("CONST_STRUCT",
-			     "struct $1 should normally be const\n" . $herecurr);
 		}
 
 # use of NR_CPUS is usually wrong
