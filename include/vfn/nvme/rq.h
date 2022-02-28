@@ -67,7 +67,7 @@ static inline void nvme_rq_release(struct nvme_rq *rq)
 	nvme_rq_reset(rq);
 
 	rq->rq_next = sq->rq_top;
-	sq->rq_top = rq->rq_next;
+	sq->rq_top = rq;
 }
 
 /**
