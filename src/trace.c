@@ -21,7 +21,7 @@
 
 static void __attribute__((constructor)) init_trace_events(void)
 {
-	char *tok, *buf, *orig = getenv("TRACE_EVENTS");
+	char *tok, *buf, *orig = getenv("VFN_TRACE_EVENTS");
 
 	if (!orig)
 		return;
