@@ -20,7 +20,8 @@ extern "C" {
 extern long PAGESIZE;
 extern int PAGESHIFT;
 
-#define ALIGN_UP(x, m) (((x) + (m) - 1) & ~((m) - 1))
+#define ALIGN_UP(x, a) (((x) + (a) - 1) & ~((a) - 1))
+#define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
 #define ALIGNED(x, a) (((x) & ((typeof(x))(a) - 1)) == 0)
 
 #define likely(cond) __builtin_expect(!!(cond), 1)

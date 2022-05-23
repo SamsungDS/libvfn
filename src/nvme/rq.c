@@ -27,23 +27,28 @@
 #include <support/log.h>
 #include <support/mem.h>
 
+#include "ccan/minmax/minmax.h"
+
 #include "vfn/nvme.h"
 
 void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
 {
+	unsigned int prpcount = len >> PAGESHIFT;
 	leint64_t *prplist = rq->page.vaddr;
-	unsigned int i;
-
-	assert(ALIGNED(iova, PAGESIZE));
 
 	cmd->dptr.prp1 = cpu_to_le64(iova);
 
-	for (i = 1; i < (len >> PAGESHIFT); i++)
-		prplist[i-1] = cpu_to_le64(iova + (i << PAGESHIFT));
+	if (!ALIGNED(iova, PAGESIZE)) {
+		iova = ALIGN_DOWN(iova, PAGESIZE);
+		prpcount++;
+	}
 
-	if (i == 2)
+	for (unsigned int i = 1; i < prpcount; i++)
+		prplist[i - 1] = cpu_to_le64(iova + (i << PAGESHIFT));
+
+	if (prpcount == 2)
 		cmd->dptr.prp2 = prplist[0];
-	else if (i > 2)
+	else if (prpcount > 2)
 		cmd->dptr.prp2 = cpu_to_le64(rq->page.iova);
 	else
 		cmd->dptr.prp2 = 0x0;
