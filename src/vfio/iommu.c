@@ -270,8 +270,8 @@ int vfio_iommu_map_dma(struct vfio_iommu_state *iommu, void *vaddr, size_t len, 
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
 
-	if (len & (4096 - 1)) {
-		__debug("len must be aligned with page size\n");
+	if (!ALIGNED(((uintptr_t)vaddr | len | iova), PAGESIZE)) {
+		__debug("vaddr, len or iova not page aligned\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -343,7 +343,11 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu)
 
 int vfio_iommu_allocate_sticky_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t *iova)
 {
-	assert((len & (4096 - 1)) == 0);
+	if (!ALIGNED(len, PAGESIZE)) {
+		__debug("len is not page aligned\n");
+		errno = EINVAL;
+		return -1;
+	}
 
 	for (unsigned int i = 0; i < iommu->nranges; i++) {
 		struct vfio_iova_range *r = &iommu->iova_ranges[i];
@@ -370,7 +374,11 @@ int vfio_iommu_allocate_sticky_iova(struct vfio_iommu_state *iommu, size_t len, 
 
 int vfio_iommu_allocate_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t *iova)
 {
-	assert((len & (4096 - 1)) == 0);
+	if (!ALIGNED(len, PAGESIZE)) {
+		__debug("len is not page aligned\n");
+		errno = EINVAL;
+		return -1;
+	}
 
 	for (int i = iommu->nranges - 1; i >= 0; i--) {
 		struct vfio_iova_range *r = &iommu->iova_ranges[i];
