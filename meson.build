@@ -71,47 +71,6 @@ add_project_arguments([
 
 
 ##
-##  Dependencies
-##  ------------
-##
-
-# libnvme
-libnvme_opt = get_option('libnvme')
-
-if libnvme_opt in ['auto', 'system']
-  libnvme = dependency('libnvme',
-    static: get_option('profiling'),
-    required: libnvme_opt == 'system',
-    allow_fallback: false
-  )
-
-  if libnvme.found()
-    libnvme_opt = 'system'
-  elif libnvme_opt == 'auto'
-    libnvme_opt = 'internal'
-  endif
-endif
-
-if libnvme_opt == 'internal'
-  libnvme_proj = subproject('libnvme',
-    default_options: [
-      'warning_level=1',
-
-      # always choose a static version for embedded builds
-      'default_library=static',
-
-      # override project options
-      'docs-build=false',
-      'python=false',
-    ],
-    required: true,
-  )
-
-  libnvme = libnvme_proj.get_variable('libnvme_dep')
-endif
-
-
-##
 ##  Subdirectories
 ##  --------------
 ##
@@ -130,7 +89,9 @@ subdir('src')
 subdir('tests')
 
 # examples
-subdir('examples')
+if get_option('examples')
+  subdir('examples')
+endif
 
 # tools
 subdir('tools/vfntool')
@@ -189,11 +150,12 @@ summary_info += {'LDFLAGS': ' '.join(get_option('c_link_args')
 summary(summary_info, section: 'Compilation')
 
 summary_info = {}
-summary_info += {'libnvme': libnvme_opt}
+summary_info += {'libnvme': get_option('libnvme')}
 summary(summary_info, section: 'Dependencies')
 
 summary_info = {}
 summary_info += {'Debugging': get_option('debug')}
 summary_info += {'Documentation': build_docs}
 summary_info += {'Profiling': get_option('profiling')}
+summary_info += {'Examples': get_option('examples')}
 summary(summary_info, bool_yn: true, section: 'Features')
