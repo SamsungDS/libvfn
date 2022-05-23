@@ -39,9 +39,9 @@ enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
 };
 
-static int nvme_configure_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq, unsigned int qid,
-			     unsigned int qsize)
+int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
 {
+	struct nvme_cq *cq = &ctrl->cq[qid];
 	size_t len;
 
 	if (qid > ctrl->config.ncqa) {
@@ -93,9 +93,10 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	memset(cq, 0x0, sizeof(*cq));
 }
 
-static int nvme_configure_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq, unsigned int qid,
-			     unsigned int qsize, struct nvme_cq *cq, unsigned int UNUSED flags)
+int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
+		      struct nvme_cq *cq, unsigned int UNUSED flags)
 {
+	struct nvme_sq *sq = &ctrl->sq[qid];
 	ssize_t len;
 
 	if (qid > ctrl->config.nsqa) {
@@ -200,12 +201,12 @@ static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned int sq_flags)
 	struct nvme_cq *cq = &ctrl->cq[NVME_AQ];
 	struct nvme_sq *sq = &ctrl->sq[NVME_AQ];
 
-	if (nvme_configure_cq(ctrl, cq, NVME_AQ, NVME_AQ_QSIZE)) {
+	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE)) {
 		__debug("failed to configure admin completion queue\n");
 		return -1;
 	}
 
-	if (nvme_configure_sq(ctrl, sq, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags)) {
+	if (nvme_configure_sq(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags)) {
 		__debug("failed to configure admin submission queue\n");
 		goto discard_cq;
 	}
@@ -227,19 +228,17 @@ discard_cq:
 	return -1;
 }
 
-union nvme_cmd *nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
+int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
-	union nvme_cmd *cmd;
+	union nvme_cmd cmd;
 
-	if (nvme_configure_cq(ctrl, cq, qid, qsize)) {
+	if (nvme_configure_cq(ctrl, qid, qsize)) {
 		__debug("could not configure io completion queue\n");
-		return NULL;
+		return -1;
 	}
 
-	cmd = xmalloc(sizeof(*cmd));
-
-	cmd->create_cq = (struct nvme_cmd_create_cq) {
+	cmd.create_cq = (struct nvme_cmd_create_cq) {
 		.opcode = NVME_ADMIN_CREATE_CQ,
 		.prp1   = cpu_to_le64(cq->iova),
 		.qid    = cpu_to_le16(qid),
@@ -247,18 +246,7 @@ union nvme_cmd *nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsig
 		.qflags = cpu_to_le16(NVME_Q_PC),
 	};
 
-	return cmd;
-}
-
-int nvme_create_iocq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
-{
-	__autofree union nvme_cmd *cmd = NULL;
-
-	cmd = nvme_create_iocq(ctrl, qid, qsize);
-	if (!cmd)
-		return -1;
-
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, cmd, NULL, 0x0, NULL);
+	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
 }
 
 int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
@@ -275,20 +263,18 @@ int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
 	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
 }
 
-union nvme_cmd *nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-				 struct nvme_cq *cq, unsigned int flags)
+int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
+		     struct nvme_cq *cq, unsigned int flags)
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
-	union nvme_cmd *cmd;
+	union nvme_cmd cmd;
 
-	if (nvme_configure_sq(ctrl, sq, qid, qsize, cq, flags)) {
+	if (nvme_configure_sq(ctrl, qid, qsize, cq, flags)) {
 		__debug("could not configure io submission queue\n");
-		return NULL;
+		return -1;
 	}
 
-	cmd = xmalloc(sizeof(*cmd));
-
-	cmd->create_sq = (struct nvme_cmd_create_sq) {
+	cmd.create_sq = (struct nvme_cmd_create_sq) {
 		.opcode = NVME_ADMIN_CREATE_SQ,
 		.prp1   = cpu_to_le64(sq->iova),
 		.qid    = cpu_to_le16(qid),
@@ -297,19 +283,7 @@ union nvme_cmd *nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsig
 		.cqid   = cpu_to_le16(cq->id),
 	};
 
-	return cmd;
-}
-
-int nvme_create_iosq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-			     struct nvme_cq *cq, unsigned int flags)
-{
-	__autofree union nvme_cmd *cmd;
-
-	cmd = nvme_create_iosq(ctrl, qid, qsize, cq, flags);
-	if (!cmd)
-		return -1;
-
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, cmd, NULL, 0x0, NULL);
+	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
 }
 
 int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
@@ -329,12 +303,12 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
 			unsigned int flags)
 {
-	if (nvme_create_iocq_oneshot(ctrl, qid, qsize)) {
+	if (nvme_create_iocq(ctrl, qid, qsize)) {
 		__debug("could not create io completion queue\n");
 		return -1;
 	}
 
-	if (nvme_create_iosq_oneshot(ctrl, qid, qsize, &ctrl->cq[qid], flags)) {
+	if (nvme_create_iosq(ctrl, qid, qsize, &ctrl->cq[qid], flags)) {
 		__debug("could not create io submission queue\n");
 		return -1;
 	}
