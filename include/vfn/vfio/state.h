@@ -139,17 +139,18 @@ int vfio_unmap_vaddr(struct vfio_state *vfio, void *vaddr);
 int vfio_map_vaddr_ephemeral(struct vfio_state *vfio, void *vaddr, size_t len, uint64_t *iova);
 
 /**
- * vfio_free_ephemeral - free a number of ephemeral iovas
+ * vfio_unmap_ephemeral_iova - free an ephemeral iova
  * @vfio: &struct vfio_state
- * @n: number of ephemeral iovas no longer in use
+ * @len: length of mapping
+ * @iova: I/O virtual address to unmap
  *
- * Inform the library that a number of ephemeral iovas are no longer in use. If
- * there are no ephemeral iovas in use, the library will recycle the ephemeral
- * range.
+ * Free the ephemeral I/O virtual address indicated by @iova. If after unmapping
+ * the address, there are no ephemeral iovas in use, the library will recycle
+ * the ephemeral range.
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int vfio_free_ephemeral(struct vfio_state *vfio, unsigned int n);
+int vfio_unmap_ephemeral_iova(struct vfio_state *vfio, size_t len, uint64_t iova);
 
 /**
  * vfio_set_irq - Enable IRQs through eventfds

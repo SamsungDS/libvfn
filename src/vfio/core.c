@@ -285,7 +285,7 @@ int vfio_map_vaddr_ephemeral(struct vfio_state *vfio, void *vaddr, size_t len, u
 	return 0;
 }
 
-int vfio_free_ephemeral(struct vfio_state *vfio, unsigned int n)
+int vfio_unmap_ephemeral_iova(struct vfio_state *vfio, size_t len, uint64_t iova)
 {
-	return vfio_iommu_free_ephemeral_iovas(&vfio->iommu, n);
+	return vfio_iommu_unmap_ephemeral_iova(&vfio->iommu, len, iova);
 }

@@ -583,7 +583,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 		memcpy(cqe_copy, &cqe, 1 << NVME_CQES);
 
 	if (buf)
-		ret = vfio_free_ephemeral(&ctrl->pci.vfio, 1);
+		ret = vfio_unmap_ephemeral_iova(&ctrl->pci.vfio, len, iova);
 
 release_rq:
 	nvme_rq_release(rq);
