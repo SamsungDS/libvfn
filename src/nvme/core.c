@@ -76,7 +76,7 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq, unsigne
 	return 0;
 }
 
-static void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
+void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 {
 	size_t len;
 
@@ -167,7 +167,7 @@ unmap_pages:
 	return -1;
 }
 
-static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
+void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 {
 	size_t len;
 
@@ -261,6 +261,20 @@ int nvme_create_iocq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned 
 	return nvme_oneshot(ctrl, ctrl->adminq.sq, cmd, NULL, 0x0, NULL);
 }
 
+int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
+{
+	union nvme_cmd cmd;
+
+	nvme_discard_cq(ctrl, &ctrl->cq[qid]);
+
+	cmd.delete_q = (struct nvme_cmd_delete_q) {
+		.opcode = NVME_ADMIN_DELETE_CQ,
+		.qid = cpu_to_le16(qid),
+	};
+
+	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
+}
+
 union nvme_cmd *nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
 				 struct nvme_cq *cq, unsigned int flags)
 {
@@ -298,6 +312,20 @@ int nvme_create_iosq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned 
 	return nvme_oneshot(ctrl, ctrl->adminq.sq, cmd, NULL, 0x0, NULL);
 }
 
+int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
+{
+	union nvme_cmd cmd;
+
+	nvme_discard_sq(ctrl, &ctrl->sq[qid]);
+
+	cmd.delete_q = (struct nvme_cmd_delete_q) {
+		.opcode = NVME_ADMIN_DELETE_SQ,
+		.qid = cpu_to_le16(qid),
+	};
+
+	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
+}
+
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
 			unsigned int flags)
 {
@@ -308,6 +336,21 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int q
 
 	if (nvme_create_iosq_oneshot(ctrl, qid, qsize, &ctrl->cq[qid], flags)) {
 		__debug("could not create io submission queue\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid)
+{
+	if (nvme_delete_iosq(ctrl, qid)) {
+		__debug("could not delete io submission queue\n");
+		return -1;
+	}
+
+	if (nvme_delete_iocq(ctrl, qid)) {
+		__debug("could not delete io completion queue\n");
 		return -1;
 	}
 

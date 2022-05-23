@@ -145,6 +145,32 @@ union nvme_cmd *nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsig
 int nvme_create_iocq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize);
 
 /**
+ * nvme_delete_iocq - Delete an I/O Completion Queue
+ * @ctrl: See &struct nvme_ctrl
+ * @qid: Queue identifier
+ *
+ * Delete the I/O Completion queue associated with @qid.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid);
+
+/*
+ * nvme_discard_cq - Discard a completion queue
+ * @ctrl: See &struct nvme_ctrl
+ * @cq: Completion queue
+ *
+ * Discard the @cq completion queue and free its resources. This does NOT delete
+ * the queue on the controller. This is a low-level primitive that may be used
+ * if, for some reason, nvme_delete_iocq() cannot be used.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq);
+
+/**
  * nvme_create_iosq - Configure a Create I/O Submission Queue command
  * @ctrl: Controller reference
  * @qid: Queue identifier
@@ -184,6 +210,32 @@ int nvme_create_iosq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned 
 			     struct nvme_cq *cq, unsigned int flags);
 
 /**
+ * nvme_delete_iosq - Delete an I/O Submission Queue
+ * @ctrl: See &struct nvme_ctrl
+ * @qid: Queue identifier
+ *
+ * Delete the I/O Submission queue associated with @qid.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid);
+
+/**
+ * nvme_discard_sq - Discard a submission queue
+ * @ctrl: See &struct nvme_ctrl
+ * @sq: Submission queue
+ *
+ * Discard the @sq submission queue and free its resources. This does NOT delete
+ * the queue on the controller. This is a low-level primitive that may be used
+ * if, for some reason, nvme_delete_iosq() cannot be used.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq);
+
+/**
  * nvme_create_ioqpair - Create an I/O Completion/Submission Queue Pair
  * @ctrl: Controller reference
  * @qid: Queue identifier
@@ -202,6 +254,18 @@ int nvme_create_iosq_oneshot(struct nvme_ctrl *ctrl, unsigned int qid, unsigned 
  */
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
 			unsigned int flags);
+
+/**
+ * nvme_delete_ioqpair - Delete an I/O Completion/Submission Queue Pair
+ * @ctrl: See &struct nvme_ctrl
+ * @qid: Queue identifier
+ *
+ * Delete both the I/O Submission and Completion queues associated with @qid.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid);
 
 /**
  * nvme_aen_enable - Enable handling of AENs

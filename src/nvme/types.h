@@ -75,7 +75,9 @@ enum nvme_fid {
 };
 
 enum nvme_admin_opcode {
+	NVME_ADMIN_DELETE_SQ            = 0x00,
 	NVME_ADMIN_CREATE_SQ            = 0x01,
+	NVME_ADMIN_DELETE_CQ		= 0x04,
 	NVME_ADMIN_CREATE_CQ            = 0x05,
 	NVME_ADMIN_SET_FEATURES         = 0x09,
 	NVME_ADMIN_ASYNC_EVENT          = 0x0c,
