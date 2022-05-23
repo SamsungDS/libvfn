@@ -36,6 +36,21 @@ struct vfio_iommu_state {
 };
 
 /**
+ * struct vfio_iommu_mapping - iommu mapping
+ * @vaddr: virtual memory address
+ * @len: length of mapping
+ * @iova: assigned I/O virtual address
+ */
+struct vfio_iommu_mapping {
+	void *vaddr;
+	size_t len;
+	uint64_t iova;
+
+	/* private: */
+	unsigned int flags;
+};
+
+/**
  * vfio_iommu_map_dma - create mapping between @vaddr and @iova
  * @iommu: iommu state
  * @vaddr: virtual memory address to map
@@ -86,6 +101,18 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu);
  * ``errno``.
  */
 bool vfio_iommu_vaddr_to_iova(struct vfio_iommu_state *iommu, void *vaddr, uint64_t *iova);
+
+/**
+ * vfio_iommu_find_mapping - lookup the iommu mapping for the given virtual
+ *                           memory address
+ * @iommu: see &struct vfio_iommu_state
+ * @vaddr: virtual memory address to look up
+ *
+ * Look up the iommu mapping corresponding to @vaddr.
+ *
+ * Return: The mapping associated with @vaddr or NULL if not found.
+ */
+struct vfio_iommu_mapping *vfio_iommu_find_mapping(struct vfio_iommu_state *iommu, void *vaddr);
 
 #ifdef __cplusplus
 }

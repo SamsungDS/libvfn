@@ -13,20 +13,11 @@
 #define VFIO_IOVA_MIN 0x0
 #define VFIO_IOVA_MAX (1ULL << 39)
 
-struct vfio_iommu_mapping {
-	void *vaddr;
-	size_t len;
-	uint64_t iova;
-
-	unsigned int flags;
-};
-
 void vfio_iommu_init(struct vfio_iommu_state *iommu);
 int vfio_iommu_close(struct vfio_iommu_state *iommu);
 void vfio_iommu_init_capabilities(struct vfio_iommu_state *iommu,
 				  struct vfio_iommu_type1_info *iommu_info);
 
-struct vfio_iommu_mapping *vfio_iommu_find_mapping(struct vfio_iommu_state *iommu, void *vaddr);
 int vfio_iommu_add_mapping(struct vfio_iommu_state *iommu, void *vaddr, size_t len, uint64_t iova);
 void vfio_iommu_remove_mapping(struct vfio_iommu_state *iommu, void *vaddr);
 
