@@ -101,8 +101,8 @@ License
 -------
 
 Except where otherwise stated, all software contained within this repository is
-licensed under the GNU Lesser General Public License version 2.1 or later. See
-``COPYING`` for more information.
+dual licensed under the GNU Lesser General Public License version 2.1 or later
+or the MIT license. See ``COPYING`` and ``LICENSE`` for more information.
 
 However, note that libvfn uses a number of components from the Comprehensive C
 Archive Network (CCAN) which are separately licensed. See ``ccan/licenses`` for
