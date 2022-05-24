@@ -23,34 +23,6 @@
 	(((major) << 16) | ((minor) << 8) | (tertiary))
 
 /**
- * nvme_admin_opcode_to_str - convert an admin opcode to a string representation
- * @opcode: admin opcode
- *
- * Return: a string representation of the admin opcode
- */
-const char *nvme_admin_opcode_to_str(uint8_t opcode);
-
-/**
- * nvme_io_opcode_to_str - convert an i/o opcode to a string representation
- * @opcode: admin opcode
- *
- * Return: a string representation of the i/o opcode
- */
-const char *nvme_io_opcode_to_str(uint8_t opcode);
-
-/**
- * nvme_opcode_to_str - convert an opcode to a string representation
- * @opcode: admin opcode
- * @qid: queue identifier
- *
- * If @qid is zero, return a string representation of an admin opcode.
- * Otherwise, return the string representation of an i/o opcode.
- *
- * Return: a string representation of the opcode
- */
-const char *nvme_opcode_to_str(uint8_t opcode, int qid);
-
-/**
  * nvme_crc64 - calculate NVMe CRC64
  * @crc: starting value
  * @buffer: buffer to calculate CRC for

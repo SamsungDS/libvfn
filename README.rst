@@ -61,8 +61,9 @@ level interfaces. See the `cmb <examples/cmb.c>`__ and `perf
 Dependencies
 ------------
 
-The core libvfn library only depends on `libnvme`_. If not found, the build
-system will vendor it and statically link to it.
+The core libvfn library has zero dependencies apart from the included CCAN
+components in ``ccan/``. However, the included (and separately licensed)
+examples depend on `libnvme`_.
 
 To build the documentation, `Sphinx <https://www.sphinx-doc.org/>`__ is
 required.

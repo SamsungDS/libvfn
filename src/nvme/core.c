@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,8 +28,6 @@
 #include <string.h>
 
 #include <sys/mman.h>
-
-#include <nvme/types.h>
 
 #include <support/log.h>
 #include <support/mem.h>
@@ -39,6 +38,8 @@
 
 #include "vfn/nvme.h"
 #include "vfn/pci/util.h"
+
+#include "types.h"
 
 enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
@@ -245,7 +246,7 @@ union nvme_cmd *nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsig
 	cmd = xmalloc(sizeof(*cmd));
 
 	cmd->create_cq = (struct nvme_cmd_create_cq) {
-		.opcode = nvme_admin_create_cq,
+		.opcode = NVME_ADMIN_CREATE_CQ,
 		.prp1   = cpu_to_le64(cq->iova),
 		.qid    = cpu_to_le16(qid),
 		.qsize  = cpu_to_le16(qsize - 1),
@@ -280,7 +281,7 @@ union nvme_cmd *nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsig
 	cmd = xmalloc(sizeof(*cmd));
 
 	cmd->create_sq = (struct nvme_cmd_create_sq) {
-		.opcode = nvme_admin_create_sq,
+		.opcode = NVME_ADMIN_CREATE_SQ,
 		.prp1   = cpu_to_le64(sq->iova),
 		.qid    = cpu_to_le16(qid),
 		.qsize  = cpu_to_le16(qsize - 1),
@@ -327,7 +328,7 @@ static int nvme_wait_rdy(struct nvme_ctrl *ctrl, unsigned short rdy)
 	struct timeabs deadline;
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
-	timeout_ms = 500 * (NVME_GET(cap, CAP_TO) + 1);
+	timeout_ms = 500 * (NVME_FIELD_GET(cap, CAP_TO) + 1);
 	deadline = timeabs_add(time_now(), time_from_msec(timeout_ms));
 
 	do {
@@ -339,7 +340,7 @@ static int nvme_wait_rdy(struct nvme_ctrl *ctrl, unsigned short rdy)
 		}
 
 		csts = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CSTS));
-	} while (NVME_GET(csts, CSTS_RDY) != rdy);
+	} while (NVME_FIELD_GET(csts, CSTS_RDY) != rdy);
 
 	return 0;
 }
@@ -351,22 +352,22 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	uint64_t cap;
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
-	css = NVME_GET(cap, CAP_CSS);
+	css = NVME_FIELD_GET(cap, CAP_CSS);
 
 	cc =
-		NVME_SET(PAGESHIFT - 12,   CC_CSS) |
-		NVME_SET(NVME_CC_AMS_RR,   CC_AMS) |
-		NVME_SET(NVME_CC_SHN_NONE, CC_SHN) |
-		NVME_SET(NVME_SQES,        CC_IOSQES) |
-		NVME_SET(NVME_CQES,        CC_IOCQES) |
-		NVME_SET(0x1,              CC_EN);
+		NVME_FIELD_SET(PAGESHIFT - 12,   CC_CSS) |
+		NVME_FIELD_SET(NVME_CC_AMS_RR,   CC_AMS) |
+		NVME_FIELD_SET(NVME_CC_SHN_NONE, CC_SHN) |
+		NVME_FIELD_SET(NVME_SQES,        CC_IOSQES) |
+		NVME_FIELD_SET(NVME_CQES,        CC_IOCQES) |
+		NVME_FIELD_SET(0x1,              CC_EN);
 
 	if (css & NVME_CAP_CSS_CSI)
-		cc |= NVME_SET(NVME_CC_CSS_CSI, CC_CSS);
+		cc |= NVME_FIELD_SET(NVME_CC_CSS_CSI, CC_CSS);
 	else if (css & NVME_CAP_CSS_ADMIN)
-		cc |= NVME_SET(NVME_CC_CSS_ADMIN, CC_CSS);
+		cc |= NVME_FIELD_SET(NVME_CC_CSS_ADMIN, CC_CSS);
 	else
-		cc |= NVME_SET(NVME_CC_CSS_NVM, CC_CSS);
+		cc |= NVME_FIELD_SET(NVME_CC_CSS_NVM, CC_CSS);
 
 	mmio_write32(ctrl->regs + NVME_REG_CC, cpu_to_le32(cc));
 
@@ -426,7 +427,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	}
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
-	mpsmin = NVME_GET(cap, CAP_MPSMIN);
+	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
 
 	if (((12 + mpsmin) >> 12) > PAGESIZE) {
 		__debug("controller minimum page size too large\n");
@@ -464,22 +465,22 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		return 0;
 
 	cmd = (union nvme_cmd) {
-		.opcode = nvme_admin_set_features,
+		.opcode = NVME_ADMIN_SET_FEATURES,
 		.cid = 0x1,
 	};
 
 	cmd.features.fid = NVME_FEAT_FID_NUM_QUEUES;
 	cmd.features.cdw11 = cpu_to_le32(
-		NVME_SET(ctrl->opts.nsqr, FEAT_NRQS_NSQR) |
-		NVME_SET(ctrl->opts.ncqr, FEAT_NRQS_NCQR));
+		NVME_FIELD_SET(ctrl->opts.nsqr, FEAT_NRQS_NSQR) |
+		NVME_FIELD_SET(ctrl->opts.ncqr, FEAT_NRQS_NCQR));
 
 	if (nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, &cqe))
 		return -1;
 
 	ctrl->config.nsqa = min_t(uint16_t, ctrl->opts.nsqr,
-				  NVME_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NSQR));
+				  NVME_FIELD_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NSQR));
 	ctrl->config.ncqa = min_t(uint16_t, ctrl->opts.ncqr,
-				  NVME_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NCQR));
+				  NVME_FIELD_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NCQR));
 
 	return 0;
 }
@@ -505,7 +506,7 @@ void nvme_close(struct nvme_ctrl *ctrl)
 int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler)
 {
 	struct nvme_rq *rq;
-	union nvme_cmd cmd = { .opcode = nvme_admin_async_event };
+	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
 
 	rq = nvme_rq_acquire(ctrl->adminq.sq);
 	if (!rq) {
@@ -526,7 +527,7 @@ int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler)
 void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
 {
 	struct nvme_rq *rq;
-	union nvme_cmd cmd = { .opcode = nvme_admin_async_event };
+	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
 
 	assert(cqe->cid & NVME_CID_AER);
 

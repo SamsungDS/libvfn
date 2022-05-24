@@ -24,7 +24,6 @@ _vfn_sources = [
 ]
 
 vfn_lib = library('vfn', _vfn_sources,
-  dependencies: [libnvme],
   link_with: [ccan_lib, support_lib],
   include_directories: [ccan_inc, support_inc, core_inc, vfn_inc],
   version: meson.project_version(),
