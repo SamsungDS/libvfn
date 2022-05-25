@@ -41,17 +41,22 @@
 static char *find_iommu_group(const char *bdf)
 {
 	char *p, *link = NULL, *group = NULL, *path = NULL;
+	ssize_t ret;
 
 	if (asprintf(&link, "/sys/bus/pci/devices/%s/iommu_group", bdf) < 0) {
 		__debug("asprintf failed\n");
 		goto out;
 	}
 
-	group = zmallocn(PATH_MAX, sizeof(char));
-	if (readlink(link, group, PATH_MAX - 1) < 0) {
+	group = mallocn(PATH_MAX, sizeof(char));
+
+	ret = readlink(link, group, PATH_MAX - 1);
+	if (ret < 0) {
 		__debug("failed to resolve iommu group link\n");
 		goto out;
 	}
+
+	group[ret] = '\0';
 
 	p = strrchr(group, '/');
 	if (!p) {

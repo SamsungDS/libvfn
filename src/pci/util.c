@@ -158,7 +158,8 @@ char *pci_get_driver(const char *bdf)
 		goto out;
 	}
 
-	driver = zmallocn(PATH_MAX, sizeof(char));
+	driver = mallocn(PATH_MAX, sizeof(char));
+
 	ret = readlink(link, driver, PATH_MAX - 1);
 	if (ret < 0) {
 		if (errno == ENOENT)
@@ -167,6 +168,8 @@ char *pci_get_driver(const char *bdf)
 		__debug("failed to resolve driver link\n");
 		goto out;
 	}
+
+	driver[ret] = '\0';
 
 	p = strrchr(driver, '/');
 	if (!p) {
