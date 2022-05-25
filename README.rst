@@ -3,7 +3,7 @@ libvfn
 
 **Low-level NVM Express Mastery Galore!**
 
-|build badge|
+|build badge| |coverity badge|
 
 libvfn is library for interacting with PCIe-based NVMe devices from user-space
 using the Linux kernel ``vfio-pci`` driver.
@@ -56,6 +56,9 @@ level interfaces. See the `cmb <examples/cmb.c>`__ and `perf
 
 .. |build badge| image:: https://github.com/OpenMPDK/libvfn/actions/workflows/build.yml/badge.svg
    :target: https://github.com/OpenMPDK/libvfn/actions/workflows/build.yml
+
+.. |coverity badge| image:: https://scan.coverity.com/projects/25028/badge.svg
+   :target: https://scan.coverity.com/projects/openmpdk-libvfn
 
 
 Dependencies
