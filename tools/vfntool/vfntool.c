@@ -20,11 +20,15 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <sys/mman.h>
+
 #include <vfn/pci/util.h>
 
 #include <ccan/err/err.h>
 #include <ccan/opt/opt.h>
 #include <ccan/str/str.h>
+
+#include <support/mem.h>
 
 static char *bdf = "";
 static bool show_usage, verbose, reset;
@@ -42,7 +46,7 @@ static struct opt_table opts[] = {
 static int do_bind(const char *target)
 {
 	unsigned long long vid, did, classcode;
-	char *driver;
+	__autofree char *driver = NULL;
 
 	if (pci_device_info_get_ull(bdf, "vendor", &vid))
 		err(1, "could not get device vendor id");
