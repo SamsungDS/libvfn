@@ -109,7 +109,7 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 		.argsz = sizeof(group_status),
 	};
 
-	struct vfio_iommu_type1_info *iommu_info;
+	__autofree struct vfio_iommu_type1_info *iommu_info = NULL;
 	uint32_t iommu_info_size = sizeof(*iommu_info);
 
 	memset(vfio, 0x0, sizeof(*vfio));
@@ -133,7 +133,7 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 	vfio->group = open(group, O_RDWR);
 	if (vfio->group < 0) {
 		__debug("failed to open vfio group file: %s\n", strerror(errno));
-		goto err;
+		goto err_close_container;
 	}
 
 	if (ioctl(vfio->group, VFIO_GROUP_GET_STATUS, &group_status)) {
@@ -163,7 +163,6 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 
 	if (ioctl(vfio->container, VFIO_IOMMU_GET_INFO, iommu_info)) {
 		__debug("failed to get iommu info\n");
-		free(iommu_info);
 		goto err;
 	}
 
@@ -179,21 +178,17 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 
 		if (ioctl(vfio->container, VFIO_IOMMU_GET_INFO, iommu_info)) {
 			__debug("failed to get extended iommu info\n");
-			free(iommu_info);
+			vfio_iommu_close(&vfio->iommu);
 			goto err;
 		}
 
 		vfio_iommu_init_capabilities(&vfio->iommu, iommu_info);
 	}
 
-	free(iommu_info);
-
 	return 0;
 
 err:
 	close(vfio->group);
-	free(vfio->iommu.iova_ranges);
-	vfio->iommu.nranges = 0;
 err_close_container:
 	close(vfio->container);
 
@@ -202,8 +197,6 @@ err_close_container:
 
 void vfio_close(struct vfio_state *vfio)
 {
-	free(vfio->iommu.iova_ranges);
-
 	vfio_iommu_close(&vfio->iommu);
 
 	if (vfio->device_info.flags & VFIO_DEVICE_FLAGS_RESET) {

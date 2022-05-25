@@ -234,6 +234,7 @@ int vfio_iommu_close(struct vfio_iommu_state *iommu)
 		return -1;
 
 	free(iommu->map);
+	free(iommu->iova_ranges);
 
 	memset(iommu, 0x0, sizeof(*iommu));
 
