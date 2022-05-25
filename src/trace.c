@@ -51,12 +51,16 @@ static void __attribute__((constructor)) init_trace_events(void)
 
 void trace_set_active(const char *prefix, bool active)
 {
-	const size_t len = strlen(prefix);
+	size_t len;
+
+	assert(prefix);
+
+	len = strlen(prefix);
 
 	for (unsigned int i = 0; i < TRACE_NUM_EVENTS; i++) {
 		struct trace_event *event = &trace_events[i];
 
-		if (!prefix || strncmp(prefix, event->name, len) == 0)
+		if (strncmp(prefix, event->name, len) == 0)
 			*(event->active) = active;
 	}
 }
