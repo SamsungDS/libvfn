@@ -530,7 +530,7 @@ int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler)
 	struct nvme_rq *rq;
 	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
 
-	rq = nvme_rq_acquire(ctrl->adminq.sq);
+	rq = nvme_rq_acquire_atomic(ctrl->adminq.sq);
 	if (!rq) {
 		errno = EBUSY;
 		return -1;
@@ -583,7 +583,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 	uint64_t iova;
 	int ret = 0;
 
-	rq = nvme_rq_acquire(sq);
+	rq = nvme_rq_acquire_atomic(sq);
 	if (!rq)
 		return -1;
 
@@ -614,7 +614,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 		ret = vfio_unmap_ephemeral_iova(&ctrl->pci.vfio, len, iova);
 
 release_rq:
-	nvme_rq_release(rq);
+	nvme_rq_release_atomic(rq);
 
 	return ret;
 }
