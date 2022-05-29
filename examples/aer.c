@@ -16,26 +16,9 @@
  * more details.
  */
 
-#include <assert.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/eventfd.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-
 #include <vfn/nvme.h>
 
 #include <nvme/types.h>
-#include <nvme/util.h>
-
-#include <support/log.h>
-#include <support/mem.h>
 
 #include "ccan/err/err.h"
 #include "ccan/opt/opt.h"

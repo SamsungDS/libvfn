@@ -20,19 +20,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <assert.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/eventfd.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-
-#include <linux/pci_regs.h>
-
 #include <vfn/nvme.h>
 
 #include <nvme/types.h>

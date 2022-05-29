@@ -28,13 +28,11 @@
 #include <linux/vfio.h>
 #include <linux/pci_regs.h>
 
-#include <support/log.h>
-#include <support/mem.h>
+#include <vfn/support.h>
+#include <vfn/vfio.h>
 
 #include "ccan/array_size/array_size.h"
 #include "ccan/minmax/minmax.h"
-
-#include "vfn/vfio.h"
 
 #include "iommu.h"
 

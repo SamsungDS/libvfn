@@ -22,13 +22,12 @@
 
 #include <sys/mman.h>
 
-#include <vfn/pci/util.h>
+#include <vfn/support.h>
+#include <vfn/pci.h>
 
 #include <ccan/err/err.h>
 #include <ccan/opt/opt.h>
 #include <ccan/str/str.h>
-
-#include <support/mem.h>
 
 static char *bdf = "";
 static bool show_usage, verbose, reset;

@@ -10,20 +10,17 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBSUPPORT_IO_H
-#define LIBSUPPORT_IO_H
+#ifndef LIBVFN_PCI_H
+#define LIBVFN_PCI_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-ssize_t writeallfd(int fd, const void *buf, size_t count);
-ssize_t writeall(const char *path, const void *buf, size_t count);
-ssize_t readmaxfd(int fd, void *buf, size_t count);
-ssize_t readmax(const char *path, void *buf, size_t count);
+#include <vfn/pci/util.h>
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LIBSUPPORT_IO_H */
+#endif /* LIBVFN_PCI_H */

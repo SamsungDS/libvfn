@@ -11,6 +11,7 @@ vfn_sources = files(
   'trace.c',
 )
 
+subdir('support')
 subdir('trace')
 subdir('nvme')
 subdir('pci')
@@ -24,8 +25,8 @@ _vfn_sources = [
 ]
 
 vfn_lib = library('vfn', _vfn_sources,
-  link_with: [ccan_lib, support_lib],
-  include_directories: [ccan_inc, support_inc, core_inc, vfn_inc],
+  link_with: [ccan_lib],
+  include_directories: [ccan_inc, core_inc, vfn_inc],
   version: meson.project_version(),
   install: true,
 )

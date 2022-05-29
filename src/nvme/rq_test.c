@@ -23,9 +23,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <sys/mman.h>
-
-#include <support/mem.h>
+#include <vfn/support.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/tap/tap.h"

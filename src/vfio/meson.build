@@ -6,8 +6,8 @@ vfn_sources += files(
 
 # tests
 iommu_test = executable('iommu_test', [core_sources, 'iommu_test.c'],
-  link_with: [ccan_lib, support_lib],
-  include_directories: [ccan_inc, support_inc, core_inc, vfn_inc],
+  link_with: [ccan_lib],
+  include_directories: [ccan_inc, core_inc, vfn_inc],
 )
 
 test('iommu_test', iommu_test)

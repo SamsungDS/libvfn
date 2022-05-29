@@ -1,6 +1,5 @@
 vfn_nvme_headers = files([
   'ctrl.h',
-  'mmio.h',
   'queue.h',
   'rq.h',
   'types.h',

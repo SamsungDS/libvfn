@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "support/io.h"
+#include <vfn/support/io.h>
 
 ssize_t writeallfd(int fd, const void *buf, size_t count)
 {

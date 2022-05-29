@@ -16,8 +16,8 @@ vfn_sources += files(
 
 # tests
 rq_test = executable('rq_test', [core_sources, 'queue.c', 'util.c', 'rq_test.c'],
-  link_with: [ccan_lib, support_lib],
-  include_directories: [ccan_inc, support_inc, core_inc, vfn_inc],
+  link_with: [ccan_lib],
+  include_directories: [ccan_inc, core_inc, vfn_inc],
 )
 
 test('rq_test', rq_test)

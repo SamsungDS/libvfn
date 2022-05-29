@@ -23,15 +23,13 @@
 
 #include <sys/mman.h>
 
-#include <support/log.h>
-#include <support/mem.h>
+#include <vfn/support.h>
+#include <vfn/nvme.h>
+#include <vfn/pci/util.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
 #include "ccan/time/time.h"
-
-#include "vfn/nvme.h"
-#include "vfn/pci/util.h"
 
 #include "types.h"
 

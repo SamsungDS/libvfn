@@ -24,11 +24,8 @@
 
 #include <linux/limits.h>
 
-#include <support/io.h>
-#include <support/log.h>
-#include <support/mem.h>
-
-#include "vfn/pci/util.h"
+#include <vfn/support.h>
+#include <vfn/pci.h>
 
 int pci_unbind(const char *bdf)
 {

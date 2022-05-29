@@ -10,15 +10,12 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_COMPILER_H
-#define LIBVFN_COMPILER_H
+#ifndef LIBVFN_SUPPORT_COMPILER_H
+#define LIBVFN_SUPPORT_COMPILER_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define STATIC_ASSERT(x, msg) _Static_assert(!(x), msg)
-#define STATIC_ASSERT_ON(x) STATIC_ASSERT_MSG(x, "not expecting: " #x)
 
 #define barrier() asm volatile("" ::: "memory")
 
@@ -66,4 +63,4 @@ extern "C" {
 }
 #endif
 
-#endif /* LIBVFN_COMPILER_H */
+#endif /* LIBVFN_SUPPORT_COMPILER_H */

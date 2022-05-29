@@ -10,8 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBSUPPORT_LOG_H
-#define LIBSUPPORT_LOG_H
+#ifndef LIBVFN_SUPPORT_LOG_H
+#define LIBVFN_SUPPORT_LOG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +33,12 @@ enum __log_level {
 	LOG_DEBUG,
 };
 
+/**
+ * __logv - Determine if log verbosity is as given
+ * @v: target verbositry level
+ *
+ * Return: ``true`` if verbosity is at least @v, ``false`` otherwise.
+ */
 static inline bool __logv(unsigned int v)
 {
 	if (__atomic_load_n(&__log_state.v, __ATOMIC_ACQUIRE) >= v)
@@ -46,6 +52,14 @@ static inline void __logv_set(unsigned int v)
 	__atomic_store_n(&__log_state.v, &v, __ATOMIC_RELEASE);
 }
 
+/**
+ * __log - Log a message at a given verbosity level
+ * @v: verbosity level
+ * @fmt: format string
+ * @...: format string arguments
+ *
+ * Log a formatted message to stderr if current verbosity level is at least @v.
+ */
 static inline void __attribute__((format(printf, 2, 3))) __log(unsigned int v, char const *fmt, ...)
 {
 	va_list va;
@@ -65,4 +79,4 @@ static inline void __attribute__((format(printf, 2, 3))) __log(unsigned int v, c
 }
 #endif
 
-#endif /* LIBSUPPORT_LOG_H */
+#endif /* LIBVFN_SUPPORT_LOG_H */

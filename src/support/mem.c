@@ -22,7 +22,8 @@
 
 #include <sys/mman.h>
 
-#include "support/mem.h"
+#include <vfn/support/compiler.h>
+#include <vfn/support/mem.h>
 
 long PAGESIZE;
 int PAGESHIFT;

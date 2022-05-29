@@ -27,15 +27,16 @@
 
 #include <linux/vfio.h>
 
-#include <support/log.h>
-#include <support/mem.h>
+#include <vfn/support/compiler.h>
+#include <vfn/support/log.h>
+#include <vfn/support/mem.h>
+
+#include <vfn/vfio.h>
+#include <vfn/trace.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/list/list.h"
 #include "ccan/minmax/minmax.h"
-
-#include "vfn/vfio.h"
-#include "vfn/trace.h"
 
 #include "iommu.h"
 

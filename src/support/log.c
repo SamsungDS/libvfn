@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "support/log.h"
+#include <vfn/support/log.h>
 
 struct log_state __log_state;
 

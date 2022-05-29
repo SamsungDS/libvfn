@@ -11,7 +11,6 @@
  */
 
 #include <assert.h>
-#include <byteswap.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
@@ -22,14 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/mman.h>
-
-#include <support/log.h>
-#include <support/mem.h>
+#include <vfn/support.h>
+#include <vfn/nvme.h>
 
 #include "ccan/minmax/minmax.h"
-
-#include "vfn/nvme.h"
 
 void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
 {

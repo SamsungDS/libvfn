@@ -10,8 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_NVME_MMIO_H
-#define LIBVFN_NVME_MMIO_H
+#ifndef LIBVFN_SUPPORT_MMIO_H
+#define LIBVFN_SUPPORT_MMIO_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,4 +94,4 @@ static inline void mmio_hl_write64(void *addr, leint64_t v)
 }
 #endif
 
-#endif /* LIBVFN_NVME_MMIO_H */
+#endif /* LIBVFN_SUPPORT_MMIO_H */

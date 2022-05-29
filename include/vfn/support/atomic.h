@@ -10,8 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_ATOMIC_H
-#define LIBVFN_ATOMIC_H
+#ifndef LIBVFN_SUPPORT_ATOMIC_H
+#define LIBVFN_SUPPORT_ATOMIC_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +28,9 @@ extern "C" {
 #define atomic_load_acquire(ptr) \
 	__atomic_load_n(ptr, __ATOMIC_ACQUIRE)
 
+#define atomic_store_release(ptr, val) \
+	__atomic_store_n(ptr, val, __ATOMIC_RELEASE)
+
 /**
  * atomic_cmpxchg - Syntactic suger for __atomic_compare_exchange_n
  * @ptr: Pointer to value to compare
@@ -39,15 +42,8 @@ extern "C" {
 #define atomic_cmpxchg(ptr, expected, desired) \
 	__atomic_compare_exchange_n(ptr, &expected, desired, false, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE)
 
-/* sparse does not know about these gcc builtins */
-#ifdef __CHECKER__
-#define __atomic_load_n(ptr, memorder) (*(ptr))
-#define __atomic_compare_exchange_n(ptr, expected, desired, weak, ok_memorder, fail_memorder) \
-	({ *ptr = desired; })
-#endif
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LIBVFN_ATOMIC_H */
+#endif /* LIBVFN_SUPPORT_ATOMIC_H */

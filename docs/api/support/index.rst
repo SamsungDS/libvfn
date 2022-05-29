@@ -1,6 +1,6 @@
-===========
- Utilities
-===========
+=========
+ Support
+=========
 
 This contains documentation mostly generated from kernel-doc-style comments in
 the library code.
@@ -11,4 +11,8 @@ the library code.
    atomic
    compiler
    endian
+   io
+   log
+   mem
+   mmio
    trace

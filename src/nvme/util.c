@@ -11,11 +11,14 @@
  */
 
 #include <errno.h>
+#include <byteswap.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-#include "vfn/nvme.h"
+#include <vfn/support.h>
+#include <vfn/nvme.h>
 
 #include "crc64table.h"
 

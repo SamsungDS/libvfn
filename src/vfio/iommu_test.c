@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <vfn/support/compiler.h>
+
 #include "ccan/compiler/compiler.h"
 #include "ccan/tap/tap.h"
 

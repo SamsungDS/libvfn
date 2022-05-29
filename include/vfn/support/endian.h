@@ -10,8 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_ENDIAN_H
-#define LIBVFN_ENDIAN_H
+#ifndef LIBVFN_SUPPORT_ENDIAN_H
+#define LIBVFN_SUPPORT_ENDIAN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -190,4 +190,4 @@ static inline uint64_t get_unaligned_be48(const uint8_t *p)
 }
 #endif
 
-#endif /* LIBVFN_ENDIAN_H */
+#endif /* LIBVFN_SUPPORT_ENDIAN_H */

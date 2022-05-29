@@ -10,8 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBSUPPORT_MEM_H
-#define LIBSUPPORT_MEM_H
+#ifndef LIBVFN_SUPPORT_MEM_H
+#define LIBVFN_SUPPORT_MEM_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,9 +24,6 @@ extern int PAGESHIFT;
 #define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
 #define ALIGNED(x, a) (((x) & ((typeof(x))(a) - 1)) == 0)
 
-#define likely(cond) __builtin_expect(!!(cond), 1)
-#define unlikely(cond) __builtin_expect(!!(cond), 0)
-
 void backtrace_abort(void);
 
 static inline void __do_autofree(void *mem)
@@ -36,13 +33,19 @@ static inline void __do_autofree(void *mem)
 	free(*memp);
 }
 
-#define __autofree	__attribute__((cleanup(__do_autofree)))
+#define __autofree __attribute__((cleanup(__do_autofree)))
 
 static inline bool would_overflow(unsigned int n, size_t sz)
 {
 	return n > SIZE_MAX / sz;
 }
 
+/**
+ * xmalloc - version of malloc that cannot fail
+ * @sz: number of bytes to allocate
+ *
+ * Call malloc, but only return NULL when @sz is zero. Otherwise, abort.
+ */
 static inline void *xmalloc(size_t sz)
 {
 	void *mem;
@@ -106,4 +109,4 @@ static inline void pgunmap(void *mem, size_t len)
 }
 #endif
 
-#endif /* LIBSUPPORT_MEM_H */
+#endif /* LIBVFN_SUPPORT_MEM_H */

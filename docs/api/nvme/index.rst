@@ -9,7 +9,6 @@ the library code.
    :maxdepth: 1
 
    ctrl
-   mmio
    queue
    rq
    types
