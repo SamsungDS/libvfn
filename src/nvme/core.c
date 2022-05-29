@@ -555,7 +555,7 @@ void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
 
 	cqe->cid &= ~NVME_CID_AER;
 
-	rq = nvme_rq_from_cqe(ctrl->adminq.sq, cqe);
+	rq = nvme_rq_from_cqe(ctrl, cqe);
 
 	if (rq->opaque) {
 		cqe_handler h = rq->opaque;

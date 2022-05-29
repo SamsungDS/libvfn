@@ -129,8 +129,8 @@ static inline struct nvme_rq *nvme_rq_acquire_atomic(struct nvme_sq *sq)
 }
 
 /**
- * nvme_rq_from_cqe - Get the request tracker associated with completion queue
- *                    entry
+ * __nvme_rq_from_cqe - Get the request tracker associated with completion queue
+ *                      entry
  * @sq: Submission queue (&struct nvme_sq)
  * @cqe: Completion queue entry (&struct nvme_cqe)
  *
@@ -141,9 +141,29 @@ static inline struct nvme_rq *nvme_rq_acquire_atomic(struct nvme_sq *sq)
  *
  * Return: The associated request tracker (see &struct nvme_rq).
  */
-static inline struct nvme_rq *nvme_rq_from_cqe(struct nvme_sq *sq, struct nvme_cqe *cqe)
+static inline struct nvme_rq *__nvme_rq_from_cqe(struct nvme_sq *sq, struct nvme_cqe *cqe)
 {
 	return &sq->rqs[cqe->cid];
+}
+
+/**
+ * nvme_rq_from_cqe - Get the request tracker associated with completion queue
+ *                    entry
+ * @ctrl: See &struct nvme_ctrl
+ * @cqe: Completion queue entry (&struct nvme_cqe)
+ *
+ * Get the request tracker associated with the completion queue entry @cqe.
+ *
+ * Note: Only safe when used with CQE's resulting from commands already
+ * associated with a request tracker (see nvme_rq_acquire()).
+ *
+ * Return: The associated request tracker (see &struct nvme_rq).
+ */
+static inline struct nvme_rq *nvme_rq_from_cqe(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
+{
+	struct nvme_sq *sq = &ctrl->sq[le16_to_cpu(cqe->sqid)];
+
+	return __nvme_rq_from_cqe(sq, cqe);
 }
 
 /**

@@ -146,7 +146,7 @@ static void reap(void)
 
 		reaped++;
 
-		io_complete(nvme_rq_from_cqe(sq, cqe));
+		io_complete(__nvme_rq_from_cqe(sq, cqe));
 	} while (1);
 
 	if (likely(reaped))
