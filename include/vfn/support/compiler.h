@@ -17,6 +17,31 @@
 extern "C" {
 #endif
 
+#define __glue(x, y) x ## y
+#define glue(x, y) __glue(x, y)
+
+/*
+ * glib-style auto pointer
+ *
+ * The __autoptr() provides a general way of "cleaning up" when going out of
+ * scope. Inspired by glib, but simplified a lot (at the expence of
+ * flexibility).
+ */
+
+#define __AUTOPTR_CLEANUP(t) __autoptr_cleanup_##t
+#define __AUTOPTR_T(t) __autoptr_##t
+
+#define DEFINE_AUTOPTR(t, cleanup) \
+	typedef t *__AUTOPTR_T(t); \
+	\
+	static inline void __AUTOPTR_CLEANUP(t) (t **p) \
+	{ \
+		if (*p) \
+			(cleanup)(*p); \
+	}
+
+#define __autoptr(t) __attribute__((cleanup(__AUTOPTR_CLEANUP(t)))) __AUTOPTR_T(t)
+
 #define barrier() asm volatile("" ::: "memory")
 
 #if defined(__aarch64__)

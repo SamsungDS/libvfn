@@ -22,6 +22,8 @@ extern "C" {
 #include <stdint.h>
 #include <unistd.h>
 
+#include <pthread.h>
+
 #include <linux/vfio.h>
 
 #include <vfn/vfio/iommu.h>

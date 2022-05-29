@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -30,6 +31,7 @@
 #include <vfn/support/compiler.h>
 #include <vfn/support/log.h>
 #include <vfn/support/mem.h>
+#include <vfn/support/mutex.h>
 #include <vfn/trace.h>
 #include <vfn/vfio/iommu.h>
 #include <vfn/vfio/state.h>
@@ -62,6 +64,8 @@ struct vfio_iova_map_entry {
 };
 
 struct vfio_iova_map {
+	pthread_mutex_t lock;
+
 	int height;
 
 	struct vfio_iova_map_entry nil, sentinel;
@@ -70,6 +74,8 @@ struct vfio_iova_map {
 
 static void vfio_iova_map_init(struct vfio_iova_map *map)
 {
+	pthread_mutex_init(&map->lock, NULL);
+
 	map->height = 0;
 	map->nil.mapping.vaddr = (void *)UINT64_MAX;
 
@@ -83,6 +89,8 @@ static void vfio_iova_map_init(struct vfio_iova_map *map)
 
 static UNNEEDED void vfio_iova_map_clear(struct vfio_iova_map *map)
 {
+	__autolock(&map->lock);
+
 	struct vfio_iova_map_entry *n, *next;
 
 	skip_list_for_each_safe(map, n, next) {
@@ -93,8 +101,8 @@ static UNNEEDED void vfio_iova_map_clear(struct vfio_iova_map *map)
 	}
 }
 
-static struct vfio_iova_map_entry *vfio_iova_map_find_path(struct vfio_iova_map *map, void *vaddr,
-							   struct vfio_iova_map_entry **path)
+static struct vfio_iova_map_entry *__vfio_iova_map_find_path(struct vfio_iova_map *map, void *vaddr,
+							     struct vfio_iova_map_entry **path)
 {
 	struct vfio_iova_map_entry *next, *p = &map->sentinel;
 	int k = map->height;
@@ -116,6 +124,14 @@ static struct vfio_iova_map_entry *vfio_iova_map_find_path(struct vfio_iova_map 
 		return p;
 
 	return NULL;
+}
+
+static struct vfio_iova_map_entry *vfio_iova_map_find_path(struct vfio_iova_map *map, void *vaddr,
+							   struct vfio_iova_map_entry **path)
+{
+	__autolock(&map->lock);
+
+	return __vfio_iova_map_find_path(map, vaddr, path);
 }
 
 struct vfio_iommu_mapping *vfio_iommu_find_mapping(struct vfio_iommu_state *iommu, void *vaddr)
@@ -157,9 +173,11 @@ static void __vfio_iova_map_add(struct vfio_iova_map *map, struct vfio_iova_map_
 
 static int vfio_iova_map_add(struct vfio_iova_map *map, void *vaddr, size_t len, uint64_t iova)
 {
+	__autolock(&map->lock);
+
 	struct vfio_iova_map_entry *n, *update[SKIPLIST_LEVELS] = {};
 
-	if (vfio_iova_map_find_path(map, vaddr, update)) {
+	if (__vfio_iova_map_find_path(map, vaddr, update)) {
 		errno = EEXIST;
 		return -1;
 	}
@@ -201,9 +219,11 @@ static void __vfio_iova_map_remove(struct vfio_iova_map *map, struct vfio_iova_m
 
 static int vfio_iova_map_remove(struct vfio_iova_map *map, void *vaddr)
 {
+	__autolock(&map->lock);
+
 	struct vfio_iova_map_entry *p, *update[SKIPLIST_LEVELS] = {};
 
-	p = vfio_iova_map_find_path(map, vaddr, update);
+	p = __vfio_iova_map_find_path(map, vaddr, update);
 	if (!p) {
 		errno = ENOENT;
 		return -1;
@@ -219,6 +239,8 @@ void vfio_iommu_init(struct vfio_iommu_state *iommu)
 	iommu->map = zmalloc(sizeof(struct vfio_iova_map));
 
 	vfio_iova_map_init(iommu->map);
+
+	pthread_mutex_init(&iommu->lock, NULL);
 
 	iommu->nranges = 1;
 	iommu->top = VFIO_IOVA_MIN;
@@ -328,6 +350,8 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu)
 	struct vfio_iova_map_entry *n, *next;
 	struct vfio_iova_map *map = iommu->map;
 
+	__autolock(&map->lock);
+
 	skip_list_for_each_safe(map, n, next) {
 		skip_list_del_from(map, n, 0);
 
@@ -345,6 +369,8 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu)
 
 int vfio_iommu_allocate_sticky_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t *iova)
 {
+	__autolock(&iommu->lock);
+
 	if (!ALIGNED(len, PAGESIZE)) {
 		__debug("len is not page aligned\n");
 		errno = EINVAL;
@@ -376,6 +402,8 @@ int vfio_iommu_allocate_sticky_iova(struct vfio_iommu_state *iommu, size_t len, 
 
 int vfio_iommu_allocate_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t *iova)
 {
+	__autolock(&iommu->lock);
+
 	if (!ALIGNED(len, PAGESIZE)) {
 		__debug("len is not page aligned\n");
 		errno = EINVAL;

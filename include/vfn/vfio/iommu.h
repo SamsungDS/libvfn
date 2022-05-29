@@ -26,12 +26,12 @@ struct vfio_iommu_state {
 	unsigned int nranges;
 	struct vfio_iova_range *iova_ranges;
 
-	/* private: reserved for iova allocator implementation */
-	uint64_t top, bottom;
+	/* private: */
+	pthread_mutex_t lock;
 
+	uint64_t top, bottom;
 	unsigned int nephemeral;
 
-	/* private: reserved for iova map implementation */
 	void *map;
 };
 
