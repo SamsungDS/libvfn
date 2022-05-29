@@ -414,15 +414,13 @@ int vfio_iommu_allocate_iova(struct vfio_iommu_state *iommu, size_t len, uint64_
 	return vfio_iommu_allocate_sticky_iova(iommu, len, iova);
 }
 
-int vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
+void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
 {
 	__trace(VFIO_IOMMU_RECYCLE_EPHEMERAL_IOVAS) {
 		__emit("iova range [0x%"PRIx64"; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
 	}
 
 	iommu->bottom = VFIO_IOVA_MAX;
-
-	return 0;
 }
 
 int vfio_iommu_unmap_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t iova)
@@ -435,7 +433,7 @@ int vfio_iommu_unmap_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, 
 		return -1;
 
 	if (--iommu->nephemeral == 0)
-		return vfio_iommu_recycle_ephemeral_iovas(iommu);
+		vfio_iommu_recycle_ephemeral_iovas(iommu);
 
 	return 0;
 }

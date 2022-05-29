@@ -260,8 +260,6 @@ int vfio_unmap_vaddr(struct vfio_state *vfio, void *vaddr)
 
 int vfio_map_vaddr_ephemeral(struct vfio_state *vfio, void *vaddr, size_t len, uint64_t *iova)
 {
-	uint64_t bottom = vfio->iommu.bottom;
-
 	if (vfio_iommu_allocate_ephemeral_iova(&vfio->iommu, len, iova)) {
 		__log(LOG_ERROR, "failed to allocate ephemeral iova\n");
 
@@ -271,8 +269,8 @@ int vfio_map_vaddr_ephemeral(struct vfio_state *vfio, void *vaddr, size_t len, u
 	if (vfio_iommu_map_dma(&vfio->iommu, vaddr, len, *iova)) {
 		__log(LOG_ERROR, "failed to map dma\n");
 
-		vfio->iommu.bottom = bottom;
-		vfio->iommu.nephemeral--;
+		if (--vfio->iommu.nephemeral == 0)
+			vfio_iommu_recycle_ephemeral_iovas(&vfio->iommu);
 
 		return -1;
 	}

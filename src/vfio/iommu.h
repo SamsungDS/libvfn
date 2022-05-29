@@ -26,4 +26,4 @@ int vfio_iommu_allocate_ephemeral_iova(struct vfio_iommu_state *iommu, size_t le
 int vfio_iommu_allocate_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t *iova,
 			     bool ephemeral);
 int vfio_iommu_unmap_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t iova);
-int vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu);
+void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu);
