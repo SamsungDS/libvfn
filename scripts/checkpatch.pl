@@ -513,7 +513,8 @@ our $Attribute	= qr{
 			____cacheline_aligned_in_smp|
 			____cacheline_internodealigned_in_smp|
 			__weak|
-			__alloc_size\s*\(\s*\d+\s*(?:,\s*\d+\s*)?\)
+			__alloc_size\s*\(\s*\d+\s*(?:,\s*\d+\s*)?\)|
+			__autofree
 		  }x;
 our $Modifier;
 our $Inline	= qr{inline|__always_inline|noinline|__inline|__inline__};
