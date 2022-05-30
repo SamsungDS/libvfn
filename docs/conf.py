@@ -29,7 +29,7 @@ copyright = '2022, The libvfn Authors'
 author = 'The libvfn Authors'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '0.0.99'
 
 # -- General configuration ---------------------------------------------------
 

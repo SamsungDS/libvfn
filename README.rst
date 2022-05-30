@@ -112,8 +112,14 @@ Archive Network (CCAN) which are separately licensed. See ``ccan/licenses`` for
 a list of included licenses and ``ccan/ccan/*/LICENSE`` for the license used by
 an individual component.
 
-Finally, all software in the ``examples``, ``tools`` and ``scripts`` directories
-are licensed under the GNU General Public License version 2 or later. See
-``{examples,tools,scripts}/COPYING``.
+All software in the ``examples``, ``tools``, ``scripts`` and ``tests``
+directories are licensed under the GNU General Public License version 2 or
+later. See ``{examples,tools,scripts,tests}/COPYING``.
+
+Finally, all documentation in the ``docs`` directory is dual licensed under the
+GNU General Public License version 2 or later or the Creative Commons
+Attribution 4.0 International license. Note however, that this only applies to
+the raw rst files, since files resulting from processing by the documentation
+build system may contain content tanken from files with other licenses.
 
 .. _libnvme: https://github.com/linux-nvme/libnvme
