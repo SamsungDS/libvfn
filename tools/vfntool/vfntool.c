@@ -16,18 +16,12 @@
  * GNU General Public License for more details.
  */
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdint.h>
-
-#include <sys/mman.h>
-
 #include <vfn/support.h>
 #include <vfn/pci.h>
 
-#include <ccan/err/err.h>
-#include <ccan/opt/opt.h>
-#include <ccan/str/str.h>
+#include "ccan/err/err.h"
+#include "ccan/opt/opt.h"
+#include "ccan/str/str.h"
 
 static char *bdf = "";
 static bool show_usage, verbose, reset;

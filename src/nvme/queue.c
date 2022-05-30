@@ -16,14 +16,21 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-#include <vfn/support.h>
+#include <sys/mman.h>
 
-#include <vfn/nvme.h>
+#include <linux/vfio.h>
+
+#include <vfn/support/compiler.h>
+#include <vfn/support/endian.h>
+#include <vfn/support/mmio.h>
+#include <vfn/trace.h>
+#include <vfn/nvme/types.h>
+#include <vfn/nvme/queue.h>
 
 struct nvme_cqe *nvme_cq_poll(struct nvme_cq *cq)
 {

@@ -11,6 +11,7 @@
  */
 
 #include <assert.h>
+#include <byteswap.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
@@ -20,9 +21,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-#include <vfn/support.h>
-#include <vfn/nvme.h>
+#include <sys/mman.h>
+
+#include <linux/vfio.h>
+
+#include <vfn/support/atomic.h>
+#include <vfn/support/compiler.h>
+#include <vfn/support/endian.h>
+#include <vfn/support/log.h>
+#include <vfn/support/mmio.h>
+#include <vfn/support/mem.h>
+#include <vfn/trace.h>
+#include <vfn/nvme/types.h>
+#include <vfn/nvme/queue.h>
+#include <vfn/nvme/rq.h>
+#include <vfn/nvme/util.h>
 
 #include "ccan/minmax/minmax.h"
 

@@ -30,9 +30,9 @@
 #include <vfn/support/compiler.h>
 #include <vfn/support/log.h>
 #include <vfn/support/mem.h>
-
-#include <vfn/vfio.h>
 #include <vfn/trace.h>
+#include <vfn/vfio/iommu.h>
+#include <vfn/vfio/state.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/list/list.h"

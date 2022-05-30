@@ -17,6 +17,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 #include <vfn/pci/util.h>
 
 #ifdef __cplusplus

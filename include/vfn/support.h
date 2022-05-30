@@ -19,15 +19,17 @@ extern "C" {
 
 #include <byteswap.h>
 #include <errno.h>
-#include <inttypes.h>
+#include <execinfo.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include <sys/mman.h>
-
-#include <linux/types.h>
 
 #include <vfn/support/atomic.h>
 #include <vfn/support/compiler.h>

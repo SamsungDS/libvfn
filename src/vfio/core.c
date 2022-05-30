@@ -11,6 +11,7 @@
  */
 
 #include <assert.h>
+#include <byteswap.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -22,13 +23,18 @@
 #include <unistd.h>
 
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 
 #include <linux/limits.h>
 #include <linux/pci_regs.h>
+#include <linux/vfio.h>
 
-#include <vfn/support.h>
-#include <vfn/vfio.h>
+#include <vfn/support/compiler.h>
+#include <vfn/support/log.h>
+#include <vfn/support/mem.h>
+#include <vfn/vfio/iommu.h>
+#include <vfn/vfio/state.h>
 
 #include "iommu.h"
 

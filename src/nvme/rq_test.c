@@ -16,6 +16,8 @@
  * more details.
  */
 
+#include <byteswap.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -23,7 +25,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <vfn/support.h>
+#include <sys/mman.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/tap/tap.h"

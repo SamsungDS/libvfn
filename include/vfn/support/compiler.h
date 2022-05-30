@@ -54,8 +54,14 @@ extern "C" {
 #define unlikely(cond) __builtin_expect(!!(cond), 0)
 
 #ifdef __CHECKER__
+# ifndef __bitwise
+#  define __bitwise	__attribute__((bitwise))
+# endif
 # define __force	__attribute__((force))
 #else
+# ifndef __bitwise
+#  define __bitwise
+# endif
 # define __force
 #endif
 

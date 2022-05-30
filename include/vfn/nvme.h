@@ -17,7 +17,19 @@
 extern "C" {
 #endif
 
+#include <byteswap.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#include <sys/mman.h>
+
+#include <linux/vfio.h>
 
 #include <vfn/support.h>
 #include <vfn/trace.h>

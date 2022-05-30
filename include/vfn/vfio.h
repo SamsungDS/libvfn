@@ -17,6 +17,9 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include <linux/vfio.h>
