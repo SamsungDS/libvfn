@@ -324,4 +324,19 @@ void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe);
 int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
 		 void *cqe);
 
+/**
+ * nvme_admin - Submit an Admin command and wait for completion
+ * @ctrl: See &struct nvme_ctrl
+ * @sqe: Submission queue entry
+ * @buf: Command payload
+ * @len: Command payload length
+ * @cqe: Completion queue entry to fill
+ *
+ * Shortcut for nvme_oneshot(), submitting to the admin submission queue.
+ *
+ * Return: On success, returns ``0``. On error, returnes ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe);
+
 #endif /* LIBVFN_NVME_CTRL_H */

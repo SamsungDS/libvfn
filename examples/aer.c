@@ -53,7 +53,7 @@ static int get_smart_log(void)
 		.lid = NVME_LOG_LID_SMART,
 	};
 
-	ret = nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, log, len, NULL);
+	ret = nvme_admin(&ctrl, &cmd, log, len, NULL);
 
 	pgunmap(log, len);
 
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 		.cdw11 = cpu_to_le32(NVME_SET(NVME_SMART_CRIT_TEMPERATURE, FEAT_AE_SMART)),
 	};
 
-	if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, NULL, 0x0, NULL))
+	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, NULL))
 		err(1, "could not set asynchronous event configuration");
 
 	cmd.features = (struct nvme_cmd_features) {
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 		.fid = NVME_FEAT_FID_TEMP_THRESH,
 	};
 
-	if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, NULL, 0x0, &cqe))
+	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, &cqe))
 		err(1, "could not get current temperature threshold");
 
 	temp_thresh = le32_to_cpu(cqe.dw0);
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 	};
 
 	do {
-		if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, NULL, 0x0, &cqe))
+		if (nvme_admin(&ctrl, &cmd, NULL, 0x0, &cqe))
 			err(1, "could not set temperature threshold");
 	} while (!aen_received);
 
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
 		.cdw11 = cpu_to_le32(NVME_SET(temp_thresh, FEAT_TT_TMPTH)),
 	};
 
-	if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, NULL, 0x0, &cqe))
+	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, &cqe))
 		err(1, "could not reset temperature threshold");
 
 	get_smart_log();

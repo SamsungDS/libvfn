@@ -123,8 +123,8 @@ int main(int argc, char **argv)
 
 	cmd.identify.cns = NVME_IDENTIFY_CNS_CTRL;
 
-	if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, NULL, 0x0, NULL))
-		err(1, "nvme_oneshot");
+	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, NULL))
+		err(1, "nvme_admin");
 
 	id_ctrl = (struct nvme_id_ctrl __force *)cmb;
 	printf("identify controller VER field value is %x\n", id_ctrl->ver);

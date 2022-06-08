@@ -257,7 +257,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 		.qflags = cpu_to_le16(NVME_Q_PC),
 	};
 
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
+	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
 }
 
 int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
@@ -271,7 +271,7 @@ int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
 		.qid = cpu_to_le16(qid),
 	};
 
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
+	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
 }
 
 int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
@@ -294,7 +294,7 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 		.cqid   = cpu_to_le16(cq->id),
 	};
 
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
+	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
 }
 
 int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
@@ -308,7 +308,7 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
 		.qid = cpu_to_le16(qid),
 	};
 
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, NULL);
+	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
 }
 
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
@@ -496,7 +496,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		NVME_FIELD_SET(ctrl->opts.nsqr, FEAT_NRQS_NSQR) |
 		NVME_FIELD_SET(ctrl->opts.ncqr, FEAT_NRQS_NCQR));
 
-	if (nvme_oneshot(ctrl, ctrl->adminq.sq, &cmd, NULL, 0x0, &cqe))
+	if (nvme_admin(ctrl, &cmd, NULL, 0x0, &cqe))
 		return -1;
 
 	ctrl->config.nsqa = min_t(uint16_t, ctrl->opts.nsqr,
@@ -617,4 +617,9 @@ release_rq:
 	nvme_rq_release_atomic(rq);
 
 	return ret;
+}
+
+int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe_copy)
+{
+	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
 }

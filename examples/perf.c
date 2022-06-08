@@ -288,8 +288,8 @@ int main(int argc, char **argv)
 		.cns = NVME_IDENTIFY_CNS_NS,
 	};
 
-	if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, vaddr, len, NULL))
-		err(1, "nvme_oneshot");
+	if (nvme_admin(&ctrl, &cmd, vaddr, len, NULL))
+		err(1, "nvme_admin");
 
 	id_ns = (struct nvme_id_ns *)vaddr;
 

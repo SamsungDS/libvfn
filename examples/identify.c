@@ -76,8 +76,8 @@ int main(int argc, char **argv)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	if (nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, vaddr, len, NULL))
-		err(1, "nvme_oneshot");
+	if (nvme_admin(&ctrl, &cmd, vaddr, len, NULL))
+		err(1, "nvme_admin");
 
 	switch (cns) {
 	case NVME_IDENTIFY_CNS_CTRL:

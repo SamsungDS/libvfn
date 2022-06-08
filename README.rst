@@ -22,7 +22,6 @@ Issuing a crafted command using the high-level API can be as simple as:
    #include <vfn/nvme.h>
 
    #include <nvme/types.h>
-   #include <support/mem.h>
 
    int main(void) {
      struct nvme_ctrl ctrl;
@@ -38,7 +37,7 @@ Issuing a crafted command using the high-level API can be as simple as:
        .cns = NVME_IDENTIFY_CNS_CTRL,
      };
 
-     nvme_oneshot(&ctrl, ctrl.adminq.sq, &cmd, vaddr, NVME_IDENTIFY_DATA_SIZE, NULL);
+     nvme_admin(&ctrl, &cmd, vaddr, NVME_IDENTIFY_DATA_SIZE, NULL);
 
      printf("vid 0x%"PRIx8"\n", ((struct nvme_id_ctrl *)vaddr)->vid);
 
