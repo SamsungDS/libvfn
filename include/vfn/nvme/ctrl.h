@@ -50,10 +50,7 @@ struct nvme_ctrl {
 	/**
 	 * @doorbells: mapped doorbell registers
 	 */
-	struct {
-		uint32_t sq_tail;
-		uint32_t cq_head;
-	} *doorbells;
+	void *doorbells;
 
 	/**
 	 * @opts: controller options

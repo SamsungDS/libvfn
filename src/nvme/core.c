@@ -53,7 +53,12 @@ enum nvme_ctrl_feature_flags {
 int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
+	uint64_t cap;
+	uint8_t dstrd;
 	size_t len;
+
+	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid > ctrl->config.ncqa) {
 		__debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa);
@@ -71,7 +76,7 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	*cq = (struct nvme_cq) {
 		.id = qid,
 		.qsize = qsize,
-		.doorbell = &ctrl->doorbells[qid].cq_head,
+		.doorbell = ctrl->doorbells + (2 * qid + 1) * (4 << dstrd),
 		.efd = -1,
 	};
 
@@ -108,7 +113,12 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 		      struct nvme_cq *cq, unsigned int UNUSED flags)
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
+	uint64_t cap;
+	uint8_t dstrd;
 	ssize_t len;
+
+	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid > ctrl->config.nsqa) {
 		__debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa);
@@ -126,7 +136,7 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	*sq = (struct nvme_sq) {
 		.id = qid,
 		.qsize = qsize,
-		.doorbell = &ctrl->doorbells[qid].sq_tail,
+		.doorbell = ctrl->doorbells + (2 * qid) * (4 << dstrd),
 		.cq = cq,
 	};
 
