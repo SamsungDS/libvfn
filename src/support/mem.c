@@ -36,6 +36,7 @@ static void __attribute__((constructor)) init_page_size(void)
 
 void backtrace_abort(void)
 {
+#ifdef __GLIBC__
 	void *buf[10];
 	char **symbols = NULL;
 	int size;
@@ -51,7 +52,7 @@ void backtrace_abort(void)
 	}
 
 	free(symbols);
-
+#endif /* __GLIBC__ */
 	abort();
 }
 
