@@ -39,6 +39,8 @@ libvfn_dep = declare_dependency(
   include_directories: vfn_inc,
 )
 
+meson.override_dependency('libvfn', libvfn_dep)
+
 pkg = import('pkgconfig')
 pkg.generate(vfn_lib,
   filebase: 'libvfn',
