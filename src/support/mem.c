@@ -25,13 +25,13 @@
 #include <vfn/support/compiler.h>
 #include <vfn/support/mem.h>
 
-long PAGESIZE;
-int PAGESHIFT;
+long __VFN_PAGESIZE;
+int __VFN_PAGESHIFT;
 
 static void __attribute__((constructor)) init_page_size(void)
 {
-	PAGESIZE = sysconf(_SC_PAGESIZE);
-	PAGESHIFT = 31 - __builtin_clz(PAGESIZE);
+	__VFN_PAGESIZE = sysconf(_SC_PAGESIZE);
+	__VFN_PAGESHIFT = 31 - __builtin_clz(__VFN_PAGESIZE);
 }
 
 void backtrace_abort(void)
@@ -57,7 +57,7 @@ void backtrace_abort(void)
 
 ssize_t pgmap(void **mem, size_t sz)
 {
-	ssize_t len = ALIGN_UP(sz, PAGESIZE);
+	ssize_t len = ALIGN_UP(sz, __VFN_PAGESIZE);
 
 	*mem = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 	if (*mem == MAP_FAILED)

@@ -99,7 +99,7 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	if (!cq->vaddr)
 		return;
 
-	len = ALIGN_UP((size_t)cq->qsize << NVME_CQES, PAGESIZE);
+	len = ALIGN_UP((size_t)cq->qsize << NVME_CQES, __VFN_PAGESIZE);
 
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, cq->vaddr))
 		__debug("failed to unmap vaddr\n");
@@ -140,7 +140,7 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 		.cq = cq,
 	};
 
-	len = pgmapn(&sq->pages.vaddr, qsize, PAGESIZE);
+	len = pgmapn(&sq->pages.vaddr, qsize, __VFN_PAGESIZE);
 	if (len < 0)
 		return -1;
 
@@ -158,8 +158,8 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 		rq->sq = sq;
 		rq->cid = i;
 
-		rq->page.vaddr = sq->pages.vaddr + (i << PAGESHIFT);
-		rq->page.iova = sq->pages.iova + (i << PAGESHIFT);
+		rq->page.vaddr = sq->pages.vaddr + (i << __VFN_PAGESHIFT);
+		rq->page.iova = sq->pages.iova + (i << __VFN_PAGESHIFT);
 
 		if (i > 0)
 			rq->rq_next = &sq->rqs[i - 1];
@@ -184,7 +184,7 @@ unmap_pages:
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, sq->pages.vaddr))
 		__debug("failed to unmap vaddr\n");
 
-	pgunmap(sq->pages.vaddr, (size_t)sq->qsize << PAGESHIFT);
+	pgunmap(sq->pages.vaddr, (size_t)sq->qsize << __VFN_PAGESHIFT);
 
 	return -1;
 }
@@ -196,7 +196,7 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	if (!sq->vaddr)
 		return;
 
-	len = ALIGN_UP((size_t)sq->qsize << NVME_SQES, PAGESIZE);
+	len = ALIGN_UP((size_t)sq->qsize << NVME_SQES, __VFN_PAGESIZE);
 
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, sq->vaddr))
 		__debug("failed to unmap vaddr\n");
@@ -205,7 +205,7 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 
 	free(sq->rqs);
 
-	len = (size_t)sq->qsize << PAGESHIFT;
+	len = (size_t)sq->qsize << __VFN_PAGESHIFT;
 
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, sq->pages.vaddr))
 		__debug("failed to unmap vaddr\n");
@@ -387,7 +387,7 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	css = NVME_FIELD_GET(cap, CAP_CSS);
 
 	cc =
-		NVME_FIELD_SET(PAGESHIFT - 12,   CC_CSS) |
+		NVME_FIELD_SET(__VFN_PAGESHIFT - 12,   CC_CSS) |
 		NVME_FIELD_SET(NVME_CC_AMS_RR,   CC_AMS) |
 		NVME_FIELD_SET(NVME_CC_SHN_NONE, CC_SHN) |
 		NVME_FIELD_SET(NVME_SQES,        CC_IOSQES) |
@@ -461,7 +461,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
 
-	if (((12 + mpsmin) >> 12) > PAGESIZE) {
+	if (((12 + mpsmin) >> 12) > __VFN_PAGESIZE) {
 		__debug("controller minimum page size too large\n");
 		errno = EINVAL;
 		return -1;

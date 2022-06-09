@@ -294,7 +294,7 @@ int vfio_iommu_map_dma(struct vfio_iommu_state *iommu, void *vaddr, size_t len, 
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
 
-	if (!ALIGNED(((uintptr_t)vaddr | len | iova), PAGESIZE)) {
+	if (!ALIGNED(((uintptr_t)vaddr | len | iova), __VFN_PAGESIZE)) {
 		__debug("vaddr, len or iova not page aligned\n");
 		errno = EINVAL;
 		return -1;
@@ -371,7 +371,7 @@ int vfio_iommu_allocate_sticky_iova(struct vfio_iommu_state *iommu, size_t len, 
 {
 	__autolock(&iommu->lock);
 
-	if (!ALIGNED(len, PAGESIZE)) {
+	if (!ALIGNED(len, __VFN_PAGESIZE)) {
 		__debug("len is not page aligned\n");
 		errno = EINVAL;
 		return -1;
@@ -404,7 +404,7 @@ int vfio_iommu_allocate_ephemeral_iova(struct vfio_iommu_state *iommu, size_t le
 {
 	__autolock(&iommu->lock);
 
-	if (!ALIGNED(len, PAGESIZE)) {
+	if (!ALIGNED(len, __VFN_PAGESIZE)) {
 		__debug("len is not page aligned\n");
 		errno = EINVAL;
 		return -1;

@@ -45,18 +45,18 @@
 
 void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
 {
-	unsigned int prpcount = len >> PAGESHIFT;
+	unsigned int prpcount = len >> __VFN_PAGESHIFT;
 	leint64_t *prplist = rq->page.vaddr;
 
 	cmd->dptr.prp1 = cpu_to_le64(iova);
 
-	if (!ALIGNED(iova, PAGESIZE)) {
-		iova = ALIGN_DOWN(iova, PAGESIZE);
+	if (!ALIGNED(iova, __VFN_PAGESIZE)) {
+		iova = ALIGN_DOWN(iova, __VFN_PAGESIZE);
 		prpcount++;
 	}
 
 	for (unsigned int i = 1; i < prpcount; i++)
-		prplist[i - 1] = cpu_to_le64(iova + (i << PAGESHIFT));
+		prplist[i - 1] = cpu_to_le64(iova + (i << __VFN_PAGESHIFT));
 
 	if (prpcount == 2)
 		cmd->dptr.prp2 = prplist[0];
