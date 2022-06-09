@@ -33,6 +33,7 @@ endif
 ##  --------
 ##
 
+perl = find_program('perl')
 trace_pl = find_program('scripts/trace.pl')
 
 ##
