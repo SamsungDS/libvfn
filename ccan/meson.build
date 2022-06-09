@@ -116,10 +116,6 @@ ccan_config.set10('HAVE_STATEMENT_EXPR',
   args: ['-Werror']),
 )
 
-ccan_config.set10('HAVE_SYS_TERMIOS_H',
-  cc.check_header('sys/termios.h'),
-)
-
 ccan_config.set10('HAVE_SYS_UNISTD_H',
   cc.check_header('sys/unistd.h'),
 )

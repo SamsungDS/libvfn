@@ -1,9 +1,5 @@
 /* Licensed under GPLv2+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
-#if HAVE_SYS_TERMIOS_H
-#include <sys/ioctl.h>
-#include <sys/termios.h> /* Required on Solaris for struct winsize */
-#endif
 #if HAVE_SYS_UNISTD_H
 #include <sys/unistd.h> /* Required on Solaris for ioctl */
 #endif
