@@ -31,6 +31,7 @@
 #include <linux/vfio.h>
 #include <linux/pci_regs.h>
 
+#include <vfn/support/atomic.h>
 #include <vfn/support/compiler.h>
 #include <vfn/support/log.h>
 #include <vfn/support/mem.h>

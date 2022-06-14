@@ -35,7 +35,7 @@ enum __log_level {
  */
 static inline bool __logv(unsigned int v)
 {
-	if (__atomic_load_n(&__log_state.v, __ATOMIC_ACQUIRE) >= v)
+	if (atomic_load_acquire(&__log_state.v) >= v)
 		return true;
 
 	return false;
@@ -43,7 +43,7 @@ static inline bool __logv(unsigned int v)
 
 static inline void __logv_set(unsigned int v)
 {
-	__atomic_store_n(&__log_state.v, &v, __ATOMIC_RELEASE);
+	atomic_store_release(&__log_state.v, &v);
 }
 
 /**
