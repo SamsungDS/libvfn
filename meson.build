@@ -90,9 +90,7 @@ subdir('src')
 subdir('tests')
 
 # examples
-if get_option('examples')
-  subdir('examples')
-endif
+subdir('examples')
 
 # tools
 subdir('tools/vfntool')
@@ -158,5 +156,5 @@ summary_info = {}
 summary_info += {'Debugging': get_option('debug')}
 summary_info += {'Documentation': build_docs}
 summary_info += {'Profiling': get_option('profiling')}
-summary_info += {'Examples': get_option('examples')}
+summary_info += {'Examples': build_examples}
 summary(summary_info, bool_yn: true, section: 'Features')

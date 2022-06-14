@@ -4,7 +4,7 @@ option('aq_qsize', type: 'integer', value: 32,
 option('profiling', type: 'boolean', value: false,
   description: 'enable/disable gprof profiling')
 
-option('examples', type: 'boolean', value: true,
+option('examples', type: 'feature', value: 'auto',
   description: 'build examples')
 
 option('libnvme', type: 'combo', value: 'auto',
