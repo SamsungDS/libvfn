@@ -28,6 +28,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <sys/mman.h>
 
@@ -38,6 +39,7 @@ extern "C" {
 #include <vfn/support/log.h>
 #include <vfn/support/mem.h>
 #include <vfn/support/mmio.h>
+#include <vfn/support/mutex.h>
 
 #ifdef __cplusplus
 }
