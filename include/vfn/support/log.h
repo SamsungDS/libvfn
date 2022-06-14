@@ -17,12 +17,6 @@
 extern "C" {
 #endif
 
-/* sparse does not know about these gcc builtins */
-#ifdef __CHECKER__
-#define __atomic_load_n(ptr, memorder) (*(ptr))
-#define __atomic_store_n(ptr, val, memorder) ({ *(ptr) = val; })
-#endif
-
 extern struct log_state {
 	unsigned int v;
 } __log_state;

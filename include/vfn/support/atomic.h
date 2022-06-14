@@ -17,6 +17,14 @@
 extern "C" {
 #endif
 
+/* sparse does not know about these gcc builtins */
+#ifdef __CHECKER__
+#define __atomic_load_n(ptr, memorder) (*(ptr))
+#define __atomic_store_n(ptr, val, memorder) ({ *(ptr) = val; })
+#define __atomic_compare_exchange_n(ptr, expected, desired, weak, ok_memorder, fail_memorder) \
+	({ *ptr = desired; })
+#endif
+
 /**
  * atomic_load_acquire - Syntactic suger for __atomic_load_n
  * @ptr: Pointer to value
