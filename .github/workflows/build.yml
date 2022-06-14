@@ -7,19 +7,19 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  sanity:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v3
 
-      - name: install meson, ninja
-        run: pip install meson ninja
+      - name: install build dependencies
+        run: sudo pip install meson ninja sphinx sphinx-rtd-theme
 
       - name: install sparse
-        run: sudo apt install -y sparse
+        run: sudo apt-get -y install sparse
 
-      - name: configure
+      - name: configure build
         run: meson setup build
 
       - name: compile
@@ -28,9 +28,53 @@ jobs:
       - name: run sparse
         run: meson compile -C build sparse
 
+      - name: unit tests
+        run: |
+          meson test -C build libvfn:
+
+  build:
+    needs: [sanity]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - {os: 'archlinux', dh: 'archlinux', ver: 'latest'}
+          - {os: 'centos', dh: 'quay.io/centos/centos', ver: 'stream9'}
+          - {os: 'centos', dh: 'quay.io/centos/centos', ver: 'stream8'}
+          - {os: 'debian', dh: 'debian', ver: 'bookworm'}
+          - {os: 'debian', dh: 'debian', ver: 'bullseye'}
+          - {os: 'debian', dh: 'debian', ver: 'buster'}
+          - {os: 'fedora', dh: 'fedora', ver: '36'}
+          - {os: 'fedora', dh: 'fedora', ver: '35'}
+          - {os: 'ubuntu', dh: 'ubuntu', ver: 'jammy'}
+          - {os: 'ubuntu', dh: 'ubuntu', ver: 'focal'}
+          - {os: 'ubuntu', dh: 'ubuntu', ver: 'bionic'}
+
+    container:
+      image: ${{ matrix.container.dh }}:${{ matrix.container.ver }}
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install dependencies
+        env:
+          SETUP_SCRIPT: .github/scripts/build/${{ matrix.container.os}}-setup-${{ matrix.container.ver }}.sh
+        run: ${SETUP_SCRIPT}
+
+      - name: configure build
+        run: meson setup build -Dexamples=disabled -Ddocs=disabled
+
+      - name: compile
+        run: ninja -C build
+
       - name: upload log
         uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: meson log
           path: build/meson-logs/meson-log.txt
+
+      - name: unit tests
+        run: meson test -C build "libvfn:"
