@@ -17,6 +17,13 @@
 extern "C" {
 #endif
 
+#ifndef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
+struct vfio_iova_range {
+	__u64	start;
+	__u64	end;
+};
+#endif
+
 /**
  * struct vfio_iommu_state - I/O Memory Management Unit state
  * @nranges: number of iommu iova ranges

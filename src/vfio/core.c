@@ -107,6 +107,53 @@ int vfio_reset(struct vfio_state *vfio)
 	return ioctl(vfio->device, VFIO_DEVICE_RESET);
 }
 
+#ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
+static void iommu_get_iova_ranges(struct vfio_iommu_state *iommu, struct vfio_info_cap_header *cap)
+{
+	struct vfio_iommu_type1_info_cap_iova_range *cap_iova_range;
+	size_t len;
+
+	cap_iova_range = (struct vfio_iommu_type1_info_cap_iova_range *)cap;
+	len = sizeof(struct vfio_iova_range) * cap_iova_range->nr_iovas;
+
+	iommu->nranges = cap_iova_range->nr_iovas;
+	iommu->iova_ranges = realloc(iommu->iova_ranges, len);
+	memcpy(iommu->iova_ranges, cap_iova_range->iova_ranges, len);
+
+	if (__logv(LOG_INFO)) {
+		for (unsigned int i = 0; i < iommu->nranges; i++) {
+			struct vfio_iova_range *r = &iommu->iova_ranges[i];
+
+			__log(LOG_INFO, "iova range %d is [0x%llx; 0x%llx]\n", i, r->start,
+			      r->end);
+		}
+	}
+}
+#endif
+
+#ifdef VFIO_IOMMU_INFO_CAPS
+static void vfio_iommu_init_capabilities(struct vfio_iommu_state *iommu,
+					 struct vfio_iommu_type1_info *iommu_info)
+{
+	struct vfio_info_cap_header *cap = (void *)iommu_info + iommu_info->cap_offset;
+
+	do {
+		switch (cap->id) {
+#ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
+		case VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE:
+			iommu_get_iova_ranges(iommu, cap);
+			break;
+		}
+#endif
+
+		if (!cap->next)
+			break;
+
+		cap = (void *)iommu_info + cap->next;
+	} while (true);
+}
+#endif
+
 int vfio_open(struct vfio_state *vfio, const char *group)
 {
 	struct vfio_group_status group_status = {
@@ -161,6 +208,8 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 		goto err;
 	}
 
+	vfio_iommu_init(&vfio->iommu);
+
 	iommu_info = xmalloc(iommu_info_size);
 	memset(iommu_info, 0x0, iommu_info_size);
 	iommu_info->argsz = iommu_info_size;
@@ -169,8 +218,6 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 		__debug("failed to get iommu info\n");
 		goto err;
 	}
-
-	vfio_iommu_init(&vfio->iommu);
 
 	if (iommu_info->argsz > iommu_info_size) {
 		__log(LOG_INFO, "iommu has extended info\n");
@@ -186,7 +233,10 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 			goto err;
 		}
 
-		vfio_iommu_init_capabilities(&vfio->iommu, iommu_info);
+#ifdef VFIO_IOMMU_INFO_CAPS
+		if (iommu_info->flags & VFIO_IOMMU_INFO_CAPS)
+			vfio_iommu_init_capabilities(&vfio->iommu, iommu_info);
+#endif
 	}
 
 	return 0;
