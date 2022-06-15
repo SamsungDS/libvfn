@@ -52,24 +52,53 @@
 # error unsupported architecture
 #endif
 
+#define __LOAD(type, v) (*(const volatile type *)&(v))
+#define __LOAD_PTR(type, ptr) (*(const volatile type)(ptr))
+
 /**
  * LOAD - force volatile load
  * @v: variable to load
  *
- * Force a volatile load, detering the compiler from doing a range of optimizations.
+ * Force a volatile load, detering the compiler from doing a range of
+ * optimizations.
  *
  * Return: The value of the variable.
  */
-#define LOAD(v) (*(const volatile typeof(v) *)&(v))
+#define LOAD(v) __LOAD(typeof(v), v)
+
+/**
+ * LOAD_PTR - force a volatile load
+ * @ptr: pointer to variable to load
+ *
+ * Force a volatile load, detering the compiler from doing a range of
+ * optimizations.
+ *
+ * Return: the value of the pointed to variable.
+ */
+#define LOAD_PTR(ptr) __LOAD_PTR(typeof(ptr), ptr)
+
+#define __STORE(type, v, val) (*(volatile type *)&(v) = (val))
+#define __STORE_PTR(type, ptr, val) (*(volatile type)(ptr) = (val))
 
 /**
  * STORE - force volatile store
  * @v: variable to store into
  * @val: value to store into @v
  *
- * Force a volatile store, detering the compiler from doing a range of optimizations.
+ * Force a volatile store, detering the compiler from doing a range of
+ * optimizations.
  */
-#define STORE(v, val) (*(volatile typeof(v) *)&(v) = (val))
+#define STORE(v, val) __STORE(typeof(v), v, val)
+
+/**
+ * STORE_PTR - force a volatile store
+ * @ptr: pointer to variable to store into
+ * @val: value to store into variable pointed to by @ptr
+ *
+ * Force a volatile store, detering the compiler from doing a range of
+ * optimizations.
+ */
+#define STORE_PTR(ptr, val) __STORE_PTR(typeof(ptr), ptr, val)
 
 #define likely(cond) __builtin_expect(!!(cond), 1)
 #define unlikely(cond) __builtin_expect(!!(cond), 0)
