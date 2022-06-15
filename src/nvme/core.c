@@ -46,6 +46,12 @@
 
 #include "types.h"
 
+#define cqhdbl(doorbells, qid, dstrd) \
+	(doorbells + (2 * qid + 1) * (4 << dstrd))
+
+#define sqtdbl(doorbells, qid, dstrd) \
+	(doorbells + (2 * qid) * (4 << dstrd))
+
 enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
 };
@@ -76,7 +82,7 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	*cq = (struct nvme_cq) {
 		.id = qid,
 		.qsize = qsize,
-		.doorbell = ctrl->doorbells + (2 * qid + 1) * (4 << dstrd),
+		.doorbell = cqhdbl(ctrl->doorbells, qid, dstrd),
 		.efd = -1,
 	};
 
@@ -136,7 +142,7 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	*sq = (struct nvme_sq) {
 		.id = qid,
 		.qsize = qsize,
-		.doorbell = ctrl->doorbells + (2 * qid) * (4 << dstrd),
+		.doorbell = sqtdbl(ctrl->doorbells, qid, dstrd),
 		.cq = cq,
 	};
 
