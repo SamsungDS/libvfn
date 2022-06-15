@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_IO_H
 #define LIBVFN_SUPPORT_IO_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * writeallfd - Write exactly count bytes to file descriptor
  * @fd: file descriptor
@@ -64,9 +60,5 @@ ssize_t readmaxfd(int fd, void *buf, size_t count);
  * Return: number of bytes read or -1 and set ``errno``.
  */
 ssize_t readmax(const char *path, void *buf, size_t count);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_IO_H */

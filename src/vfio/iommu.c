@@ -320,7 +320,7 @@ int vfio_iommu_unmap_dma(struct vfio_iommu_state *iommu, size_t len, uint64_t io
 	};
 
 	__trace(VFIO_IOMMU_UNMAP_DMA) {
-		__emit("iova 0x%"PRIx64" len %zu\n", iova, len);
+		__emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
 	}
 
 	if (ioctl(vfio->container, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
@@ -358,7 +358,7 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu)
 
 		if (n != &map->nil && n != &map->sentinel) {
 			if (vfio_iommu_unmap_dma(iommu, n->mapping.len, n->mapping.iova))
-				__debug("failed to unmap dma: len %zu iova 0x%"PRIx64"\n",
+				__debug("failed to unmap dma: len %zu iova 0x%" PRIx64 "\n",
 					n->mapping.len, n->mapping.iova);
 			free(n);
 		}
@@ -446,7 +446,7 @@ int vfio_iommu_allocate_iova(struct vfio_iommu_state *iommu, size_t len, uint64_
 void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
 {
 	__trace(VFIO_IOMMU_RECYCLE_EPHEMERAL_IOVAS) {
-		__emit("iova range [0x%"PRIx64"; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
+		__emit("iova range [0x%" PRIx64 "; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
 	}
 
 	iommu->bottom = VFIO_IOVA_MAX;
@@ -455,7 +455,7 @@ void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
 int vfio_iommu_unmap_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t iova)
 {
 	__trace(VFIO_IOMMU_UNMAP_EPHEMERAL_IOVA) {
-		__emit("iova 0x%"PRIx64" len %zu\n", iova, len);
+		__emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
 	}
 
 	if (vfio_iommu_unmap_dma(iommu, len, iova))

@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_MEM_H
 #define LIBVFN_SUPPORT_MEM_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern long __VFN_PAGESIZE;
 extern int __VFN_PAGESHIFT;
 
@@ -104,9 +100,5 @@ static inline void pgunmap(void *mem, size_t len)
 	if (munmap(mem, len))
 		backtrace_abort();
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_MEM_H */

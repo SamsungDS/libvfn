@@ -16,7 +16,7 @@ project('libvfn', ['c', 'cpp'],
 
 add_project_arguments([
     '-D_GNU_SOURCE',
-  ], language: 'c',
+  ], language: ['c', 'cpp'],
 )
 
 if get_option('profiling')
@@ -25,7 +25,7 @@ if get_option('profiling')
 endif
 
 if get_option('debug')
-  add_project_arguments(['-DDEBUG'], language: 'c')
+  add_project_arguments(['-DDEBUG'], language: ['c', 'cpp'])
 endif
 
 ##

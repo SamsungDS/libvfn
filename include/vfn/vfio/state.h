@@ -13,10 +13,6 @@
 #ifndef LIBVFN_VFIO_DEVICE_H
 #define LIBVFN_VFIO_DEVICE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * struct vfio_state - vfio device state
  */
@@ -172,9 +168,5 @@ int vfio_set_irq(struct vfio_state *vfio, int *eventfds, unsigned int count);
  * Disable all IRQs.
  */
 int vfio_disable_irq(struct vfio_state *vfio);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_VFIO_DEVICE_H */

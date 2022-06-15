@@ -13,10 +13,6 @@
 #ifndef LIBVFN_PCI_UTIL_H
 #define LIBVFN_PCI_UTIL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * pci_bind - bind a pci device to a driver
  * @bdf: pci device identifier ("bus:device:function")
@@ -90,9 +86,5 @@ int pci_device_info_get_ull(const char *bdf, const char *prop, unsigned long lon
  * ``errno``.
  */
 char *pci_get_driver(const char *bdf);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_PCI_UTIL_H */

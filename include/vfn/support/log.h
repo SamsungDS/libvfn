@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_LOG_H
 #define LIBVFN_SUPPORT_LOG_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern struct log_state {
 	unsigned int v;
 } __log_state;
@@ -68,9 +64,5 @@ static inline void __attribute__((format(printf, 2, 3))) __log(unsigned int v, c
 
 #define __debug(fmt, ...) \
 	__log(LOG_DEBUG, "%s (%s:%d): "fmt, __func__, __FILE__, __LINE__, ##__VA_ARGS__)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_LOG_H */

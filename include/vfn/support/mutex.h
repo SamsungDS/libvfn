@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_MUTEX_H
 #define LIBVFN_SUPPORT_MUTEX_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Autolockable mutex
  *
@@ -42,9 +38,5 @@ DEFINE_AUTOPTR(pthread_mutex_t, __mutex_auto_unlock)
 
 #define __autolock(x) \
 	__autoptr(pthread_mutex_t) glue(autolock, __COUNTER__) = __mutex_auto_lock(x)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_MUTEX_H */

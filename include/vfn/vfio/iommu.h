@@ -13,10 +13,6 @@
 #ifndef LIBVFN_VFIO_IOMMU_H
 #define LIBVFN_VFIO_IOMMU_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 struct vfio_iova_range {
 	__u64	start;
@@ -120,9 +116,5 @@ bool vfio_iommu_vaddr_to_iova(struct vfio_iommu_state *iommu, void *vaddr, uint6
  * Return: The mapping associated with @vaddr or NULL if not found.
  */
 struct vfio_iommu_mapping *vfio_iommu_find_mapping(struct vfio_iommu_state *iommu, void *vaddr);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_VFIO_IOMMU_H */

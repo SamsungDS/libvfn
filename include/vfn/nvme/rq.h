@@ -13,10 +13,6 @@
 #ifndef LIBVFN_NVME_RQ_H
 #define LIBVFN_NVME_RQ_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * struct nvme_rq - Request tracker
  * @opaque: Opaque data pointer
@@ -219,9 +215,5 @@ void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, siz
  * Return: ``0`` on success, ``-1`` on error and set ``errno``.
  */
 int nvme_rq_poll(struct nvme_rq *rq, void *cqe_copy);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_NVME_RQ_H */

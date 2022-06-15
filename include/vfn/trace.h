@@ -50,7 +50,7 @@ static __thread const char *__trace_event;
  * __trace().
  */
 # define __emit(fmt, ...) \
-	fprintf(stderr, "T %s "fmt, __trace_event, ##__VA_ARGS__)
+	fprintf(stderr, "T %s " fmt, __trace_event, ##__VA_ARGS__)
 
 #else
 # define __trace(name) if (false)

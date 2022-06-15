@@ -13,10 +13,6 @@
 #ifndef LIBVFN_VFIO_PCI_H
 #define LIBVFN_VFIO_PCI_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * struct vfio_pci_state - vfio pci device state
  */
@@ -119,9 +115,5 @@ static inline ssize_t vfio_pci_write_config(struct vfio_pci_state *pci, void *bu
 {
 	return pwrite(pci->vfio.device, buf, len, pci->config_region_info.offset + offset);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_VFIO_PCI_H */

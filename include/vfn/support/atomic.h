@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_ATOMIC_H
 #define LIBVFN_SUPPORT_ATOMIC_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* sparse does not know about these gcc builtins */
 #ifdef __CHECKER__
 #define __atomic_load_n(ptr, memorder) (*(ptr))
@@ -49,9 +45,5 @@ extern "C" {
  */
 #define atomic_cmpxchg(ptr, expected, desired) \
 	__atomic_compare_exchange_n(ptr, &expected, desired, false, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_ATOMIC_H */

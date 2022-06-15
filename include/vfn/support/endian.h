@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_ENDIAN_H
 #define LIBVFN_SUPPORT_ENDIAN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef uint64_t __bitwise leint64_t;
 typedef uint32_t __bitwise leint32_t;
 typedef uint16_t __bitwise leint16_t;
@@ -185,9 +181,5 @@ static inline uint64_t get_unaligned_be48(const uint8_t *p)
 
 	return v;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_ENDIAN_H */

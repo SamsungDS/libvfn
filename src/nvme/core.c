@@ -574,7 +574,7 @@ void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
 	} else {
 		uint32_t dw0 = le32_to_cpu(cqe->dw0);
 
-		__log(LOG_INFO, "unhandled aen 0x%"PRIx32" (type 0x%x info 0x%x lid 0x%x)\n",
+		__log(LOG_INFO, "unhandled aen 0x%" PRIx32 " (type 0x%x info 0x%x lid 0x%x)\n",
 		      dw0, NVME_AEN_TYPE(dw0), NVME_AEN_INFO(dw0), NVME_AEN_LID(dw0));
 	}
 
@@ -613,7 +613,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 			continue;
 		}
 
-		__log(LOG_ERROR, "SPURIOUS CQE (cq %"PRIu16" cid %"PRIu16")\n",
+		__log(LOG_ERROR, "SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
 		      rq->sq->cq->id, cqe.cid);
 	}
 

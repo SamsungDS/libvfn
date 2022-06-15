@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_COMPILER_H
 #define LIBVFN_SUPPORT_COMPILER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define __glue(x, y) x ## y
 #define glue(x, y) __glue(x, y)
 
@@ -88,10 +84,6 @@ extern "C" {
 #  define __bitwise
 # endif
 # define __force
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* LIBVFN_SUPPORT_COMPILER_H */

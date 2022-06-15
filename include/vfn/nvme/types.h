@@ -13,10 +13,6 @@
 #ifndef LIBVFN_NVME_TYPES_H
 #define LIBVFN_NVME_TYPES_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum nvme_sgld_type {
 	NVME_SGLD_TYPE_DATA_BLOCK	= 0x0,
 	NVME_SGLD_TYPE_BIT_BUCKET	= 0x1,
@@ -281,9 +277,5 @@ struct nvme_crc64_pi_tuple {
 	beint16_t apptag;
 	uint8_t   sr[6];
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_NVME_TYPES_H */

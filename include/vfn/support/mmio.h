@@ -13,10 +13,6 @@
 #ifndef LIBVFN_SUPPORT_MMIO_H
 #define LIBVFN_SUPPORT_MMIO_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * mmio_read32 - read 4 bytes in memory-mapped register
  * @addr: memory-mapped register
@@ -89,9 +85,5 @@ static inline void mmio_hl_write64(void *addr, leint64_t v)
 	mmio_write32(addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
 	mmio_write32(addr, (leint32_t __force)v);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_SUPPORT_MMIO_H */
