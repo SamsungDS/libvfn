@@ -202,6 +202,10 @@ static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
 	if ((le16_to_cpu(LOAD(cqe->sfp)) & 0x1) == cq->phase)
 		return NULL;
 
+	__trace(NVME_CQ_GOT_CQE) {
+		__emit("cq %d cid %" PRIu16 "\n", cq->id, cqe->cid);
+	}
+
 	barrier();
 
 	if (unlikely(++cq->head == cq->qsize)) {
