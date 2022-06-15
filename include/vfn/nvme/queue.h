@@ -28,8 +28,8 @@ struct nvme_cq {
 	uint64_t iova;
 
 	int id;
-	int head;
-	int qsize;
+	uint16_t head;
+	unsigned int qsize;
 	size_t entry_size;
 
 	/* memory-mapped register */
@@ -54,8 +54,8 @@ struct nvme_sq {
 		uint64_t iova;
 	} pages;
 
-	int tail, ptail;
-	int qsize;
+	uint16_t tail, ptail;
+	unsigned int qsize;
 	int id;
 	size_t entry_size;
 
