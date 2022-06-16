@@ -1,7 +1,9 @@
 vfn_headers = files([
   'nvme.h',
+  'pci.h',
+  'support.h',
   'trace.h',
-  'vfio.h'
+  'vfio.h',
 ])
 
 install_headers(vfn_headers, subdir: 'vfn')

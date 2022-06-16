@@ -6,6 +6,7 @@ vfn_support_headers = files([
   'log.h',
   'mem.h',
   'mmio.h',
+  'mutex.h',
 ])
 
 install_headers(vfn_support_headers, subdir: 'vfn/support')
