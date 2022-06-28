@@ -45,3 +45,19 @@ struct nvme_cqe *nvme_cq_poll(struct nvme_cq *cq)
 
 	return cqe;
 }
+
+void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
+{
+	struct nvme_cqe *cqe;
+
+	do {
+		cqe = nvme_cq_get_cqe(cq);
+		if (!cqe)
+			continue;
+
+		n--;
+
+		if (cqes)
+			memcpy(cqes++, cqe, sizeof(*cqe));
+	} while (n);
+}
