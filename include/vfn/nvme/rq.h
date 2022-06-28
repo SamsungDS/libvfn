@@ -174,6 +174,12 @@ static inline void nvme_rq_prep_cmd(struct nvme_rq *rq, union nvme_cmd *cmd)
 	cmd->cid = rq->cid;
 }
 
+static inline void nvme_rq_post(struct nvme_rq *rq, union nvme_cmd *cmd)
+{
+	nvme_rq_prep_cmd(rq, cmd);
+	nvme_sq_post(rq->sq, cmd);
+}
+
 /**
  * nvme_rq_exec - Execute the NVMe command on the submission queue associated
  *                with the given request tracker
@@ -184,8 +190,8 @@ static inline void nvme_rq_prep_cmd(struct nvme_rq *rq, union nvme_cmd *cmd)
  */
 static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
 {
-	nvme_rq_prep_cmd(rq, cmd);
-	nvme_sq_exec(rq->sq, cmd);
+	nvme_rq_post(rq, cmd);
+	nvme_sq_run(rq->sq);
 }
 
 /**
