@@ -295,6 +295,10 @@ int vfio_iommu_map_dma(struct vfio_iommu_state *iommu, void *vaddr, size_t len, 
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
 
+	__trace(VFIO_IOMMU_MAP_DMA) {
+		__emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
+	}
+
 	if (!ALIGNED(((uintptr_t)vaddr | len | iova), __VFN_PAGESIZE)) {
 		__debug("vaddr, len or iova not page aligned\n");
 		errno = EINVAL;
