@@ -454,10 +454,6 @@ void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
 
 int vfio_iommu_unmap_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, uint64_t iova)
 {
-	__trace(VFIO_IOMMU_UNMAP_EPHEMERAL_IOVA) {
-		__emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
-	}
-
 	if (vfio_iommu_unmap_dma(iommu, len, iova))
 		return -1;
 
