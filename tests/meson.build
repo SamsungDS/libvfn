@@ -11,7 +11,7 @@ include_bundle_tests = {
 }
 
 foreach name, sources : include_bundle_tests
-  test(name, executable(name, [tests_sources, sources],
+  test('include-bundle-' + name, executable(name, [tests_sources, sources],
     link_with: [vfn_lib],
     include_directories: [vfn_inc],
   ))
