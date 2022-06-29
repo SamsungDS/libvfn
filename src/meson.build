@@ -37,6 +37,9 @@ vfn_lib = library('vfn', _vfn_sources,
 libvfn_dep = declare_dependency(
   link_with: vfn_lib,
   include_directories: vfn_inc,
+
+  # generated headers
+  sources: trace_events_h,
 )
 
 meson.override_dependency('libvfn', libvfn_dep)
