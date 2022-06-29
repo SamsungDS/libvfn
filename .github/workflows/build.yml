@@ -39,14 +39,15 @@ jobs:
       fail-fast: false
       matrix:
         container:
+          - {os: 'almalinux', dh: 'almalinux', ver: '8'}
+          - {os: 'almalinux', dh: 'almalinux', ver: '9'}
           - {os: 'archlinux', dh: 'archlinux', ver: 'latest'}
-          - {os: 'centos', dh: 'quay.io/centos/centos', ver: 'stream9'}
-          - {os: 'centos', dh: 'quay.io/centos/centos', ver: 'stream8'}
           - {os: 'debian', dh: 'debian', ver: 'bookworm'}
           - {os: 'debian', dh: 'debian', ver: 'bullseye'}
           - {os: 'debian', dh: 'debian', ver: 'buster'}
           - {os: 'fedora', dh: 'fedora', ver: '36'}
           - {os: 'fedora', dh: 'fedora', ver: '35'}
+          - {os: 'rockylinux', dh: 'rockylinux', ver: '8'}
           - {os: 'ubuntu', dh: 'ubuntu', ver: 'jammy'}
           - {os: 'ubuntu', dh: 'ubuntu', ver: 'focal'}
           - {os: 'ubuntu', dh: 'ubuntu', ver: 'bionic'}
