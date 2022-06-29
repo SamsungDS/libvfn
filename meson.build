@@ -11,7 +11,7 @@ project('libvfn', ['c', 'cpp'],
     'c_std=gnu11',
     'werror=true',
   ],
-  meson_version: '>=0.56.0',
+  meson_version: '>=0.59.0',
 )
 
 add_project_arguments([
@@ -70,6 +70,30 @@ add_project_arguments([
   ], language: 'c',
 )
 
+##
+##  Dependencies
+##  ------------
+##
+
+# libnvme
+if get_option('libnvme').allowed()
+  libnvme = dependency('libnvme',
+    version: '>=1.0',
+    static: get_option('profiling'),
+    default_options: [
+      'warning_level=1',
+
+      # always use a static version for embedded builds
+      'default_library=static',
+
+      # override project options
+      'docs-build=false',
+      'python=false',
+    ],
+  )
+else
+  libnvme = disabler()
+endif
 
 ##
 ##  Subdirectories
@@ -149,12 +173,11 @@ summary_info += {'LDFLAGS': ' '.join(get_option('c_link_args')
 summary(summary_info, section: 'Compilation')
 
 summary_info = {}
-summary_info += {'libnvme': get_option('libnvme')}
-summary(summary_info, section: 'Dependencies')
+summary_info += {'libnvme': libnvme.found()}
+summary(summary_info, bool_yn: true, section: 'Dependencies')
 
 summary_info = {}
 summary_info += {'Debugging': get_option('debug')}
 summary_info += {'Documentation': build_docs}
 summary_info += {'Profiling': get_option('profiling')}
-summary_info += {'Examples': build_examples}
 summary(summary_info, bool_yn: true, section: 'Features')

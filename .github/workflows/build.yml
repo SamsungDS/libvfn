@@ -64,7 +64,7 @@ jobs:
         run: ${SETUP_SCRIPT}
 
       - name: configure build
-        run: meson setup build -Dexamples=disabled -Ddocs=disabled
+        run: meson setup build -Dlibnvme=disabled
 
       - name: compile
         run: ninja -C build
