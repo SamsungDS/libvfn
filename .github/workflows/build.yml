@@ -8,6 +8,8 @@ on:
 
 jobs:
   sanity:
+    name: "basic sanity build"
+
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -32,7 +34,9 @@ jobs:
         run: |
           meson test -C build libvfn:
 
-  build:
+  dist-builds:
+    name: "distribution builds"
+
     needs: [sanity]
     runs-on: ubuntu-latest
     strategy:
@@ -79,3 +83,69 @@ jobs:
 
       - name: unit tests
         run: meson test -C build "libvfn:"
+
+  device-test:
+    name: "run emulated nvme device tests"
+
+    needs: [sanity]
+    runs-on: [self-hosted, kvm]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'ok-for-test'))
+    env:
+      VMCTL_VMROOT: "/home/actions/machines"
+      VMCONFIG: ".github/vmconfig/null.conf"
+      DOCKER_IMAGE: "ghcr.io/birkelund/qemu-system-x86_64-static:nvme-next"
+
+    steps:
+      - name: pull qemu-system-x86_64-static:master
+        run: docker pull ghcr.io/birkelund/qemu-system-x86_64-static:nvme-next
+
+      - name: checkout libvfn
+        uses: actions/checkout@v3
+
+      - name: create dist package
+        run: |
+          meson subprojects download
+          meson setup build
+          meson dist -C build --no-tests --include-subprojects
+
+      - name: reset vm
+        run: |
+          rm -f "${VMCTL_VMROOT}/img/null.qcow2"
+
+      - name: launch vm
+        run: |
+          vmctl -c "$VMCONFIG" run -d "$DOCKER_IMAGE" --background
+          vmctl -c "$VMCONFIG" ssh -w -- echo vm is up
+
+      - name: copy source
+        run: |
+          scp -P 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null build/meson-dist/libvfn-*.tar.xz root@localhost:
+
+      - name: build
+        run: |
+          vmctl -c "$VMCONFIG" ssh -- -T <<EOF
+          mkdir libvfn
+          tar -Jxf libvfn-*.tar.xz -C libvfn --strip 1
+          cd libvfn
+          meson setup build
+          ninja -C build
+          EOF
+
+      - name: setup device
+        run: |
+          vmctl -c "$VMCONFIG" ssh -- -T <<EOF
+          modprobe vfio-pci
+          cd libvfn
+          ./build/tools/vfntool/vfntool -v -d 0000:01:00.0
+          EOF
+
+      - name: run tests
+        run: |
+          vmctl -c "$VMCONFIG" ssh -- -T <<EOF
+          cd libvfn
+          meson test -C build libvfn: --suite device --test-args "-d 0000:01:00.0 -N 1"
+          EOF
+
+      - name: shutdown vm
+        if: always()
+        run: docker stop null

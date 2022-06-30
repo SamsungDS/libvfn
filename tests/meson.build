@@ -24,3 +24,6 @@ cpp = executable('cpp', [tests_sources, 'cpp.cc'],
 )
 
 test('cpp', cpp)
+
+# device tests
+subdir('device')
