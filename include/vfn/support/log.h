@@ -39,7 +39,7 @@ static inline bool __logv(unsigned int v)
 
 static inline void __logv_set(unsigned int v)
 {
-	atomic_store_release(&__log_state.v, &v);
+	atomic_store_release(&__log_state.v, v);
 }
 
 /**
