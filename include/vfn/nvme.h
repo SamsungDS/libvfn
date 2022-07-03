@@ -17,6 +17,7 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include <byteswap.h>
 #include <errno.h>
 #include <inttypes.h>

@@ -10,6 +10,7 @@
  * COPYING and LICENSE files for more information.
  */
 
+#include <assert.h>
 #include <byteswap.h>
 #include <errno.h>
 #include <stdarg.h>

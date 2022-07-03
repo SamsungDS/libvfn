@@ -264,7 +264,8 @@ struct nvme_cqe {
 	leint16_t sqid;
 	uint16_t  cid;
 	leint16_t sfp; /* status field and phase */
-} __attribute__((packed));
+};
+__static_assert(sizeof(struct nvme_cqe) == 16);
 
 #define NVME_AEN_TYPE(dw0) ((dw0 >>  0) & 0x7)
 #define NVME_AEN_INFO(dw0) ((dw0 >>  8) & 0xff)

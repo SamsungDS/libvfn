@@ -115,4 +115,6 @@
 # define __force
 #endif
 
+#define __static_assert(x) static_assert(x, #x)
+
 #endif /* LIBVFN_SUPPORT_COMPILER_H */
