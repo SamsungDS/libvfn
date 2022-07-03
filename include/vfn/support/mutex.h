@@ -37,6 +37,7 @@ static inline void __mutex_auto_unlock(pthread_mutex_t *mutex)
 DEFINE_AUTOPTR(pthread_mutex_t, __mutex_auto_unlock)
 
 #define __autolock(x) \
-	__autoptr(pthread_mutex_t) glue(autolock, __COUNTER__) = __mutex_auto_lock(x)
+	__autoptr(pthread_mutex_t) \
+	glue(autolock, __COUNTER__) __attribute__((__unused__)) = __mutex_auto_lock(x)
 
 #endif /* LIBVFN_SUPPORT_MUTEX_H */
