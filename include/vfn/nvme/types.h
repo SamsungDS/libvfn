@@ -26,6 +26,7 @@ struct nvme_sgld {
 	uint8_t   rsvd12[3];
 	uint8_t   type;
 };
+__static_assert(sizeof(struct nvme_sgld) == 16);
 
 #define NVME_SGLD_TYPE_MASK 0xf
 #define NVME_SGLD_TYPE_SHIFT 4
@@ -38,6 +39,7 @@ union nvme_dptr {
 
 	struct nvme_sgld sgl;
 };
+__static_assert(sizeof(union nvme_dptr) == 16);
 
 struct nvme_cmd_identify {
 	uint8_t   opcode;
@@ -53,6 +55,7 @@ struct nvme_cmd_identify {
 	uint8_t   csi;
 	leint32_t rsvd12[4];
 };
+__static_assert(sizeof(struct nvme_cmd_identify) == 64);
 
 /**
  * enum nvme_cmd_create_q_flags - Create queue flags
@@ -85,6 +88,7 @@ struct nvme_cmd_create_cq {
 	leint16_t iv;
 	leint32_t rsvd12[4];
 };
+__static_assert(sizeof(struct nvme_cmd_create_cq) == 64);
 
 struct nvme_cmd_create_sq {
 	uint8_t   opcode;
@@ -99,6 +103,7 @@ struct nvme_cmd_create_sq {
 	leint16_t cqid;
 	leint32_t rsvd12[4];
 };
+__static_assert(sizeof(struct nvme_cmd_create_sq) == 64);
 
 struct nvme_cmd_delete_q {
 	uint8_t   opcode;
@@ -109,6 +114,7 @@ struct nvme_cmd_delete_q {
 	leint16_t rsvd10;
 	leint32_t rsvd11[5];
 };
+__static_assert(sizeof(struct nvme_cmd_delete_q) == 64);
 
 struct nvme_cmd_features {
 	uint8_t   opcode;
@@ -126,6 +132,7 @@ struct nvme_cmd_features {
 	leint32_t cdw14;
 	leint32_t cdw15;
 };
+__static_assert(sizeof(struct nvme_cmd_features) == 64);
 
 struct nvme_cmd_log {
 	uint8_t   opcode;
@@ -151,6 +158,7 @@ struct nvme_cmd_log {
 	};
 	leint32_t cdw15;
 };
+__static_assert(sizeof(struct nvme_cmd_log) == 64);
 
 struct nvme_cmd_rw {
 	uint8_t   opcode;
@@ -169,6 +177,7 @@ struct nvme_cmd_rw {
 	leint16_t apptag;
 	leint16_t appmask;
 };
+__static_assert(sizeof(struct nvme_cmd_rw) == 64);
 
 /**
  * union nvme_cmd - Generic NVMe command
@@ -278,5 +287,6 @@ struct nvme_crc64_pi_tuple {
 	beint16_t apptag;
 	uint8_t   sr[6];
 };
+__static_assert(sizeof(struct nvme_crc64_pi_tuple) == 16);
 
 #endif /* LIBVFN_NVME_TYPES_H */
