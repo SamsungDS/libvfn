@@ -18,26 +18,67 @@ jobs:
       - name: install build dependencies
         run: sudo pip install meson ninja sphinx sphinx-rtd-theme
 
-      - name: install sparse
-        run: sudo apt-get -y install sparse
-
       - name: configure build
         run: meson setup build
 
       - name: compile
         run: meson compile -C build
 
-      - name: run sparse
-        run: meson compile -C build sparse
-
       - name: unit tests
         run: |
           meson test -C build libvfn:
+
+  sparse:
+    name: "run sparse"
+
+    needs: [sanity]
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install build dependencies
+        run: sudo pip install meson ninja
+
+      - name: install sparse
+        run: sudo apt-get -y install sparse
+
+      - name: configure build
+        run: meson setup build
+
+      - name: run sparse
+        run: meson compile -C build sparse
+
+  cc-builds:
+    name: "compiler builds"
+
+    needs: [sanity]
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install build dependencies
+        run: sudo pip install meson ninja
+
+      - name: configure build
+        run: CC=${{ matrix.compiler }} meson setup build -Dlibnvme=disabled
+
+      - name: compile
+        run: meson compile -C build
 
   dist-builds:
     name: "distribution builds"
 
     needs: [sanity]
+
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -88,6 +129,7 @@ jobs:
     name: "run emulated nvme device tests"
 
     needs: [sanity]
+
     runs-on: [self-hosted, kvm]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'ok-for-test'))
     env:
