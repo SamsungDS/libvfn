@@ -16,10 +16,6 @@
 extern long __VFN_PAGESIZE;
 extern int __VFN_PAGESHIFT;
 
-#define ALIGN_UP(x, a) (((x) + (a) - 1) & ~((a) - 1))
-#define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
-#define ALIGNED(x, a) (((x) & ((typeof(x))(a) - 1)) == 0)
-
 void backtrace_abort(void);
 
 static inline void __do_autofree(void *mem)

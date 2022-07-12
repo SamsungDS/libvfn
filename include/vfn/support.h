@@ -32,6 +32,7 @@ extern "C" {
 
 #include <sys/mman.h>
 
+#include <vfn/support/align.h>
 #include <vfn/support/atomic.h>
 #include <vfn/support/compiler.h>
 #include <vfn/support/endian.h>

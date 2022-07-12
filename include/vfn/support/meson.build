@@ -1,4 +1,5 @@
 vfn_support_headers = files([
+  'align.h',
   'atomic.h',
   'compiler.h',
   'endian.h',

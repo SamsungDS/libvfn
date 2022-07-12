@@ -22,6 +22,7 @@
 
 #include <sys/mman.h>
 
+#include <vfn/support/align.h>
 #include <vfn/support/compiler.h>
 #include <vfn/support/mem.h>
 
