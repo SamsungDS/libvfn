@@ -5,4 +5,5 @@ trace_events_c = custom_target('trace events source',
   command: [trace_pl, '--mode', 'source', '@INPUT@'],
 )
 
-core_sources += trace_events_c
+trace_sources += trace_events_c
+core_sources += trace_sources
