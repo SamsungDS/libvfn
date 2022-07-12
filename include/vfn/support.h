@@ -42,6 +42,7 @@ extern "C" {
 #include <vfn/support/mem.h>
 #include <vfn/support/mmio.h>
 #include <vfn/support/mutex.h>
+#include <vfn/support/timer.h>
 
 #ifdef __cplusplus
 }

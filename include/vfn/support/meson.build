@@ -10,6 +10,7 @@ vfn_support_headers = files([
   'mem.h',
   'mmio.h',
   'mutex.h',
+  'timer.h',
 ])
 
 install_headers(vfn_support_headers, subdir: 'vfn/support')
