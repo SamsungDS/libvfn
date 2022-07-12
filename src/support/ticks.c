@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+/*
+ * Copyright 2020 Mellanox Technologies, Ltd
+ * Copyright (C) 2022 The libvfn Authors. All Rights Reserved.
+ *
+ * From DPDK; modified by the libvfn Authors.
+ */
+
+#include <errno.h>
+#include <inttypes.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+
+#include "vfn/support/align.h"
+#include "vfn/support/atomic.h"
+#include "vfn/support/log.h"
+#include "vfn/support/ticks.h"
+#include "vfn/support/timer.h"
+
+#include "ccan/time/time.h"
+
+#define TICKS_PER_10MHZ 1E7
+
+uint64_t __vfn_ticks_freq;
+
+static uint64_t measure_ticks_freq(void)
+{
+	struct timemono t_start, t_end;
+	struct timerel t_sleep, t_diff;
+	uint64_t hz, end, start, ns;
+	double secs;
+
+	__log(LOG_INFO, "measuring tick frequency\n");
+
+	t_sleep = time_from_nsec(NS_PER_SEC / 10);
+
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &t_start.ts))
+		return 0;
+
+	start = get_ticks();
+
+	nanosleep(&t_sleep.ts, NULL);
+
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &t_end.ts))
+		return 0;
+
+	end = get_ticks();
+
+	t_diff = timemono_between(t_end, t_start);
+	ns = time_to_nsec(t_diff);
+
+	secs = (double)ns/NS_PER_SEC;
+	hz = (uint64_t)((end - start)/secs);
+
+	return ROUND(hz, TICKS_PER_10MHZ);
+}
+
+static uint64_t estimate_ticks_freq(void)
+{
+	uint64_t start;
+
+	__log(LOG_INFO, "warning: estimating tick frequency; clock timings may be inaccurate\n");
+
+	start = get_ticks();
+	__usleep(1E6);
+
+	return ROUND(get_ticks() - start, TICKS_PER_10MHZ);
+}
+
+static void __attribute__((constructor)) init_ticks_freq(void)
+{
+	uint64_t freq;
+
+	freq = get_ticks_freq_arch();
+	if (!freq)
+		freq = measure_ticks_freq();
+
+	if (!freq)
+		freq = estimate_ticks_freq();
+
+	__log(LOG_INFO, "tick frequency is ~%" PRIu64 " Hz\n", freq);
+
+	__vfn_ticks_freq = freq;
+}

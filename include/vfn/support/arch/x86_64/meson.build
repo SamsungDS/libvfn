@@ -1,0 +1,7 @@
+vfn_support_x86_headers = files([
+  'rdtsc.h',
+])
+
+install_headers(vfn_support_x86_headers, subdir: 'vfn/support/arch/x86')
+
+docs_deps += vfn_support_x86_headers
