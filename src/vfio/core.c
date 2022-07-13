@@ -321,7 +321,7 @@ int vfio_map_vaddr_ephemeral(struct vfio_state *vfio, void *vaddr, size_t len, u
 	if (vfio_iommu_map_dma(&vfio->iommu, vaddr, len, *iova)) {
 		__log(LOG_ERROR, "failed to map dma\n");
 
-		if (--vfio->iommu.nephemeral == 0)
+		if (atomic_dec_fetch(&vfio->iommu.nephemeral) == 0)
 			vfio_iommu_recycle_ephemeral_iovas(&vfio->iommu);
 
 		return -1;

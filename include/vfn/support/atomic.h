@@ -35,6 +35,18 @@
 #define atomic_store_release(ptr, val) \
 	__atomic_store_n(ptr, val, __ATOMIC_RELEASE)
 
+#define atomic_inc_fetch(ptr) \
+	__atomic_add_fetch(ptr, 1, __ATOMIC_SEQ_CST)
+
+#define atomic_dec_fetch(ptr) \
+	__atomic_sub_fetch(ptr, 1, __ATOMIC_SEQ_CST)
+
+#define atomic_inc(ptr) \
+	((void) __atomic_fetch_add(ptr, 1, __ATOMIC_SEQ_CST))
+
+#define atomic_dec(ptr) \
+	((void) __atomic_fetch_sub(ptr, 1, __ATOMIC_SEQ_CST))
+
 /**
  * atomic_cmpxchg - Syntactic suger for __atomic_compare_exchange_n
  * @ptr: Pointer to value to compare

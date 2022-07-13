@@ -430,7 +430,7 @@ int vfio_iommu_allocate_ephemeral_iova(struct vfio_iommu_state *iommu, size_t le
 			continue;
 
 		iommu->bottom = bottom - len;
-		iommu->nephemeral++;
+		atomic_inc(&iommu->nephemeral);
 
 		return 0;
 	}
@@ -450,6 +450,8 @@ int vfio_iommu_allocate_iova(struct vfio_iommu_state *iommu, size_t len, uint64_
 
 void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
 {
+	__autolock(&iommu->lock);
+
 	__trace(VFIO_IOMMU_RECYCLE_EPHEMERAL_IOVAS) {
 		__emit("iova range [0x%" PRIx64 "; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
 	}
@@ -462,7 +464,7 @@ int vfio_iommu_unmap_ephemeral_iova(struct vfio_iommu_state *iommu, size_t len, 
 	if (vfio_iommu_unmap_dma(iommu, len, iova))
 		return -1;
 
-	if (--iommu->nephemeral == 0)
+	if (atomic_dec_fetch(&iommu->nephemeral) == 0)
 		vfio_iommu_recycle_ephemeral_iovas(iommu);
 
 	return 0;
