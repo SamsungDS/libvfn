@@ -245,7 +245,7 @@ static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
 	struct nvme_cqe *cqe = nvme_cq_peek(cq);
 
 	trace_guard(NVME_CQ_GET_CQE) {
-		trace_emit("cq %d\n", cq->id);
+		trace_emitrl(1, (uintptr_t)cq, "cq %d\n", cq->id);
 	}
 
 	if ((le16_to_cpu(LOAD(cqe->sfp)) & 0x1) == cq->phase)

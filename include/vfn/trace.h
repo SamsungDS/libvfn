@@ -16,7 +16,7 @@
 #include <vfn/trace/events.h>
 
 #ifdef DEBUG
-static __thread const char *__trace_event;
+extern __thread const char *__trace_event;
 
 # define __trace_prefix(fmt) "T %s (%s:%d) " fmt
 
@@ -55,9 +55,40 @@ static __thread const char *__trace_event;
 # define trace_emit(fmt, ...) \
 	fprintf(stderr, __trace_prefix(fmt), __trace_event, __FILE__, __LINE__, ##__VA_ARGS__)
 
+struct trace_ratelimit_state {
+	unsigned int interval, skipped;
+	uint64_t tag;
+	uint64_t begin, end;
+};
+
+bool __trace_ratelimited(struct trace_ratelimit_state *rs, uint64_t tag, const char *event);
+
+/**
+ * trace_emitrl - emit a trace event message (ratelimited)
+ * @interval: ratelimiting interval in seconds
+ * @tag: identifies what is subject to ratelimiting
+ * @fmt: format string
+ * @...: format string arguments
+ *
+ * Emit a trace point message while being subject to ratelimiting. The @tag
+ * identifies what is subject to ratelimiting (e.g. a pointer or fixed tag).
+ *
+ * See trace_emit().
+ */
+# define trace_emitrl(interval, tag, fmt, ...) \
+	({ \
+		static __thread struct trace_ratelimit_state _rs = { \
+			interval, 0, 0, 0, 0, \
+		}; \
+		\
+		if (!__trace_ratelimited(&_rs, tag, __trace_event)) \
+			trace_emit(fmt, ##__VA_ARGS__); \
+	})
+
 #else
 # define trace_guard(name) if (false)
 # define trace_emit(fmt, ...)
+# define trace_emitrl(interval, subject, fmt, ...)
 #endif
 
 /**

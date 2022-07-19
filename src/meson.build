@@ -7,6 +7,10 @@ core_sources = [
   trace_events_h,
 ]
 
+trace_sources = files(
+  'trace.c',
+)
+
 vfn_sources = files(
   'trace.c',
 )
