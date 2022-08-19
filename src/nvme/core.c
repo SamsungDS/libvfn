@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include <sys/mman.h>
+#include <sys/uio.h>
 
 #include <linux/vfio.h>
 

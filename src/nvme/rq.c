@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 #include <sys/mman.h>
+#include <sys/uio.h>
 
 #include <linux/vfio.h>
 
@@ -45,20 +46,69 @@
 
 #include "ccan/minmax/minmax.h"
 
-void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
+static inline unsigned int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova,
+				       size_t len)
 {
 	unsigned int prpcount = len >> __VFN_PAGESHIFT;
-	leint64_t *prplist = rq->page.vaddr;
 
-	cmd->dptr.prp1 = cpu_to_le64(iova);
+	*prp1 = cpu_to_le64(iova);
 
-	if (!ALIGNED(iova, __VFN_PAGESIZE)) {
+	if (prpcount && !ALIGNED(iova, __VFN_PAGESIZE)) {
 		iova = ALIGN_DOWN(iova, __VFN_PAGESIZE);
 		prpcount++;
 	}
 
 	for (unsigned int i = 1; i < prpcount; i++)
 		prplist[i - 1] = cpu_to_le64(iova + (i << __VFN_PAGESHIFT));
+
+	return clamp_t(unsigned int, prpcount, 1, prpcount);
+}
+
+static inline unsigned int __map_aligned(leint64_t *prplist, uint64_t iova, size_t len)
+{
+	unsigned int prpcount = len >> __VFN_PAGESHIFT;
+
+	assert(ALIGNED(iova, __VFN_PAGESIZE));
+
+	for (unsigned int i = 0; i < prpcount; i++)
+		prplist[i] = cpu_to_le64(iova + (i << __VFN_PAGESHIFT));
+
+	return clamp_t(unsigned int, prpcount, 1, prpcount);
+}
+
+void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
+{
+	unsigned int prpcount;
+	leint64_t *prplist = rq->page.vaddr;
+
+	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len);
+
+	if (prpcount == 2)
+		cmd->dptr.prp2 = prplist[0];
+	else if (prpcount > 2)
+		cmd->dptr.prp2 = cpu_to_le64(rq->page.iova);
+	else
+		cmd->dptr.prp2 = 0x0;
+}
+
+void nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov,
+		      unsigned int niov)
+{
+	unsigned int prpcount;
+	leint64_t *prplist = rq->page.vaddr;
+	uint64_t iova = (uint64_t)iov->iov_base;
+	size_t len = iov->iov_len;
+
+	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len);
+
+	assert(prpcount == 1 || niov == 1 || ALIGNED(iova + len, __VFN_PAGESIZE));
+
+	for (unsigned int i = 1; i < niov; i++) {
+		iova = (uint64_t)iov[i].iov_base;
+		len = iov[i].iov_len;
+
+		prpcount += __map_aligned(&prplist[prpcount - 1], iova, len);
+	}
 
 	if (prpcount == 2)
 		cmd->dptr.prp2 = prplist[0];

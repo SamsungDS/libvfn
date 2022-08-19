@@ -208,6 +208,21 @@ static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
 void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len);
 
 /**
+ * nvme_rq_mapv_prp - Set up the Physical Region Pages in the data pointer of
+ *                    the command from an iovec.
+ * @rq: Request tracker (&struct nvme_rq)
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iovecs
+ * @niov: number of iovec in @iovec
+ *
+ * Map the IOVAs contained in @iov into the request PRPs. The first entry is
+ * allowed to be unaligned, but the entry MUST end on a page boundary. All
+ * subsequent entries MUST be page aligned.
+ */
+void nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov,
+		      unsigned int niov);
+
+/**
  * nvme_rq_poll - Poll for completion of the command associated with the request
  *                tracker
  * @rq: Request tracker (&struct nvme_rq)
