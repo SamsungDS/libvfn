@@ -29,6 +29,7 @@
 
 #include <vfn/support/align.h>
 #include <vfn/support/atomic.h>
+#include <vfn/support/barrier.h>
 #include <vfn/support/compiler.h>
 #include <vfn/support/endian.h>
 #include <vfn/support/log.h>

@@ -30,6 +30,7 @@
 
 #include <vfn/support/align.h>
 #include <vfn/support/atomic.h>
+#include <vfn/support/autoptr.h>
 #include <vfn/support/compiler.h>
 #include <vfn/support/log.h>
 #include <vfn/support/mem.h>
