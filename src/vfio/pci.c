@@ -189,12 +189,13 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
 
 	__log(LOG_INFO, "vfio iommu group is %s\n", group);
 
-	if (vfio_open(vfio, group)) {
-		free(group);
-		return -1;
+	if (access(group, F_OK) < 0) {
+		__log(LOG_ERROR, "%s does not exist; did you bind the device to vfio-pci?\n", group);
+		goto err_free_group;
 	}
 
-	free(group);
+	if (vfio_open(vfio, group))
+		goto err_free_group;
 
 	vfio->device = ioctl(vfio->group, VFIO_GROUP_GET_DEVICE_FD, bdf);
 	if (pci->vfio.device < 0) {
@@ -240,6 +241,8 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
 
 err:
 	vfio_close(&pci->vfio);
+err_free_group:
+	free(group);
 
 	return -1;
 }
