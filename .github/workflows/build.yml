@@ -90,9 +90,9 @@ jobs:
           - {os: 'debian', dh: 'debian', ver: 'bookworm'}
           - {os: 'debian', dh: 'debian', ver: 'bullseye'}
           - {os: 'debian', dh: 'debian', ver: 'buster'}
+          - {os: 'fedora', dh: 'fedora', ver: '37'}
           - {os: 'fedora', dh: 'fedora', ver: '36'}
           - {os: 'fedora', dh: 'fedora', ver: '35'}
-          - {os: 'rockylinux', dh: 'rockylinux', ver: '8'}
           - {os: 'ubuntu', dh: 'ubuntu', ver: 'jammy'}
           - {os: 'ubuntu', dh: 'ubuntu', ver: 'focal'}
           - {os: 'ubuntu', dh: 'ubuntu', ver: 'bionic'}
