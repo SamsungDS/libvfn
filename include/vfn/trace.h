@@ -18,6 +18,8 @@
 #ifdef DEBUG
 static __thread const char *__trace_event;
 
+# define __trace_prefix(fmt) "T %s (%s:%d) " fmt
+
 /**
  * __trace - conditionally open a tracing point
  * @name: trace point identifier
@@ -50,11 +52,11 @@ static __thread const char *__trace_event;
  * __trace().
  */
 # define __emit(fmt, ...) \
-	fprintf(stderr, "T %s " fmt, __trace_event, ##__VA_ARGS__)
+	fprintf(stderr, __trace_prefix(fmt), __trace_event, __FILE__, __LINE__, ##__VA_ARGS__)
 
 #else
 # define __trace(name) if (false)
-# define __emit(name, ...)
+# define __emit(fmt, ...)
 #endif
 
 /**
