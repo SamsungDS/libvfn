@@ -135,12 +135,9 @@ jobs:
     env:
       VMCTL_VMROOT: "/home/actions/machines"
       VMCONFIG: ".github/vmconfig/null.conf"
-      DOCKER_IMAGE: "ghcr.io/birkelund/qemu-system-x86_64-static:nvme-next"
+      QEMU_SYSTEM_BINARY: "/usr/local/bin/qemu-system-x86_64"
 
     steps:
-      - name: pull qemu-system-x86_64-static:master
-        run: docker pull ghcr.io/birkelund/qemu-system-x86_64-static:nvme-next
-
       - name: checkout libvfn
         uses: actions/checkout@v3
 
@@ -152,11 +149,12 @@ jobs:
 
       - name: reset vm
         run: |
+          vmctl -c "$VMCONFIG" kill || true
           rm -f "${VMCTL_VMROOT}/img/null.qcow2"
 
       - name: launch vm
         run: |
-          vmctl -c "$VMCONFIG" run -d "$DOCKER_IMAGE" --background
+          vmctl -c "$VMCONFIG" run --background
           vmctl -c "$VMCONFIG" ssh -w -- echo vm is up
 
       - name: copy source
@@ -190,4 +188,5 @@ jobs:
 
       - name: shutdown vm
         if: always()
-        run: docker stop null
+        run: |
+          vmctl -c "$VMCONFIG" poweroff
