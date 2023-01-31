@@ -134,10 +134,10 @@ int nvme_rq_poll(struct nvme_rq *rq, void *cqe_copy)
 	}
 
 	if (!nvme_cqe_ok(cqe)) {
-		if (__logv(LOG_DEBUG)) {
+		if (logv(LOG_DEBUG)) {
 			uint16_t status = le16_to_cpu(cqe->sfp) >> 1;
 
-			__debug("cqe status 0x%" PRIx16 "\n", status & 0x7ff);
+			log_debug("cqe status 0x%" PRIx16 "\n", status & 0x7ff);
 		}
 
 		return nvme_set_errno_from_cqe(cqe);

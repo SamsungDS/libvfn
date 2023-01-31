@@ -302,13 +302,13 @@ int vfio_iommu_map_dma(struct vfio_iommu_state *iommu, void *vaddr, size_t len, 
 	}
 
 	if (!ALIGNED(((uintptr_t)vaddr | len | iova), __VFN_PAGESIZE)) {
-		__debug("vaddr, len or iova not page aligned\n");
+		log_debug("vaddr, len or iova not page aligned\n");
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (ioctl(vfio->container, VFIO_IOMMU_MAP_DMA, &dma_map)) {
-		__debug("failed to map dma\n");
+		log_debug("failed to map dma\n");
 		return -1;
 	}
 
@@ -330,7 +330,7 @@ int vfio_iommu_unmap_dma(struct vfio_iommu_state *iommu, size_t len, uint64_t io
 	}
 
 	if (ioctl(vfio->container, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
-		__debug("failed to unmap dma\n");
+		log_debug("failed to unmap dma\n");
 		return -1;
 	}
 
@@ -348,7 +348,7 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu)
 	};
 
 	if (ioctl(vfio->container, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
-		__debug("failed to unmap dma\n");
+		log_debug("failed to unmap dma\n");
 		return -1;
 	}
 
@@ -364,7 +364,7 @@ int vfio_iommu_unmap_all(struct vfio_iommu_state *iommu)
 
 		if (n != &map->nil && n != &map->sentinel) {
 			if (vfio_iommu_unmap_dma(iommu, n->mapping.len, n->mapping.iova))
-				__debug("failed to unmap dma: len %zu iova 0x%" PRIx64 "\n",
+				log_debug("failed to unmap dma: len %zu iova 0x%" PRIx64 "\n",
 					n->mapping.len, n->mapping.iova);
 			free(n);
 		}
@@ -379,7 +379,7 @@ int vfio_iommu_allocate_sticky_iova(struct vfio_iommu_state *iommu, size_t len, 
 	__autolock(&iommu->lock);
 
 	if (!ALIGNED(len, __VFN_PAGESIZE)) {
-		__debug("len is not page aligned\n");
+		log_debug("len is not page aligned\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -412,7 +412,7 @@ int vfio_iommu_allocate_ephemeral_iova(struct vfio_iommu_state *iommu, size_t le
 	__autolock(&iommu->lock);
 
 	if (!ALIGNED(len, __VFN_PAGESIZE)) {
-		__debug("len is not page aligned\n");
+		log_debug("len is not page aligned\n");
 		errno = EINVAL;
 		return -1;
 	}
