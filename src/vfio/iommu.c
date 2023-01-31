@@ -297,8 +297,8 @@ int vfio_iommu_map_dma(struct vfio_iommu_state *iommu, void *vaddr, size_t len, 
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
 
-	__trace(VFIO_IOMMU_MAP_DMA) {
-		__emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
+	trace_guard(VFIO_IOMMU_MAP_DMA) {
+		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
 	}
 
 	if (!ALIGNED(((uintptr_t)vaddr | len | iova), __VFN_PAGESIZE)) {
@@ -325,8 +325,8 @@ int vfio_iommu_unmap_dma(struct vfio_iommu_state *iommu, size_t len, uint64_t io
 		.iova = iova,
 	};
 
-	__trace(VFIO_IOMMU_UNMAP_DMA) {
-		__emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
+	trace_guard(VFIO_IOMMU_UNMAP_DMA) {
+		trace_emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
 	}
 
 	if (ioctl(vfio->container, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
@@ -453,8 +453,8 @@ void vfio_iommu_recycle_ephemeral_iovas(struct vfio_iommu_state *iommu)
 {
 	__autolock(&iommu->lock);
 
-	__trace(VFIO_IOMMU_RECYCLE_EPHEMERAL_IOVAS) {
-		__emit("iova range [0x%" PRIx64 "; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
+	trace_guard(VFIO_IOMMU_RECYCLE_EPHEMERAL_IOVAS) {
+		trace_emit("iova range [0x%" PRIx64 "; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
 	}
 
 	iommu->bottom = VFIO_IOVA_MAX;
