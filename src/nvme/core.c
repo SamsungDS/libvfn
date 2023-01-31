@@ -10,6 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
+#define log_fmt(fmt) "nvme/core: " fmt
+
 #include <assert.h>
 #include <byteswap.h>
 #include <inttypes.h>
@@ -70,14 +72,14 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid > ctrl->config.ncqa) {
-		__debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa);
+		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa);
 
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (qsize < 2) {
-		__debug("qsize must be at least 2\n");
+		log_debug("qsize must be at least 2\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -97,7 +99,7 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	len = pgmapn(&cq->vaddr, qsize, 1 << NVME_CQES);
 
 	if (vfio_map_vaddr(&ctrl->pci.vfio, cq->vaddr, len, &cq->iova)) {
-		__debug("failed to map vaddr\n");
+		log_debug("failed to map vaddr\n");
 
 		pgunmap(cq->vaddr, len);
 		return -1;
@@ -116,7 +118,7 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	len = ALIGN_UP((size_t)cq->qsize << NVME_CQES, __VFN_PAGESIZE);
 
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, cq->vaddr))
-		__debug("failed to unmap vaddr\n");
+		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(cq->vaddr, len);
 
@@ -140,14 +142,14 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid > ctrl->config.nsqa) {
-		__debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa);
+		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa);
 
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (qsize < 2) {
-		__debug("qsize must be at least 2\n");
+		log_debug("qsize must be at least 2\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -170,7 +172,7 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 		return -1;
 
 	if (vfio_map_vaddr(&ctrl->pci.vfio, sq->pages.vaddr, len, &sq->pages.iova)) {
-		__debug("failed to map vaddr\n");
+		log_debug("failed to map vaddr\n");
 		goto unmap_pages;
 	}
 
@@ -195,7 +197,7 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 		goto free_sq_rqs;
 
 	if (vfio_map_vaddr(&ctrl->pci.vfio, sq->vaddr, len, &sq->iova)) {
-		__debug("failed to map vaddr\n");
+		log_debug("failed to map vaddr\n");
 		goto unmap_sq;
 	}
 
@@ -207,7 +209,7 @@ free_sq_rqs:
 	free(sq->rqs);
 unmap_pages:
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, sq->pages.vaddr))
-		__debug("failed to unmap vaddr\n");
+		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(sq->pages.vaddr, (size_t)sq->qsize << __VFN_PAGESHIFT);
 
@@ -224,7 +226,7 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	len = ALIGN_UP((size_t)sq->qsize << NVME_SQES, __VFN_PAGESIZE);
 
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, sq->vaddr))
-		__debug("failed to unmap vaddr\n");
+		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(sq->vaddr, len);
 
@@ -233,7 +235,7 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	len = (size_t)sq->qsize << __VFN_PAGESHIFT;
 
 	if (vfio_unmap_vaddr(&ctrl->pci.vfio, sq->pages.vaddr))
-		__debug("failed to unmap vaddr\n");
+		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(sq->pages.vaddr, len);
 
@@ -253,12 +255,12 @@ static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned int sq_flags)
 	struct nvme_sq *sq = &ctrl->sq[NVME_AQ];
 
 	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE)) {
-		__debug("failed to configure admin completion queue\n");
+		log_debug("failed to configure admin completion queue\n");
 		return -1;
 	}
 
 	if (nvme_configure_sq(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags)) {
-		__debug("failed to configure admin submission queue\n");
+		log_debug("failed to configure admin submission queue\n");
 		goto discard_cq;
 	}
 
@@ -285,7 +287,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 	union nvme_cmd cmd;
 
 	if (nvme_configure_cq(ctrl, qid, qsize)) {
-		__debug("could not configure io completion queue\n");
+		log_debug("could not configure io completion queue\n");
 		return -1;
 	}
 
@@ -321,7 +323,7 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 	union nvme_cmd cmd;
 
 	if (nvme_configure_sq(ctrl, qid, qsize, cq, flags)) {
-		__debug("could not configure io submission queue\n");
+		log_debug("could not configure io submission queue\n");
 		return -1;
 	}
 
@@ -355,12 +357,12 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int q
 			unsigned int flags)
 {
 	if (nvme_create_iocq(ctrl, qid, qsize)) {
-		__debug("could not create io completion queue\n");
+		log_debug("could not create io completion queue\n");
 		return -1;
 	}
 
 	if (nvme_create_iosq(ctrl, qid, qsize, &ctrl->cq[qid], flags)) {
-		__debug("could not create io submission queue\n");
+		log_debug("could not create io submission queue\n");
 		return -1;
 	}
 
@@ -370,12 +372,12 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int q
 int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid)
 {
 	if (nvme_delete_iosq(ctrl, qid)) {
-		__debug("could not delete io submission queue\n");
+		log_debug("could not delete io submission queue\n");
 		return -1;
 	}
 
 	if (nvme_delete_iocq(ctrl, qid)) {
-		__debug("could not delete io completion queue\n");
+		log_debug("could not delete io completion queue\n");
 		return -1;
 	}
 
@@ -395,7 +397,7 @@ static int nvme_wait_rdy(struct nvme_ctrl *ctrl, unsigned short rdy)
 
 	do {
 		if (time_after(time_now(), deadline)) {
-			__debug("timed out\n");
+			log_debug("timed out\n");
 
 			errno = ETIMEDOUT;
 			return -1;
@@ -510,14 +512,14 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		       sizeof(*opts));
 
 	if (pci_device_info_get_ull(bdf, "class", &classcode)) {
-		__debug("could not get device class code\n");
+		log_debug("could not get device class code\n");
 		return -1;
 	}
 
-	__log(LOG_INFO, "pci class code is 0x%06llx\n", classcode);
+	log_info("pci class code is 0x%06llx\n", classcode);
 
 	if ((classcode & 0xffff00) != 0x010800) {
-		__debug("%s is not an NVMe device\n", bdf);
+		log_debug("%s is not an NVMe device\n", bdf);
 		errno = EINVAL;
 		return -1;
 	}
@@ -530,7 +532,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	ctrl->regs = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0, PROT_READ | PROT_WRITE);
 	if (!ctrl->regs) {
-		__debug("could not map controller registersn\n");
+		log_debug("could not map controller registersn\n");
 		return -1;
 	}
 
@@ -538,20 +540,20 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
 
 	if (((12 + mpsmin) >> 12) > __VFN_PAGESIZE) {
-		__debug("controller minimum page size too large\n");
+		log_debug("controller minimum page size too large\n");
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (nvme_reset(ctrl)) {
-		__debug("could not reset controller\n");
+		log_debug("could not reset controller\n");
 		return -1;
 	}
 
 	/* map admin queue doorbells */
 	ctrl->doorbells = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0x1000, PROT_WRITE);
 	if (!ctrl->doorbells) {
-		__debug("could not map doorbells\n");
+		log_debug("could not map doorbells\n");
 		return -1;
 	}
 
@@ -560,12 +562,12 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	ctrl->cq = zmallocn(ctrl->opts.ncqr + 2, sizeof(struct nvme_cq));
 
 	if (nvme_configure_adminq(ctrl, sq_flags)) {
-		__debug("could not configure admin queue\n");
+		log_debug("could not configure admin queue\n");
 		return -1;
 	}
 
 	if (nvme_enable(ctrl)) {
-		__debug("could not enable controller\n");
+		log_debug("could not enable controller\n");
 		return -1;
 	}
 
@@ -673,8 +675,8 @@ void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
 	} else {
 		uint32_t dw0 = le32_to_cpu(cqe->dw0);
 
-		__log(LOG_INFO, "unhandled aen 0x%" PRIx32 " (type 0x%x info 0x%x lid 0x%x)\n",
-		      dw0, NVME_AEN_TYPE(dw0), NVME_AEN_INFO(dw0), NVME_AEN_LID(dw0));
+		log_info("unhandled aen 0x%" PRIx32 " (type 0x%x info 0x%x lid 0x%x)\n", dw0,
+			 NVME_AEN_TYPE(dw0), NVME_AEN_INFO(dw0), NVME_AEN_LID(dw0));
 	}
 
 	nvme_rq_prep_cmd(rq, &cmd);
@@ -712,8 +714,8 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 			continue;
 		}
 
-		__log(LOG_ERROR, "SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
-		      rq->sq->cq->id, cqe.cid);
+		log_error("SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
+			  rq->sq->cq->id, cqe.cid);
 	}
 
 	if (cqe_copy)

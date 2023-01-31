@@ -48,7 +48,7 @@ int vfio_set_irq(struct vfio_state *vfio, int *eventfds, unsigned int count)
 
 	if (!(vfio->irq_info.flags & VFIO_IRQ_INFO_EVENTFD)) {
 		errno = EINVAL;
-		__debug("device irq does not support eventfd\n");
+		log_debug("device irq does not support eventfd\n");
 		return -1;
 	}
 
@@ -69,7 +69,7 @@ int vfio_set_irq(struct vfio_state *vfio, int *eventfds, unsigned int count)
 	free(irq_set);
 
 	if (ret) {
-		__debug("failed to set device irq\n");
+		log_debug("failed to set device irq\n");
 		return -1;
 	}
 
@@ -90,7 +90,7 @@ int vfio_disable_irq(struct vfio_state *vfio)
 	ret = ioctl(vfio->device, VFIO_DEVICE_SET_IRQS, &irq_set);
 
 	if (ret) {
-		__debug("failed to disable device irq\n");
+		log_debug("failed to disable device irq\n");
 		return -1;
 	}
 
@@ -120,12 +120,11 @@ static void iommu_get_iova_ranges(struct vfio_iommu_state *iommu, struct vfio_in
 	iommu->iova_ranges = realloc(iommu->iova_ranges, len);
 	memcpy(iommu->iova_ranges, cap_iova_range->iova_ranges, len);
 
-	if (__logv(LOG_INFO)) {
+	if (logv(LOG_INFO)) {
 		for (unsigned int i = 0; i < iommu->nranges; i++) {
 			struct vfio_iova_range *r = &iommu->iova_ranges[i];
 
-			__log(LOG_INFO, "iova range %d is [0x%llx; 0x%llx]\n", i, r->start,
-			      r->end);
+			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->end);
 		}
 	}
 }
@@ -167,44 +166,44 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 
 	vfio->container = open("/dev/vfio/vfio", O_RDWR);
 	if (vfio->container < 0) {
-		__debug("failed to open vfio device\n");
+		log_debug("failed to open vfio device\n");
 		return -1;
 	}
 
 	if (ioctl(vfio->container, VFIO_GET_API_VERSION) != VFIO_API_VERSION) {
-		__debug("invalid vfio version\n");
+		log_debug("invalid vfio version\n");
 		goto err_close_container;
 	}
 
 	if (!ioctl(vfio->container, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU)) {
-		__debug("vfio type 1 iommu not supported\n");
+		log_debug("vfio type 1 iommu not supported\n");
 		goto err_close_container;
 	}
 
 	vfio->group = open(group, O_RDWR);
 	if (vfio->group < 0) {
-		__debug("failed to open vfio group file: %s\n", strerror(errno));
+		log_debug("failed to open vfio group file: %s\n", strerror(errno));
 		goto err_close_container;
 	}
 
 	if (ioctl(vfio->group, VFIO_GROUP_GET_STATUS, &group_status)) {
-		__debug("failed to get vfio group status\n");
+		log_debug("failed to get vfio group status\n");
 		goto err;
 	}
 
 	if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
 		errno = EINVAL;
-		__debug("vfio group is not viable\n");
+		log_debug("vfio group is not viable\n");
 		goto err;
 	}
 
 	if (ioctl(vfio->group, VFIO_GROUP_SET_CONTAINER, &vfio->container)) {
-		__debug("failed to add group to vfio container\n");
+		log_debug("failed to add group to vfio container\n");
 		goto err;
 	}
 
 	if (ioctl(vfio->container, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
-		__debug("failed to set vfio iommu type\n");
+		log_debug("failed to set vfio iommu type\n");
 		goto err;
 	}
 
@@ -215,12 +214,12 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 	iommu_info->argsz = iommu_info_size;
 
 	if (ioctl(vfio->container, VFIO_IOMMU_GET_INFO, iommu_info)) {
-		__debug("failed to get iommu info\n");
+		log_debug("failed to get iommu info\n");
 		goto err;
 	}
 
 	if (iommu_info->argsz > iommu_info_size) {
-		__log(LOG_INFO, "iommu has extended info\n");
+		log_info("iommu has extended info\n");
 
 		iommu_info_size = iommu_info->argsz;
 		iommu_info = realloc(iommu_info, iommu_info_size);
@@ -228,7 +227,7 @@ int vfio_open(struct vfio_state *vfio, const char *group)
 		iommu_info->argsz = iommu_info_size;
 
 		if (ioctl(vfio->container, VFIO_IOMMU_GET_INFO, iommu_info)) {
-			__debug("failed to get extended iommu info\n");
+			log_debug("failed to get extended iommu info\n");
 			vfio_iommu_close(&vfio->iommu);
 			goto err;
 		}
@@ -255,7 +254,7 @@ void vfio_close(struct vfio_state *vfio)
 
 	if (vfio->device_info.flags & VFIO_DEVICE_FLAGS_RESET) {
 		if (vfio_reset(vfio))
-			__debug("could not reset: %s\n", strerror(errno));
+			log_debug("could not reset: %s\n", strerror(errno));
 	}
 
 	close(vfio->device);
@@ -271,17 +270,17 @@ int vfio_map_vaddr(struct vfio_state *vfio, void *vaddr, size_t len, uint64_t *i
 		goto out;
 
 	if (vfio_iommu_allocate_sticky_iova(&vfio->iommu, len, &_iova)) {
-		__debug("failed to allocate iova\n");
+		log_debug("failed to allocate iova\n");
 		return -1;
 	}
 
 	if (vfio_iommu_map_dma(&vfio->iommu, vaddr, len, _iova)) {
-		__debug("failed to map dma\n");
+		log_debug("failed to map dma\n");
 		return -1;
 	}
 
 	if (vfio_iommu_add_mapping(&vfio->iommu, vaddr, len, _iova)) {
-		__debug("failed to add mapping\n");
+		log_debug("failed to add mapping\n");
 		return -1;
 	}
 
@@ -301,7 +300,7 @@ int vfio_unmap_vaddr(struct vfio_state *vfio, void *vaddr)
 		return 0;
 
 	if (vfio_iommu_unmap_dma(&vfio->iommu, m->len, m->iova)) {
-		__debug("failed to unmap dma\n");
+		log_debug("failed to unmap dma\n");
 		return -1;
 	}
 
@@ -313,13 +312,13 @@ int vfio_unmap_vaddr(struct vfio_state *vfio, void *vaddr)
 int vfio_map_vaddr_ephemeral(struct vfio_state *vfio, void *vaddr, size_t len, uint64_t *iova)
 {
 	if (vfio_iommu_allocate_ephemeral_iova(&vfio->iommu, len, iova)) {
-		__log(LOG_ERROR, "failed to allocate ephemeral iova\n");
+		log_error("failed to allocate ephemeral iova\n");
 
 		return -1;
 	}
 
 	if (vfio_iommu_map_dma(&vfio->iommu, vaddr, len, *iova)) {
-		__log(LOG_ERROR, "failed to map dma\n");
+		log_error("failed to map dma\n");
 
 		if (atomic_dec_fetch(&vfio->iommu.nephemeral) == 0)
 			vfio_iommu_recycle_ephemeral_iovas(&vfio->iommu);

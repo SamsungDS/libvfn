@@ -24,12 +24,12 @@ enum __log_level {
 };
 
 /**
- * __logv - Determine if log verbosity is as given
+ * logv - Determine if log verbosity is as given
  * @v: target verbositry level
  *
  * Return: ``true`` if verbosity is at least @v, ``false`` otherwise.
  */
-static inline bool __logv(unsigned int v)
+static inline bool logv(unsigned int v)
 {
 	if (atomic_load_acquire(&__log_state.v) >= v)
 		return true;
@@ -37,7 +37,11 @@ static inline bool __logv(unsigned int v)
 	return false;
 }
 
-static inline void __logv_set(unsigned int v)
+/**
+ * logv_set - Set log verbosity level
+ * @v: verbosity level
+ */
+static inline void logv_set(unsigned int v)
 {
 	atomic_store_release(&__log_state.v, v);
 }
@@ -54,7 +58,7 @@ static inline void __attribute__((format(printf, 2, 3))) __log(unsigned int v, c
 {
 	va_list va;
 
-	if (!__logv(v))
+	if (!logv(v))
 		return;
 
 	va_start(va, fmt);
@@ -62,7 +66,21 @@ static inline void __attribute__((format(printf, 2, 3))) __log(unsigned int v, c
 	va_end(va);
 }
 
-#define __debug(fmt, ...) \
-	__log(LOG_DEBUG, "%s (%s:%d): "fmt, __func__, __FILE__, __LINE__, ##__VA_ARGS__)
+#ifndef log_fmt
+#define log_fmt(fmt) fmt
+#endif
+
+#ifdef DEBUG
+# define log_error(fmt, ...) __log(LOG_ERROR, "E %s (%s:%d): " log_fmt(fmt), \
+				   __func__, __FILE__, __LINE__, ##__VA_ARGS__)
+# define log_info(fmt, ...)  __log(LOG_INFO,  "I %s (%s:%d): " log_fmt(fmt), \
+				   __func__, __FILE__, __LINE__, ##__VA_ARGS__)
+# define log_debug(fmt, ...) __log(LOG_DEBUG, "D %s (%s:%d): " log_fmt(fmt), \
+				   __func__, __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+# define log_error(fmt, ...) __log(LOG_ERROR, log_fmt(fmt), ##__VA_ARGS__)
+# define log_info(fmt, ...)  __log(LOG_INFO,  log_fmt(fmt), ##__VA_ARGS__)
+# define log_debug(fmt, ...) __log(LOG_DEBUG, log_fmt(fmt), ##__VA_ARGS__)
+#endif /* DEBUG */
 
 #endif /* LIBVFN_SUPPORT_LOG_H */

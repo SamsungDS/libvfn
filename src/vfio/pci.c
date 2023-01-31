@@ -50,7 +50,7 @@ static char *find_iommu_group(const char *bdf)
 	ssize_t ret;
 
 	if (asprintf(&link, "/sys/bus/pci/devices/%s/iommu_group", bdf) < 0) {
-		__debug("asprintf failed\n");
+		log_debug("asprintf failed\n");
 		goto out;
 	}
 
@@ -58,7 +58,7 @@ static char *find_iommu_group(const char *bdf)
 
 	ret = readlink(link, group, PATH_MAX - 1);
 	if (ret < 0) {
-		__debug("failed to resolve iommu group link\n");
+		log_debug("failed to resolve iommu group link\n");
 		goto out;
 	}
 
@@ -66,7 +66,7 @@ static char *find_iommu_group(const char *bdf)
 
 	p = strrchr(group, '/');
 	if (!p) {
-		__debug("failed to find iommu group number\n");
+		log_debug("failed to find iommu group number\n");
 		goto out;
 	}
 
@@ -87,14 +87,14 @@ static int pci_set_bus_master(struct vfio_pci_state *pci)
 	uint16_t pci_cmd;
 
 	if (vfio_pci_read_config(pci, &pci_cmd, sizeof(pci_cmd), PCI_COMMAND) < 0) {
-		__debug("failed to read pci config region\n");
+		log_debug("failed to read pci config region\n");
 		return -1;
 	}
 
 	pci_cmd |= PCI_COMMAND_MASTER;
 
 	if (vfio_pci_write_config(pci, &pci_cmd, sizeof(pci_cmd), PCI_COMMAND) < 0) {
-		__debug("failed to write pci config region\n");
+		log_debug("failed to write pci config region\n");
 		return -1;
 	}
 
@@ -111,7 +111,7 @@ static int vfio_pci_init_bar(struct vfio_pci_state *pci, unsigned int idx)
 	};
 
 	if (ioctl(pci->vfio.device, VFIO_DEVICE_GET_REGION_INFO, &pci->bar_region_info[idx])) {
-		__debug("failed to get bar region info\n");
+		log_debug("failed to get bar region info\n");
 		return -1;
 	}
 
@@ -129,19 +129,19 @@ static int vfio_pci_init_irq(struct vfio_pci_state *pci)
 	do {
 		if (irq_index < 0) {
 			errno = EINVAL;
-			__debug("no supported irq types\n");
+			log_debug("no supported irq types\n");
 			return -1;
 		}
 
 		pci->vfio.irq_info.index = irq_index--;
 
 		if (ioctl(pci->vfio.device, VFIO_DEVICE_GET_IRQ_INFO, &pci->vfio.irq_info)) {
-			__debug("failed to get device irq info\n");
+			log_debug("failed to get device irq info\n");
 			return -1;
 		}
 	} while (!pci->vfio.irq_info.count);
 
-	__log(LOG_INFO, "irq_info.count %d\n", pci->vfio.irq_info.count);
+	log_info("irq_info.count %d\n", pci->vfio.irq_info.count);
 
 	return 0;
 }
@@ -158,7 +158,7 @@ void *vfio_pci_map_bar(struct vfio_pci_state *pci, unsigned int idx, size_t len,
 
 	mem = mmap(NULL, len, prot, MAP_SHARED, pci->vfio.device, offset);
 	if (mem == MAP_FAILED) {
-		__debug("failed to map bar region\n");
+		log_debug("failed to map bar region\n");
 		mem = NULL;
 	}
 
@@ -173,7 +173,7 @@ void vfio_pci_unmap_bar(struct vfio_pci_state *pci, unsigned int idx, void *mem,
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 
 	if (munmap(mem, len))
-		__debug("failed to unmap bar region\n");
+		log_debug("failed to unmap bar region\n");
 }
 
 int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
@@ -187,10 +187,10 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
 		return -1;
 	}
 
-	__log(LOG_INFO, "vfio iommu group is %s\n", group);
+	log_info("vfio iommu group is %s\n", group);
 
 	if (access(group, F_OK) < 0) {
-		__log(LOG_ERROR, "%s does not exist; did you bind the device to vfio-pci?\n", group);
+		log_error("%s does not exist; did you bind the device to vfio-pci?\n", group);
 		goto err_free_group;
 	}
 
@@ -199,14 +199,14 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
 
 	vfio->device = ioctl(vfio->group, VFIO_GROUP_GET_DEVICE_FD, bdf);
 	if (pci->vfio.device < 0) {
-		__debug("failed to get device fd\n");
+		log_debug("failed to get device fd\n");
 		goto err;
 	}
 
 	vfio->device_info.argsz = sizeof(struct vfio_device_info);
 
 	if (ioctl(vfio->device, VFIO_DEVICE_GET_INFO, &vfio->device_info)) {
-		__debug("failed to get device info\n");
+		log_debug("failed to get device info\n");
 		goto err;
 	}
 
@@ -218,7 +218,7 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
 	};
 
 	if (ioctl(pci->vfio.device, VFIO_DEVICE_GET_REGION_INFO, &pci->config_region_info)) {
-		__debug("failed to get config region info\n");
+		log_debug("failed to get config region info\n");
 		goto err;
 	}
 
@@ -228,12 +228,12 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf)
 	}
 
 	if (pci_set_bus_master(pci)) {
-		__debug("failed to set pci bus master\n");
+		log_debug("failed to set pci bus master\n");
 		goto err;
 	}
 
 	if (vfio_pci_init_irq(pci)) {
-		__debug("failed to initialize irq\n");
+		log_debug("failed to initialize irq\n");
 		goto err;
 	}
 
