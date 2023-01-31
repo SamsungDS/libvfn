@@ -21,21 +21,22 @@ static __thread const char *__trace_event;
 # define __trace_prefix(fmt) "T %s (%s:%d) " fmt
 
 /**
- * __trace - conditionally open a tracing point
- * @name: trace point identifier
+ * trace_guard - conditionally open a tracing scope
+ * @name: trace event identifier
  *
- * This functions as an alias of ``if``. That is, it should be used like this:
+ * This function behaves as a conditional. That is, it should be used like
+ * this:
  *
  * .. code-block:: c
  *
- *     __trace(TRACE_POINT_IDENTIFIER) {
- *         __emit("something");
+ *     trace_guard(TRACE_EVENT_IDENTIFIER) {
+ *         trace_emit("something");
  *     }
  *
- * If tracing is disabled, or if the specific trace point identifier is
+ * If debugging is disabled, or if the specific tracing event is statically
  * disabled, this will have zero overhead.
  */
-# define __trace(name) \
+# define trace_guard(name) \
 	if (({ \
 		bool cond = ((!TRACE_ ## name ## _DISABLED) && TRACE_ ## name ## _ACTIVE); \
 		if (cond) \
@@ -44,28 +45,28 @@ static __thread const char *__trace_event;
 	}))
 
 /**
- * __emit - emit a trace point message
+ * trace_emit - emit a trace event message
  * @fmt: format string
  * @...: format string arguments
  *
  * Emit a trace point message. Must be used inside an opened trace point. See
- * __trace().
+ * trace_guard().
  */
-# define __emit(fmt, ...) \
+# define trace_emit(fmt, ...) \
 	fprintf(stderr, __trace_prefix(fmt), __trace_event, __FILE__, __LINE__, ##__VA_ARGS__)
 
 #else
-# define __trace(name) if (false)
-# define __emit(fmt, ...)
+# define trace_guard(name) if (false)
+# define trace_emit(fmt, ...)
 #endif
 
 /**
- * trace_set_active - Enable or disable a range of trace points
- * @prefix: trace point identifier prefix
+ * trace_event_set_active - Enable or disable a range of trace events
+ * @prefix: trace event identifier prefix
  * @active: boolean (enable/disable)
  *
  * Enable/disable all trace points with the given @prefix.
  */
-void trace_set_active(const char *prefix, bool active);
+void trace_event_set_active(const char *prefix, bool active);
 
 #endif /* LIBVFN_TRACE_H */

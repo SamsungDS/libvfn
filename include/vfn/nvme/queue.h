@@ -93,8 +93,8 @@ static inline void nvme_sq_post(struct nvme_sq *sq, const void *sqe)
 {
 	memcpy(sq->vaddr + (sq->tail << NVME_SQES), sqe, 1 << NVME_SQES);
 
-	__trace(NVME_SQ_POST) {
-		__emit("sqid %d tail %d\n", sq->id, sq->tail);
+	trace_guard(NVME_SQ_POST) {
+		trace_emit("sqid %d tail %d\n", sq->id, sq->tail);
 	}
 
 	if (++sq->tail == sq->qsize)
@@ -125,8 +125,8 @@ static inline int nvme_try_dbbuf(uint16_t v, struct nvme_dbbuf *dbbuf)
 	eventidx = __LOAD_PTR(uint32_t *, dbbuf->eventidx);
 
 	if (!__nvme_need_mmio(eventidx, v, old)) {
-		__trace(NVME_SKIP_MMIO) {
-			__emit("eventidx %u val %u old %u\n", eventidx, v, old);
+		trace_guard(NVME_SKIP_MMIO) {
+			trace_emit("eventidx %u val %u old %u\n", eventidx, v, old);
 		}
 
 		return 0;
@@ -146,8 +146,8 @@ static inline void nvme_sq_run(struct nvme_sq *sq)
 	if (sq->tail == sq->ptail)
 		return;
 
-	__trace(NVME_SQ_RUN) {
-		__emit("sqid %d tail %d\n", sq->id, sq->tail);
+	trace_guard(NVME_SQ_RUN) {
+		trace_emit("sqid %d tail %d\n", sq->id, sq->tail);
 	}
 
 	if (nvme_try_dbbuf(sq->tail, &sq->dbbuf)) {
@@ -192,8 +192,8 @@ static inline struct nvme_cqe *nvme_cq_peek(struct nvme_cq *cq)
  */
 static inline void nvme_cq_update_head(struct nvme_cq *cq)
 {
-	__trace(NVME_CQ_UPDATE_HEAD) {
-		__emit("cqid %d head %d\n", cq->id, cq->head);
+	trace_guard(NVME_CQ_UPDATE_HEAD) {
+		trace_emit("cqid %d head %d\n", cq->id, cq->head);
 	}
 
 	if (nvme_try_dbbuf(cq->head, &cq->dbbuf))
@@ -212,8 +212,8 @@ static inline void nvme_cq_spin(struct nvme_cq *cq)
 {
 	struct nvme_cqe *cqe = nvme_cq_peek(cq);
 
-	__trace(NVME_CQ_SPIN) {
-		__emit("cq %d\n", cq->id);
+	trace_guard(NVME_CQ_SPIN) {
+		trace_emit("cq %d\n", cq->id);
 	}
 
 	/*
@@ -244,15 +244,15 @@ static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
 {
 	struct nvme_cqe *cqe = nvme_cq_peek(cq);
 
-	__trace(NVME_CQ_GET_CQE) {
-		__emit("cq %d\n", cq->id);
+	trace_guard(NVME_CQ_GET_CQE) {
+		trace_emit("cq %d\n", cq->id);
 	}
 
 	if ((le16_to_cpu(LOAD(cqe->sfp)) & 0x1) == cq->phase)
 		return NULL;
 
-	__trace(NVME_CQ_GOT_CQE) {
-		__emit("cq %d cid %" PRIu16 "\n", cq->id, cqe->cid);
+	trace_guard(NVME_CQ_GOT_CQE) {
+		trace_emit("cq %d cid %" PRIu16 "\n", cq->id, cqe->cid);
 	}
 
 	barrier();
