@@ -15,6 +15,14 @@
 
 #define NVME_CTRL_MPS 0
 
+/**
+ * struct nvme_ctrl_opts - NVMe controller options
+ * @nsqr: number of submission queues to request
+ * @ncqr: number of completion queues to request
+ * @quirks: quirks to apply
+ *
+ * Note; @nsqr and @ncqr are zeroes based values.
+ */
 struct nvme_ctrl_opts {
 	uint16_t nsqr, ncqr;
 #define NVME_QUIRK_BROKEN_DBBUF (1 << 0)
@@ -35,7 +43,7 @@ struct nvme_ctrl {
 	/**
 	 * @pci: vfio pci device state
 	 */
-	struct vfio_pci_state pci;
+	struct vfio_pci_device pci;
 
 	/**
 	 * @regs: Controller Configuration (``MBAR.CC``) registers
@@ -66,7 +74,7 @@ struct nvme_ctrl {
 	/**
 	 * @opts: controller options
 	 */
-	const struct nvme_ctrl_opts opts;
+	struct nvme_ctrl_opts opts;
 
 	/**
 	 * @config: cached run-time controller configuration

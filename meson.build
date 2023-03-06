@@ -4,7 +4,7 @@
 ##
 
 project('libvfn', ['c', 'cpp'],
-  version : '0.0.99',
+  version : '1.99.0',
   license : 'LGPL-2.1-or-later',
   default_options: [
     'warning_level=2',

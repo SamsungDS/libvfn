@@ -10,28 +10,21 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_VFIO_H
-#define LIBVFN_VFIO_H
+struct vfio_group {
+	int fd;
+	struct vfio_container *container;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	const char *path;
+};
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <unistd.h>
+#define VFN_MAX_VFIO_GROUPS 64
 
-#include <pthread.h>
+struct vfio_container {
+	int fd;
+	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
+	struct iommu_state iommu;
+};
 
-#include <linux/vfio.h>
+extern struct vfio_container vfio_default_container;
 
-#include <vfn/vfio/container.h>
-#include <vfn/vfio/device.h>
-#include <vfn/vfio/pci.h>
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* LIBVFN_VFIO_H */
+int vfio_get_group_fd(struct vfio_container *vfio, const char *path);

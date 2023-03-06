@@ -14,33 +14,24 @@
 #define LIBVFN_VFIO_PCI_H
 
 /**
- * struct vfio_pci_state - vfio pci device state
+ * struct vfio_pci_device - vfio pci device state
+ * @dev: &struct vfio_device
+ * @bdf: pci device identifier ("bus:device:function")
+ * @config_region_info: pci configuration space region information
+ * @bar_region_info: pci BAR region information
  */
-struct vfio_pci_state {
-	/**
-	 * @vfio: vfio handle (see &struct vfio_state)
-	 */
-	struct vfio_state vfio;
+struct vfio_pci_device {
+	struct vfio_device dev;
 
-	/**
-	 * @bdf: pci device identifier ("bus:device:function")
-	 */
 	const char *bdf;
 
-	/**
-	 * @config_region_info: pci configuration space region information
-	 */
 	struct vfio_region_info config_region_info;
-
-	/**
-	 * @bar_region_info: pci BAR region information
-	 */
 	struct vfio_region_info bar_region_info[6];
 };
 
 /**
  * vfio_pci_open - open and initialize pci device
- * @pci: &struct vfio_pci_state to initialize
+ * @pci: &struct vfio_pci_device to initialize
  * @bdf: pci device identifier ("bus:device:function") to open
  *
  * Open the pci device identified by @bdf and initialize @pci.
@@ -48,11 +39,11 @@ struct vfio_pci_state {
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf);
+int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf);
 
 /**
  * vfio_pci_map_bar - map a vfio device region into virtual memory
- * @pci: &struct vfio_pci_state
+ * @pci: &struct vfio_pci_device
  * @idx: the vfio region index to map
  * @len: number of bytes to map
  * @offset: offset at which to start mapping
@@ -63,12 +54,12 @@ int vfio_pci_open(struct vfio_pci_state *pci, const char *bdf);
  * Return: On success, returns the virtual memory address mapped. On error,
  * returns ``NULL`` and sets ``errno``.
  */
-void *vfio_pci_map_bar(struct vfio_pci_state *pci, unsigned int idx, size_t len, uint64_t offset,
+void *vfio_pci_map_bar(struct vfio_pci_device *pci, unsigned int idx, size_t len, uint64_t offset,
 		       int prot);
 
 /**
  * vfio_pci_unmap_bar - unmap a vfio device region in virtual memory
- * @pci: &struct vfio_pci_state
+ * @pci: &struct vfio_pci_device
  * @idx: the vfio region index to unmap
  * @mem: virtual memory address to unmap
  * @len: number of bytes to unmap
@@ -77,12 +68,12 @@ void *vfio_pci_map_bar(struct vfio_pci_state *pci, unsigned int idx, size_t len,
  * Unmap the virtual memory address, previously mapped to the vfio device memory
  * region identified by @idx.
  */
-void vfio_pci_unmap_bar(struct vfio_pci_state *pci, unsigned int idx, void *mem, size_t len,
+void vfio_pci_unmap_bar(struct vfio_pci_device *pci, unsigned int idx, void *mem, size_t len,
 			uint64_t offset);
 
 /**
  * vfio_pci_read_config - Read from the PCI configuration space
- * @pci: &struct vfio_pci_state
+ * @pci: &struct vfio_pci_device
  * @buf: buffer to store the bytes read
  * @len: number of bytes to read
  * @offset: offset at which to read
@@ -92,15 +83,15 @@ void vfio_pci_unmap_bar(struct vfio_pci_state *pci, unsigned int idx, void *mem,
  * Return: On success, returns the number of bytes read. On error, return ``-1``
  * and set ``errno``.
  */
-static inline ssize_t vfio_pci_read_config(struct vfio_pci_state *pci, void *buf, size_t len,
+static inline ssize_t vfio_pci_read_config(struct vfio_pci_device *pci, void *buf, size_t len,
 					   off_t offset)
 {
-	return pread(pci->vfio.device, buf, len, pci->config_region_info.offset + offset);
+	return pread(pci->dev.fd, buf, len, pci->config_region_info.offset + offset);
 }
 
 /**
  * vfio_pci_write_config - Write into the PCI configuration space
- * @pci: &struct vfio_pci_state
+ * @pci: &struct vfio_pci_device
  * @buf: buffer to write
  * @len: number of bytes to write
  * @offset: offset at which to write
@@ -110,10 +101,11 @@ static inline ssize_t vfio_pci_read_config(struct vfio_pci_state *pci, void *buf
  * Return: On success, returns the number of bytes written. On error, return
  * ``-1`` and set ``errno``.
  */
-static inline ssize_t vfio_pci_write_config(struct vfio_pci_state *pci, void *buf, size_t len,
+static inline ssize_t vfio_pci_write_config(struct vfio_pci_device *pci, void *buf, size_t len,
 					    off_t offset)
 {
-	return pwrite(pci->vfio.device, buf, len, pci->config_region_info.offset + offset);
+	return pwrite(pci->dev.fd, buf, len, pci->config_region_info.offset + offset);
 }
+
 
 #endif /* LIBVFN_VFIO_PCI_H */

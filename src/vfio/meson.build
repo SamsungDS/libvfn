@@ -1,5 +1,6 @@
 vfn_sources += files(
   'core.c',
+  'device.c',
   'iommu.c',
   'pci.c',
 )

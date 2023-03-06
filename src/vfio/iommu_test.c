@@ -22,21 +22,25 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <linux/vfio.h>
+
+#include <vfn/vfio/container.h>
+
 #include "ccan/compiler/compiler.h"
 #include "ccan/tap/tap.h"
 
 #include "iommu.c"
 
-static struct vfio_iova_map map;
+static struct iova_map map;
 
 static int add_one(void *vaddr, size_t len)
 {
-	return vfio_iova_map_add(&map, vaddr, len, 0x0);
+	return iova_map_add(&map, vaddr, len, 0x0);
 }
 
-static UNNEEDED void vfio_iova_map_print(struct vfio_iova_map *map)
+static UNNEEDED void iova_map_print(struct iova_map *map)
 {
-	struct vfio_iova_map_entry *n, *next;
+	struct iova_map_entry *n, *next;
 
 	skip_list_for_each_safe(map, n, next) {
 		if (n == &map->nil)
@@ -54,7 +58,7 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 {
 	plan_tests(8);
 
-	vfio_iova_map_init(&map);
+	iova_map_init(&map);
 
 	ok1(map.height == 0);
 
@@ -71,7 +75,7 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 	ok1(add_one((void *)0x5, 1) == 0);
 
 	/* remove ok */
-	ok1(vfio_iova_map_remove(&map, (void *)0x1) == 0);
+	ok1(iova_map_remove(&map, (void *)0x1) == 0);
 
 	return exit_status();
 }

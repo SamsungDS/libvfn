@@ -191,3 +191,41 @@ out:
 
 	return name;
 }
+
+char *pci_get_iommu_group(const char *bdf)
+{
+	char *p, *link = NULL, *group = NULL, *path = NULL;
+	ssize_t ret;
+
+	if (asprintf(&link, "/sys/bus/pci/devices/%s/iommu_group", bdf) < 0) {
+		log_debug("asprintf failed\n");
+		goto out;
+	}
+
+	group = mallocn(PATH_MAX, sizeof(char));
+
+	ret = readlink(link, group, PATH_MAX - 1);
+	if (ret < 0) {
+		log_debug("failed to resolve iommu group link\n");
+		goto out;
+	}
+
+	group[ret] = '\0';
+
+	p = strrchr(group, '/');
+	if (!p) {
+		log_debug("failed to find iommu group number\n");
+		goto out;
+	}
+
+	if (asprintf(&path, "/dev/vfio/%s", p + 1) < 0) {
+		path = NULL;
+		goto out;
+	}
+
+out:
+	free(link);
+	free(group);
+
+	return path;
+}

@@ -29,7 +29,7 @@ int main(void)
 
 	plan_tests(40);
 
-	pgmap((void **)&prplist, __VFN_PAGESIZE);
+	assert(pgmap((void **)&prplist, __VFN_PAGESIZE) > 0);
 
 	rq.page.vaddr = prplist;
 	rq.page.iova = 0x8000000;
