@@ -35,7 +35,7 @@ struct nvme_ctrl {
 	/**
 	 * @pci: vfio pci device state
 	 */
-	struct vfio_pci_state pci;
+	struct vfio_pci_device pci;
 
 	/**
 	 * @regs: Controller Configuration (``MBAR.CC``) registers

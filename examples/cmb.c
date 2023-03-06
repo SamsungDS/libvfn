@@ -57,6 +57,8 @@ int main(int argc, char **argv)
 
 	union nvme_cmd cmd = {};
 	struct nvme_id_ctrl *id_ctrl;
+	struct vfio_iova_range *iova_ranges;
+	int num_iova_ranges;
 
 	opt_register_table(opts, NULL);
 	opt_parse(&argc, argv, opt_log_stderr_exit);
@@ -110,7 +112,8 @@ int main(int argc, char **argv)
 		err(1, "failed to map cmb");
 
 	/* choose a base address that is guaranteed not to be involved in dma */
-	cba = ALIGN_UP(ctrl.pci.vfio.iommu.iova_ranges[ctrl.pci.vfio.iommu.nranges - 1].end + 1, 4096);
+	num_iova_ranges = vfio_get_iova_ranges(ctrl.pci.dev.vfio, &iova_ranges);
+	cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].end + 1, 4096);
 	printf("assigned cmb base address is 0x%lx\n", cba);
 
 	/* set the base address and enable the memory space */

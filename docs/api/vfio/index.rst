@@ -10,6 +10,6 @@ the library code.
 .. toctree::
    :maxdepth: 1
 
-   state
-   iommu
+   container
+   device
    pci

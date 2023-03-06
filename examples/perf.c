@@ -175,7 +175,7 @@ static void run(void)
 	if (!mem)
 		err(1, "mmap");
 
-	if (vfio_map_vaddr(&ctrl.pci.vfio, mem, 64 * 0x1000, &iova))
+	if (vfio_map_vaddr(ctrl.pci.dev.vfio, mem, 64 * 0x1000, &iova))
 		err(1, "failed to map");
 
 	do {

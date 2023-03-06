@@ -1,7 +1,7 @@
 vfn_vfio_headers = files([
-  'iommu.h',
+  'container.h',
+  'device.h',
   'pci.h',
-  'state.h',
 ])
 
 install_headers(vfn_vfio_headers, subdir: 'vfn/vfio')

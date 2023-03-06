@@ -87,4 +87,14 @@ int pci_device_info_get_ull(const char *bdf, const char *prop, unsigned long lon
  */
 char *pci_get_driver(const char *bdf);
 
+/**
+ * pci_get_iommu_group - get iommu group path
+ * @bdf: pci device identifier ("bus:device:function")
+ *
+ * Get the iommu group path (/dev/vfio/N) of the device identified by @bdf.
+ *
+ * Return: The path to the iommu group
+ */
+char *pci_get_iommu_group(const char *bdf);
+
 #endif /* LIBVFN_PCI_UTIL_H */
