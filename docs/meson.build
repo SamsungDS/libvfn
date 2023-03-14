@@ -8,7 +8,7 @@ if sphinx_build.found()
   SPHINX_ARGS = [sphinx_build]
 
   if get_option('werror')
-    SPHINX_ARGS += ['-W']
+    SPHINX_ARGS += ['-W', '-Dkerneldoc_werror=1']
   endif
 
   docs = custom_target('libvfn manual',
