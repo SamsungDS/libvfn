@@ -71,29 +71,15 @@ add_project_arguments([
 )
 
 ##
-##  Dependencies
-##  ------------
+##  Optional dependencies
+##  ---------------------
 ##
 
 # libnvme
-if get_option('libnvme').allowed()
-  libnvme = dependency('libnvme',
-    version: '>=1.0',
-    static: get_option('profiling'),
-    default_options: [
-      'warning_level=1',
+libnvme = dependency('libnvme', version: '>=1.0',
+  required: false, disabler: true,
+)
 
-      # always use a static version for embedded builds
-      'default_library=static',
-
-      # override project options
-      'docs-build=false',
-      'python=false',
-    ],
-  )
-else
-  libnvme = disabler()
-endif
 
 ##
 ##  Subdirectories
