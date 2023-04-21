@@ -15,8 +15,21 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
 
+      - name: checkout libnvme
+        uses: actions/checkout@v3
+        with:
+          repository: linux-nvme/libnvme
+          path: libnvme
+          ref: v1.4
+
       - name: install build dependencies
         run: sudo pip install meson ninja sphinx sphinx-rtd-theme
+
+      - name: compile and install libnvme
+        run: |
+          cd libnvme
+          make
+          sudo make install
 
       - name: configure build
         run: meson setup build
@@ -133,9 +146,9 @@ jobs:
     runs-on: [self-hosted, kvm]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'ok-for-test'))
     env:
-      VMCTL_VMROOT: "/home/actions/machines"
+      VMCTL_VMROOT: "/scratch/ghr/guests"
       VMCONFIG: ".github/vmconfig/null.conf"
-      QEMU_SYSTEM_BINARY: "/usr/local/bin/qemu-system-x86_64"
+      QEMU_SYSTEM_BINARY: "/usr/bin/qemu-system-x86_64"
 
     steps:
       - name: checkout libvfn
@@ -143,9 +156,8 @@ jobs:
 
       - name: create dist package
         run: |
-          meson subprojects download
           meson setup build
-          meson dist -C build --no-tests --include-subprojects
+          meson dist -C build --no-tests
 
       - name: reset vm
         run: |
