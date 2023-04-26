@@ -5,8 +5,8 @@ libvfn
 
 |build badge| |coverity badge|
 
-libvfn is library for interacting with PCIe-based NVMe devices from user-space
-using the Linux kernel ``vfio-pci`` driver.
+libvfn is zero-dependency library for interacting with PCIe-based NVMe devices
+from user-space using the Linux kernel ``vfio-pci`` driver.
 
 The core of the library is **excessively low-level** and aims to allow
 controller verification and testing teams to interact with the NVMe device at
@@ -20,7 +20,6 @@ Issuing a crafted command using the high-level API can be as simple as:
 .. code:: c
 
    #include <vfn/nvme.h>
-
    #include <nvme/types.h>
 
    int main(void) {
@@ -45,8 +44,7 @@ Issuing a crafted command using the high-level API can be as simple as:
    }
 
 
-The above example uses the ``support`` library from ``lib/support`` for the page
-allocation as well as `libnvme`_ for NVM Express data structure and constant
+The above example uses `libnvme`_ for NVM Express data structure and constant
 definitions.
 
 However, the true power of the library is only evident when using the lower
@@ -65,7 +63,7 @@ Dependencies
 
 The core libvfn library has zero dependencies apart from the included CCAN
 components in ``ccan/``. However, the included (and separately licensed)
-examples depend on `libnvme`_.
+examples and device tests depend on `libnvme`_ for type definitions.
 
 To build the documentation, `Sphinx <https://www.sphinx-doc.org/>`__ is
 required.
