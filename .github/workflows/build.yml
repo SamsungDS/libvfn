@@ -144,7 +144,7 @@ jobs:
     needs: [sanity]
 
     runs-on: [self-hosted, kvm]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'ok-for-test'))
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'approved'))
     env:
       VMCTL_VMROOT: "/scratch/ghr/guests"
       VMCONFIG: ".github/vmconfig/null.conf"
@@ -200,5 +200,4 @@ jobs:
 
       - name: shutdown vm
         if: always()
-        run: |
-          vmctl -c "$VMCONFIG" poweroff
+        run: vmctl -c "$VMCONFIG" kill
