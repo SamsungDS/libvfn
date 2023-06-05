@@ -97,22 +97,22 @@ jobs:
       fail-fast: false
       matrix:
         container:
-          - {os: 'almalinux', dh: 'almalinux', ver: '8'}
-          - {os: 'almalinux', dh: 'almalinux', ver: '9'}
-          - {os: 'alpine', dh: 'alpine', ver: 'latest'}
-          - {os: 'archlinux', dh: 'archlinux', ver: 'latest'}
-          - {os: 'debian', dh: 'debian', ver: 'bookworm'}
-          - {os: 'debian', dh: 'debian', ver: 'bullseye'}
-          - {os: 'debian', dh: 'debian', ver: 'buster'}
-          - {os: 'fedora', dh: 'fedora', ver: '37'}
-          - {os: 'fedora', dh: 'fedora', ver: '36'}
-          - {os: 'fedora', dh: 'fedora', ver: '35'}
-          - {os: 'ubuntu', dh: 'ubuntu', ver: 'jammy'}
-          - {os: 'ubuntu', dh: 'ubuntu', ver: 'focal'}
-          - {os: 'ubuntu', dh: 'ubuntu', ver: 'bionic'}
+          - {os: 'almalinux', ver: '8'}
+          - {os: 'almalinux', ver: '9'}
+          - {os: 'alpine', ver: 'latest'}
+          - {os: 'archlinux', ver: 'latest'}
+          - {os: 'debian', ver: 'bookworm'}
+          - {os: 'debian', ver: 'bullseye'}
+          - {os: 'debian', ver: 'buster'}
+          - {os: 'fedora', ver: '37'}
+          - {os: 'fedora', ver: '36'}
+          - {os: 'fedora', ver: '35'}
+          - {os: 'ubuntu', ver: 'jammy'}
+          - {os: 'ubuntu', ver: 'focal'}
+          - {os: 'ubuntu', ver: 'bionic'}
 
     container:
-      image: ${{ matrix.container.dh }}:${{ matrix.container.ver }}
+      image: ${{ matrix.container.os }}:${{ matrix.container.ver }}
 
     steps:
       - name: checkout
