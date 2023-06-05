@@ -38,6 +38,9 @@
 #include "vfn/support/compiler.h"
 #include "vfn/support/log.h"
 #include "vfn/support/mem.h"
+
+#include "vfn/vfio/container.h"
+
 #include "vfn/trace.h"
 
 #include "ccan/compiler/compiler.h"
