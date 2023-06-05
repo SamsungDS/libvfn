@@ -38,7 +38,15 @@
 		_a > _b ? _a : _b; \
 	})
 
-#define clamp(v, f, c)	(max(min((v), (c)), (f)))
+#define clamp(v, f, c) \
+	({ \
+		typeof(v) _v = (v); \
+		typeof(c) _c = (c); \
+		typeof(f) _f = (f); \
+		MINMAX_ASSERT_COMPATIBLE(typeof(_v), typeof(_c)); \
+		MINMAX_ASSERT_COMPATIBLE(typeof(_v), typeof(_f)); \
+		(_v > _c ? _c : (_v < _f ? _f : _v)); \
+	})
 
 
 #define min_t(t, a, b) \
