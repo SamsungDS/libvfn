@@ -11,7 +11,9 @@
  */
 
 #include <errno.h>
+#ifdef __GLIBC__
 #include <execinfo.h>
+#endif
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>

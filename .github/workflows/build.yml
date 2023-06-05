@@ -99,6 +99,7 @@ jobs:
         container:
           - {os: 'almalinux', dh: 'almalinux', ver: '8'}
           - {os: 'almalinux', dh: 'almalinux', ver: '9'}
+          - {os: 'alpine', dh: 'alpine', ver: 'latest'}
           - {os: 'archlinux', dh: 'archlinux', ver: 'latest'}
           - {os: 'debian', dh: 'debian', ver: 'bookworm'}
           - {os: 'debian', dh: 'debian', ver: 'bullseye'}

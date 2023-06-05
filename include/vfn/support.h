@@ -19,7 +19,6 @@ extern "C" {
 
 #include <byteswap.h>
 #include <errno.h>
-#include <execinfo.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdbool.h>
