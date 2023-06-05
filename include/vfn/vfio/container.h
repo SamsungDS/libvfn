@@ -49,9 +49,9 @@ int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_
  * @vaddr: virtual memory address to unmap
  * @len: output parameter for length of mapping
  *
- * Remove the mapping associated with @vaddr. This is used for both normal and
- * ephemeral mappings. If @len is not NULL, the length of the mapping will be
- * written to the pointee.
+ * Remove the mapping associated with @vaddr. This can only be used with
+ * mappings created using vfio_map_vaddr(). If @len is not NULL, the length of
+ * the mapping will be written to the pointee.
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
