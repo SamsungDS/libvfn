@@ -90,7 +90,7 @@ struct vfio_container *vfio_new(void)
 static void __attribute__((constructor)) open_default_container(void)
 {
 	if (vfio_init_container(&vfio_default_container))
-		exit(errno);
+		log_debug("default container not initialized\n");
 }
 
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
