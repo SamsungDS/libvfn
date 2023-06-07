@@ -63,6 +63,35 @@ jobs:
       - name: run sparse
         run: meson compile -C build sparse
 
+  scan-build:
+    name: "run scan-build"
+
+    needs: [sanity]
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: install build dependencies
+        run: sudo pip install meson ninja
+
+      - name: install scan-build
+        run: sudo apt-get -y install clang-tools
+
+      - name: configure build
+        run: meson setup build
+
+      - name: run scan-build
+        run: scan-build -o /tmp/scan-build-report --status-bugs ninja -C build
+
+      - name: grab bug report
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: scan-build-report
+          path: /tmp/scan-build-report/*
+
   cc-builds:
     name: "compiler builds"
 
