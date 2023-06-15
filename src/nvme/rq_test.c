@@ -27,7 +27,7 @@ int main(void)
 	leint64_t *prplist;
 	struct iovec iov[8];
 
-	plan_tests(59);
+	plan_tests(62);
 
 	assert(pgmap((void **)&prplist, __VFN_PAGESIZE) > 0);
 
@@ -222,6 +222,24 @@ int main(void)
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
+
+
+	/*
+	 * Failure tests
+	 */
+
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	ok1(nvme_rq_map_prp(&rq, &cmd, 0x1000000, (__rq_max_prps + 1) * 0x1000) == -1);
+
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x1000};
+	iov[0] = (struct iovec) {.iov_base = (void *)0x1001004, .iov_len = 0x1000};
+	ok1(nvme_rq_mapv_prp(&rq, &cmd, iov, 2) == -1);
+
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
+	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = __rq_max_prps * 0x1000};
+	ok1(nvme_rq_mapv_prp(&rq, &cmd, iov, 2) == -1);
 
 	return exit_status();
 }

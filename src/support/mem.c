@@ -15,6 +15,7 @@
 #include <execinfo.h>
 #endif
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -25,7 +26,9 @@
 #include <sys/mman.h>
 
 #include <vfn/support/align.h>
+#include <vfn/support/atomic.h>
 #include <vfn/support/compiler.h>
+#include <vfn/support/log.h>
 #include <vfn/support/mem.h>
 
 long __VFN_PAGESIZE;
@@ -35,6 +38,8 @@ static void __attribute__((constructor)) init_page_size(void)
 {
 	__VFN_PAGESIZE = sysconf(_SC_PAGESIZE);
 	__VFN_PAGESHIFT = 31 - __builtin_clz(__VFN_PAGESIZE);
+
+	log_debug("pagesize is %ld\n", __VFN_PAGESIZE);
 }
 
 void backtrace_abort(void)

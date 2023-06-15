@@ -650,4 +650,3 @@ void nvme_close(struct nvme_ctrl *ctrl)
 
 	//vfio_close(ctrl->pci.vfio);
 }
-
