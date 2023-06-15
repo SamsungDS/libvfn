@@ -2,9 +2,9 @@ name: build
 
 on:
   push:
-    branches: [ main, staging ]
+    branches: [ main, next, staging ]
   pull_request:
-    branches: [ main, staging ]
+    branches: [ main, next ]
 
 jobs:
   sanity:
