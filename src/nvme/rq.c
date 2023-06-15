@@ -66,14 +66,14 @@ static inline unsigned int __map_first(leint64_t *prp1, leint64_t *prplist, uint
 
 static inline unsigned int __map_aligned(leint64_t *prplist, uint64_t iova, size_t len)
 {
-	unsigned int prpcount = len >> __VFN_PAGESHIFT;
+	unsigned int prpcount = max_t(unsigned int, 1, len >> __VFN_PAGESHIFT);
 
 	assert(ALIGNED(iova, __VFN_PAGESIZE));
 
 	for (unsigned int i = 0; i < prpcount; i++)
 		prplist[i] = cpu_to_le64(iova + (i << __VFN_PAGESHIFT));
 
-	return clamp_t(unsigned int, prpcount, 1, prpcount);
+	return prpcount;
 }
 
 void nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
