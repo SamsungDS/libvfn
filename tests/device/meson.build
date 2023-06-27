@@ -12,6 +12,7 @@ device_tests = {
   'identify': ['identify.c'],
   'io': ['io.c'],
   'open': ['open.c'],
+  'timeout': ['timeout.c'],
 }
 
 foreach device_test, sources : device_tests

@@ -278,6 +278,24 @@ static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
 void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n);
 
 /**
+ * nvme_cq_wait_cqes - Get an exact number of cqes from a completion queue with
+ *                     timeout
+ * @cq: Completion queue
+ * @cqes: Pointer to array of struct cqe to place cqes into
+ * @n: Number of cqes to reap
+ * @ts: Maximum time to wait for CQEs
+ *
+ * Continously spin on @cq and copy @n cqes into @cqes if not NULL.
+ *
+ * Note: Does NOT update the cq head pointer. See nvme_cq_update_head().
+ *
+ * Return: ``n`` on success. On timeout, returns the number of cqes reaped
+ * (i.e., less than ``n``) and sets ``errno``.
+ */
+int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n,
+		      struct timespec *ts);
+
+/**
  * nvme_cq_poll - spin on completion queue, get cqe and update head pointer
  * @cq: Completion queue
  *

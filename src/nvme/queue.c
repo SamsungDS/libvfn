@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <sys/mman.h>
@@ -33,6 +34,8 @@
 #include <vfn/trace.h>
 #include <vfn/nvme/types.h>
 #include <vfn/nvme/queue.h>
+
+#include "ccan/time/time.h"
 
 struct nvme_cqe *nvme_cq_poll(struct nvme_cq *cq)
 {
@@ -62,4 +65,33 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
 		if (cqes)
 			memcpy(cqes++, cqe, sizeof(*cqe));
 	} while (n);
+}
+
+int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n,
+		      struct timespec *ts)
+{
+	struct nvme_cqe *cqe;
+
+	struct timerel rel = {
+		.ts = *ts,
+	};
+
+	uint64_t timeout = get_ticks() +
+		time_to_usec(rel) * (__vfn_ticks_freq / 1000000ULL);
+
+	do {
+		cqe = nvme_cq_get_cqe(cq);
+		if (!cqe)
+			continue;
+
+		n--;
+
+		if (cqes)
+			memcpy(cqes++, cqe, sizeof(*cqe));
+	} while (n && get_ticks() < timeout);
+
+	if (n)
+		errno = ETIME;
+
+	return n;
 }
