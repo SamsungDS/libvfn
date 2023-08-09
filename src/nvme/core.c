@@ -44,6 +44,7 @@
 #include <vfn/nvme/queue.h>
 #include <vfn/nvme/ctrl.h>
 #include <vfn/nvme/rq.h>
+#include <vfn/nvme/util.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
@@ -635,101 +636,3 @@ void nvme_close(struct nvme_ctrl *ctrl)
 	//vfio_close(ctrl->pci.vfio);
 }
 
-int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler)
-{
-	struct nvme_rq *rq;
-	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
-
-	rq = nvme_rq_acquire_atomic(ctrl->adminq.sq);
-	if (!rq) {
-		errno = EBUSY;
-		return -1;
-	}
-
-	nvme_rq_prep_cmd(rq, &cmd);
-
-	cmd.cid |= NVME_CID_AER;
-	rq->opaque = handler;
-
-	nvme_sq_exec(ctrl->adminq.sq, &cmd);
-
-	return 0;
-}
-
-void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
-{
-	struct nvme_rq *rq;
-	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
-
-	assert(cqe->cid & NVME_CID_AER);
-
-	cqe->cid &= ~NVME_CID_AER;
-
-	rq = nvme_rq_from_cqe(ctrl, cqe);
-
-	if (rq->opaque) {
-		cqe_handler h = rq->opaque;
-
-		h(cqe);
-	} else {
-		uint32_t dw0 = le32_to_cpu(cqe->dw0);
-
-		log_info("unhandled aen 0x%" PRIx32 " (type 0x%x info 0x%x lid 0x%x)\n", dw0,
-			 NVME_AEN_TYPE(dw0), NVME_AEN_INFO(dw0), NVME_AEN_LID(dw0));
-	}
-
-	nvme_rq_prep_cmd(rq, &cmd);
-
-	cmd.cid |= NVME_CID_AER;
-
-	nvme_rq_exec(rq, &cmd);
-}
-
-int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
-		 void *cqe_copy)
-{
-	struct nvme_cqe cqe;
-	struct nvme_rq *rq;
-	uint64_t iova;
-	int ret = 0;
-
-	rq = nvme_rq_acquire_atomic(sq);
-	if (!rq)
-		return -1;
-
-	if (buf) {
-		ret = vfio_map_vaddr_ephemeral(ctrl->pci.dev.vfio, buf, len, &iova);
-		if (ret)
-			goto release_rq;
-
-		nvme_rq_map_prp(rq, sqe, iova, len);
-	}
-
-	nvme_rq_exec(rq, sqe);
-
-	while (nvme_rq_poll(rq, &cqe) < 0 && errno == EAGAIN) {
-		if (sq->id == NVME_AQ && (cqe.cid & NVME_CID_AER)) {
-			nvme_aen_handle(ctrl, &cqe);
-			continue;
-		}
-
-		log_error("SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
-			  rq->sq->cq->id, cqe.cid);
-	}
-
-	if (cqe_copy)
-		memcpy(cqe_copy, &cqe, 1 << NVME_CQES);
-
-	if (buf)
-		ret = vfio_unmap_ephemeral_iova(ctrl->pci.dev.vfio, len, iova);
-
-release_rq:
-	nvme_rq_release_atomic(rq);
-
-	return ret;
-}
-
-int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe_copy)
-{
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
-}
