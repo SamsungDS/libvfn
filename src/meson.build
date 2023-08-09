@@ -17,9 +17,9 @@ vfn_sources = files(
 
 subdir('support')
 subdir('trace')
-subdir('nvme')
 subdir('pci')
 subdir('vfio')
+subdir('nvme')
 
 docs_deps += vfn_sources
 
