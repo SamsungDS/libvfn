@@ -41,7 +41,7 @@ struct nvme_cq {
 	struct nvme_dbbuf dbbuf;
 
 	int phase;
-	int efd;
+	int vector;
 };
 
 /**

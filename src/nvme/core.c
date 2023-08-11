@@ -62,7 +62,8 @@ enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
 };
 
-static int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
+static int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
+			     int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	uint64_t cap;
@@ -89,7 +90,7 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned 
 		.id = qid,
 		.qsize = qsize,
 		.doorbell = cqhdbl(ctrl->doorbells, qid, dstrd),
-		.efd = -1,
+		.vector = vector,
 	};
 
 	if (ctrl->dbbuf.doorbells) {
@@ -255,7 +256,7 @@ static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned int sq_flags)
 	struct nvme_cq *cq = &ctrl->cq[NVME_AQ];
 	struct nvme_sq *sq = &ctrl->sq[NVME_AQ];
 
-	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE)) {
+	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE, 0)) {
 		log_debug("failed to configure admin completion queue\n");
 		return -1;
 	}
@@ -287,14 +288,22 @@ static int __admin(struct nvme_ctrl *ctrl, void *sqe)
 	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, NULL, 0x0, NULL);
 }
 
-int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
+int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	union nvme_cmd cmd;
 
-	if (nvme_configure_cq(ctrl, qid, qsize)) {
+	uint16_t qflags = NVME_Q_PC;
+	uint16_t iv = 0;
+
+	if (nvme_configure_cq(ctrl, qid, qsize, vector)) {
 		log_debug("could not configure io completion queue\n");
 		return -1;
+	}
+
+	if (vector != -1) {
+		qflags |= NVME_CQ_IEN;
+		iv = vector;
 	}
 
 	cmd.create_cq = (struct nvme_cmd_create_cq) {
@@ -302,7 +311,8 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 		.prp1   = cpu_to_le64(cq->iova),
 		.qid    = cpu_to_le16(qid),
 		.qsize  = cpu_to_le16(qsize - 1),
-		.qflags = cpu_to_le16(NVME_Q_PC),
+		.qflags = cpu_to_le16(qflags),
+		.iv     = cpu_to_le16(iv),
 	};
 
 	return __admin(ctrl, &cmd);
@@ -359,10 +369,10 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
 	return __admin(ctrl, &cmd);
 }
 
-int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
+int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector,
 			unsigned int flags)
 {
-	if (nvme_create_iocq(ctrl, qid, qsize)) {
+	if (nvme_create_iocq(ctrl, qid, qsize, vector)) {
 		log_debug("could not create io completion queue\n");
 		return -1;
 	}

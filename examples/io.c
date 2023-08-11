@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 	if (nvme_init(&ctrl, bdf, &ctrl_opts))
 		err(1, "failed to init nvme controller");
 
-	if (nvme_create_ioqpair(&ctrl, 1, 64, 0x0))
+	if (nvme_create_ioqpair(&ctrl, 1, 64, 0x0, -1))
 		err(1, "could not create io queue pair");
 
 	vaddr = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);

@@ -134,8 +134,12 @@ int nvme_enable(struct nvme_ctrl *ctrl);
  * @ctrl: Controller reference
  * @qid: Queue identifier
  * @qsize: Queue size
+ * @vector: interrupt vector
  *
  * Create an I/O Completion Queue on @ctrl with identifier @qid and size @qsize.
+ * Set @vector to -1 to disable interrupts. If you associate an interrupt
+ * vector, you need to use vfio_set_irq() to associate the vector with an
+ * eventfd.
  *
  * **Note** that one slot in the queue is reserved for the full queue condition.
  * So, if a queue command depth of ``N`` is required, qsize should be ``N + 1``.
@@ -143,7 +147,7 @@ int nvme_enable(struct nvme_ctrl *ctrl);
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize);
+int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector);
 
 /**
  * nvme_delete_iocq - Delete an I/O Completion Queue
@@ -195,6 +199,7 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid);
  * @ctrl: Controller reference
  * @qid: Queue identifier
  * @qsize: Queue size
+ * @vector: Completion queue interrupt vector
  * @flags: See &enum nvme_create_iosq_flags
  *
  * Create both an I/O Submission Queue and an I/O Completion Queue with the same
@@ -207,7 +212,7 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid);
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
+int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector,
 			unsigned int flags);
 
 /**
