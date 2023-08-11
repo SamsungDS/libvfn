@@ -33,7 +33,7 @@ static uint64_t measure_ticks_freq(void)
 	uint64_t hz, end, start, ns;
 	double secs;
 
-	__log(LOG_INFO, "measuring tick frequency\n");
+	log_debug("measuring tick frequency\n");
 
 	t_sleep = time_from_nsec(NS_PER_SEC / 10);
 
@@ -62,7 +62,7 @@ static uint64_t estimate_ticks_freq(void)
 {
 	uint64_t start;
 
-	__log(LOG_INFO, "warning: estimating tick frequency; clock timings may be inaccurate\n");
+	log_debug("warning: estimating tick frequency; clock timings may be inaccurate\n");
 
 	start = get_ticks();
 	__usleep(1E6);
@@ -81,7 +81,7 @@ static void __attribute__((constructor)) init_ticks_freq(void)
 	if (!freq)
 		freq = estimate_ticks_freq();
 
-	__log(LOG_INFO, "tick frequency is ~%" PRIu64 " Hz\n", freq);
+	log_debug("tick frequency is ~%" PRIu64 " Hz\n", freq);
 
 	__vfn_ticks_freq = freq;
 }
