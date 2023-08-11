@@ -174,12 +174,12 @@ static inline void nvme_sq_exec(struct nvme_sq *sq, const void *sqe)
 }
 
 /**
- * nvme_cq_peek - Get a pointer to the current completion queue head
+ * nvme_cq_head - Get a pointer to the current completion queue head
  * @cq: Completion queue
  *
  * Return: Pointer to completion queue head entry
  */
-static inline struct nvme_cqe *nvme_cq_peek(struct nvme_cq *cq)
+static inline struct nvme_cqe *nvme_cq_head(struct nvme_cq *cq)
 {
 	return (struct nvme_cqe *)(cq->vaddr + (cq->head << NVME_CQES));
 }
@@ -210,7 +210,7 @@ static inline void nvme_cq_update_head(struct nvme_cq *cq)
  */
 static inline void nvme_cq_spin(struct nvme_cq *cq)
 {
-	struct nvme_cqe *cqe = nvme_cq_peek(cq);
+	struct nvme_cqe *cqe = nvme_cq_head(cq);
 
 	trace_guard(NVME_CQ_SPIN) {
 		trace_emit("cq %d\n", cq->id);
@@ -244,7 +244,7 @@ static inline void nvme_cq_spin(struct nvme_cq *cq)
  */
 static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
 {
-	struct nvme_cqe *cqe = nvme_cq_peek(cq);
+	struct nvme_cqe *cqe = nvme_cq_head(cq);
 
 	trace_guard(NVME_CQ_GET_CQE) {
 		trace_emitrl(1, (uintptr_t)cq, "cq %d\n", cq->id);
