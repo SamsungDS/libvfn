@@ -159,6 +159,12 @@ static inline struct nvme_rq *nvme_rq_from_cqe(struct nvme_ctrl *ctrl, struct nv
 {
 	struct nvme_sq *sq = &ctrl->sq[le16_to_cpu(cqe->sqid)];
 
+	if (cqe->cid > sq->qsize - 1) {
+		errno = EINVAL;
+
+		return NULL;
+	}
+
 	return __nvme_rq_from_cqe(sq, cqe);
 }
 
