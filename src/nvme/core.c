@@ -62,7 +62,7 @@ enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
 };
 
-int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
+static int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	uint64_t cap;
@@ -109,7 +109,7 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
 	return 0;
 }
 
-void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
+static void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 {
 	size_t len;
 
@@ -131,8 +131,8 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	memset(cq, 0x0, sizeof(*cq));
 }
 
-int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-		      struct nvme_cq *cq, unsigned int UNUSED flags)
+static int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
+			     struct nvme_cq *cq, unsigned int UNUSED flags)
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
 	uint64_t cap;
@@ -217,7 +217,7 @@ unmap_pages:
 	return -1;
 }
 
-void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
+static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 {
 	size_t len;
 

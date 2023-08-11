@@ -146,25 +146,6 @@ int nvme_enable(struct nvme_ctrl *ctrl);
 int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize);
 
 /**
- * nvme_configure_cq - Configure completion queue
- * @ctrl: See &struct nvme_ctrl
- * @qid: Queue identifier
- * @qsize: Queue qsize
- *
- * Configure the completion queue associated with @qid and initialize its size.
- * This does NOT create the queue on the controller. This is a low-level
- * primitive that may be used if, for some reason, nvme_create_iocq() cannot be
- * used.
- *
- * **Note** that one slot in the queue is reserved for the full queue condition.
- * So, if a queue command depth of ``N`` is required, qsize should be ``N + 1``.
- *
- * Return: On success, returns ``0``. On error, returns ``-1`` and sets
- * ``errno``.
- */
-int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize);
-
-/**
  * nvme_delete_iocq - Delete an I/O Completion Queue
  * @ctrl: See &struct nvme_ctrl
  * @qid: Queue identifier
@@ -175,20 +156,6 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
  * ``errno``.
  */
 int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid);
-
-/*
- * nvme_discard_cq - Discard a completion queue
- * @ctrl: See &struct nvme_ctrl
- * @cq: Completion queue
- *
- * Discard the @cq completion queue and free its resources. This does NOT delete
- * the queue on the controller. This is a low-level primitive that may be used
- * if, for some reason, nvme_delete_iocq() cannot be used.
- *
- * Return: On success, returns ``0``. On error, returns ``-1`` and sets
- * ``errno``.
- */
-void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq);
 
 /**
  * nvme_create_iosq - Create an I/O Submission Queue
@@ -212,28 +179,6 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 		     struct nvme_cq *cq, unsigned int flags);
 
 /**
- * nvme_configure_sq - Configure submission queue
- * @ctrl: See &struct nvme_ctrl
- * @qid: Queue identifier
- * @qsize: Queue qsize
- * @cq: Associated completion queue
- * @flags: currently unused
- *
- * Configure the submission queue associated with @qid, initialize its size and
- * setup request trackers. This does NOT create the queue on the controller.
- * This is a low-level primitive that may be used if (for some reason)
- * nvme_create_iosq() cannot be used.
- *
- * **Note** that one slot in the queue is reserved for the full queue condition.
- * So, if a queue command depth of ``N`` is required, qsize should be ``N + 1``.
- *
- * Return: On success, returns ``0``. On error, returns ``-1`` and sets
- * ``errno``.
- */
-int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-		      struct nvme_cq *cq, unsigned int flags);
-
-/**
  * nvme_delete_iosq - Delete an I/O Submission Queue
  * @ctrl: See &struct nvme_ctrl
  * @qid: Queue identifier
@@ -244,20 +189,6 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsi
  * ``errno``.
  */
 int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid);
-
-/**
- * nvme_discard_sq - Discard a submission queue
- * @ctrl: See &struct nvme_ctrl
- * @sq: Submission queue
- *
- * Discard the @sq submission queue and free its resources. This does NOT delete
- * the queue on the controller. This is a low-level primitive that may be used
- * if, for some reason, nvme_delete_iosq() cannot be used.
- *
- * Return: On success, returns ``0``. On error, returns ``-1`` and sets
- * ``errno``.
- */
-void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq);
 
 /**
  * nvme_create_ioqpair - Create an I/O Completion/Submission Queue Pair
