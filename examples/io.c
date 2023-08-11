@@ -103,7 +103,7 @@ int main(int argc, char **argv)
 
 	nvme_rq_exec(rq, &cmd);
 
-	if (nvme_rq_poll(rq, NULL))
+	if (nvme_rq_spin(rq, NULL))
 		err(1, "nvme_rq_poll");
 
 	if (op_read) {

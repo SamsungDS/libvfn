@@ -37,20 +37,6 @@
 
 #include "ccan/time/time.h"
 
-struct nvme_cqe *nvme_cq_poll(struct nvme_cq *cq)
-{
-	struct nvme_cqe *cqe;
-
-	nvme_cq_spin(cq);
-
-	cqe = nvme_cq_get_cqe(cq);
-	assert(cqe);
-
-	nvme_cq_update_head(cq);
-
-	return cqe;
-}
-
 void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
 {
 	struct nvme_cqe *cqe;

@@ -223,7 +223,7 @@ void nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov
 		      unsigned int niov);
 
 /**
- * nvme_rq_poll - Poll for completion of the command associated with the request
+ * nvme_rq_spin - Spin for completion of the command associated with the request
  *                tracker
  * @rq: Request tracker (&struct nvme_rq)
  * @cqe_copy: Output parameter to copy completion queue entry into
@@ -235,6 +235,6 @@ void nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov
  *
  * Return: ``0`` on success, ``-1`` on error and set ``errno``.
  */
-int nvme_rq_poll(struct nvme_rq *rq, void *cqe_copy);
+int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy);
 
 #endif /* LIBVFN_NVME_RQ_H */

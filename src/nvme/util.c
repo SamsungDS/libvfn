@@ -135,7 +135,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 
 	nvme_rq_exec(rq, sqe);
 
-	while (nvme_rq_poll(rq, &cqe) < 0 && errno == EAGAIN) {
+	while (nvme_rq_spin(rq, &cqe) < 0 && errno == EAGAIN) {
 		if (sq->id == NVME_AQ && (cqe.cid & NVME_CID_AER)) {
 			nvme_aen_handle(ctrl, &cqe);
 			continue;

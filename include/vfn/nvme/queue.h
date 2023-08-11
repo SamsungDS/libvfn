@@ -297,15 +297,4 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
 int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n,
 		      struct timespec *ts);
 
-/**
- * nvme_cq_poll - spin on completion queue, get cqe and update head pointer
- * @cq: Completion queue
- *
- * Combine the effects of calling nvme_cq_spin(), nvme_cq_get_cqe() and
- * nvme_cq_update_head().
- *
- * Return: A completion queue entry.
- */
-struct nvme_cqe *nvme_cq_poll(struct nvme_cq *cq);
-
 #endif /* LIBVFN_NVME_QUEUE_H */

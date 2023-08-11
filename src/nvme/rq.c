@@ -118,29 +118,30 @@ void nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov
 		cmd->dptr.prp2 = 0x0;
 }
 
-int nvme_rq_poll(struct nvme_rq *rq, void *cqe_copy)
+int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
 {
 	struct nvme_cq *cq = rq->sq->cq;
-	struct nvme_cqe *cqe;
+	struct nvme_cqe cqe;
 
-	cqe = nvme_cq_poll(cq);
+	nvme_cq_get_cqes(cq, &cqe, 1);
+	nvme_cq_update_head(cq);
 
 	if (cqe_copy)
-		memcpy(cqe_copy, cqe, 1 << NVME_CQES);
+		memcpy(cqe_copy, &cqe, sizeof(*cqe_copy));
 
-	if (cqe->cid != rq->cid) {
+	if (cqe.cid != rq->cid) {
 		errno = EAGAIN;
 		return -1;
 	}
 
-	if (!nvme_cqe_ok(cqe)) {
+	if (!nvme_cqe_ok(&cqe)) {
 		if (logv(LOG_DEBUG)) {
-			uint16_t status = le16_to_cpu(cqe->sfp) >> 1;
+			uint16_t status = le16_to_cpu(cqe.sfp) >> 1;
 
 			log_debug("cqe status 0x%" PRIx16 "\n", status & 0x7ff);
 		}
 
-		return nvme_set_errno_from_cqe(cqe);
+		return nvme_set_errno_from_cqe(&cqe);
 	}
 
 	return 0;
