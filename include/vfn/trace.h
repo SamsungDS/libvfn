@@ -55,14 +55,6 @@ extern __thread const char *__trace_event;
 # define trace_emit(fmt, ...) \
 	fprintf(stderr, __trace_prefix(fmt), __trace_event, __FILE__, __LINE__, ##__VA_ARGS__)
 
-struct trace_ratelimit_state {
-	unsigned int interval, skipped;
-	uint64_t tag;
-	uint64_t begin, end;
-};
-
-bool __trace_ratelimited(struct trace_ratelimit_state *rs, uint64_t tag, const char *event);
-
 /**
  * trace_emitrl - emit a trace event message (ratelimited)
  * @interval: ratelimiting interval in seconds
@@ -90,6 +82,14 @@ bool __trace_ratelimited(struct trace_ratelimit_state *rs, uint64_t tag, const c
 # define trace_emit(fmt, ...)
 # define trace_emitrl(interval, subject, fmt, ...)
 #endif
+
+struct trace_ratelimit_state {
+	unsigned int interval, skipped;
+	uint64_t tag;
+	uint64_t begin, end;
+};
+
+bool __trace_ratelimited(struct trace_ratelimit_state *rs, uint64_t tag, const char *event);
 
 /**
  * trace_event_set_active - Enable or disable a range of trace events
