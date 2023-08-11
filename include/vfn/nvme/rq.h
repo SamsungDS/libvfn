@@ -191,7 +191,7 @@ static inline void nvme_rq_post(struct nvme_rq *rq, union nvme_cmd *cmd)
 static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
 {
 	nvme_rq_post(rq, cmd);
-	nvme_sq_run(rq->sq);
+	nvme_sq_update_tail(rq->sq);
 }
 
 /**

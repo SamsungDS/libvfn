@@ -136,17 +136,17 @@ static inline int nvme_try_dbbuf(uint16_t v, struct nvme_dbbuf *dbbuf)
 }
 
 /**
- * nvme_sq_run - Ring the submission queue doorbell
+ * nvme_sq_update_tail - Write the submission queue doorbell
  * @sq: Submission queue
  *
- * Ring the queue doorbell if the tail pointer has changed since last ringed.
+ * Write the queue doorbell if the tail pointer has changed since last written.
  */
-static inline void nvme_sq_run(struct nvme_sq *sq)
+static inline void nvme_sq_update_tail(struct nvme_sq *sq)
 {
 	if (sq->tail == sq->ptail)
 		return;
 
-	trace_guard(NVME_SQ_RUN) {
+	trace_guard(NVME_SQ_UPDATE_TAIL) {
 		trace_emit("sqid %d tail %d\n", sq->id, sq->tail);
 	}
 
@@ -161,16 +161,16 @@ static inline void nvme_sq_run(struct nvme_sq *sq)
 }
 
 /**
- * nvme_sq_exec - Post submission queue entry and ring the doorbell
+ * nvme_sq_exec - Post submission queue entry and write the doorbell
  * @sq: Submission queue
  * @sqe: Submission queue entry
  *
- * Combine the effects of nvme_sq_post() and nvme_sq_run().
+ * Combine the effects of nvme_sq_post() and nvme_sq_update_tail().
  */
 static inline void nvme_sq_exec(struct nvme_sq *sq, const void *sqe)
 {
 	nvme_sq_post(sq, sqe);
-	nvme_sq_run(sq);
+	nvme_sq_update_tail(sq);
 }
 
 /**
@@ -185,10 +185,10 @@ static inline struct nvme_cqe *nvme_cq_peek(struct nvme_cq *cq)
 }
 
 /**
- * nvme_cq_update_head - Ring the completion queue head doorbell
+ * nvme_cq_update_head - Write the completion queue head doorbell
  * @cq: Completion queue
  *
- * Ring the completion queue head doorbell.
+ * Write the completion queue head doorbell.
  */
 static inline void nvme_cq_update_head(struct nvme_cq *cq)
 {
@@ -236,6 +236,8 @@ static inline void nvme_cq_spin(struct nvme_cq *cq)
  * If the current completion queue head entry is valid (has the right phase),
  * advance the head and return a pointer to it. Otherwise, return NULL and leave
  * the head as-is.
+ *
+ * Note: Does NOT update the cq head doorbell. See nvme_cq_update_head().
  *
  * Return: If the current completion queue head entry is valid (correct phase),
  * return a pointer to it. Otherwise, return NULL.
@@ -285,7 +287,7 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
  * @n: Number of cqes to reap
  * @ts: Maximum time to wait for CQEs
  *
- * Continously spin on @cq and copy @n cqes into @cqes if not NULL.
+ * Continuously poll @cq and copy @n cqes into @cqes if not NULL.
  *
  * Note: Does NOT update the cq head pointer. See nvme_cq_update_head().
  *

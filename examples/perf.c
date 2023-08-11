@@ -202,7 +202,7 @@ static void run(void)
 	} while (true);
 
 	do {
-		nvme_sq_run(sq);
+		nvme_sq_update_tail(sq);
 
 		reap();
 
@@ -241,7 +241,7 @@ static void run(void)
 
 	draining = true;
 
-	nvme_sq_run(sq);
+	nvme_sq_update_tail(sq);
 
 	do {
 		reap();
