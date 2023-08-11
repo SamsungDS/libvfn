@@ -282,6 +282,11 @@ discard_cq:
 	return -1;
 }
 
+static int __admin(struct nvme_ctrl *ctrl, void *sqe)
+{
+	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, NULL, 0x0, NULL);
+}
+
 int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
@@ -300,7 +305,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 		.qflags = cpu_to_le16(NVME_Q_PC),
 	};
 
-	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
+	return __admin(ctrl, &cmd);
 }
 
 int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
@@ -314,7 +319,7 @@ int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
 		.qid = cpu_to_le16(qid),
 	};
 
-	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
+	return __admin(ctrl, &cmd);
 }
 
 int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
@@ -337,7 +342,7 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 		.cqid   = cpu_to_le16(cq->id),
 	};
 
-	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
+	return __admin(ctrl, &cmd);
 }
 
 int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
@@ -351,7 +356,7 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
 		.qid = cpu_to_le16(qid),
 	};
 
-	return nvme_admin(ctrl, &cmd, NULL, 0x0, NULL);
+	return __admin(ctrl, &cmd);
 }
 
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
@@ -472,7 +477,7 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 		.dptr.prp2 = cpu_to_le64(prp2),
 	};
 
-	if (nvme_admin(ctrl, &cmd, NULL, 0x0, NULL))
+	if (__admin(ctrl, &cmd))
 		return -1;
 
 	if (!(ctrl->opts.quirks & NVME_QUIRK_BROKEN_DBBUF)) {
