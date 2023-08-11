@@ -9,6 +9,7 @@ example_sources = [
 examples = {
   'cmb': ['cmb.c'],
   'cmb-p2p': ['cmb-p2p.c'],
+  'eventfd': ['eventfd.c'],
   'identify': ['identify.c'],
   'io': ['io.c'],
   'perf': ['perf.c'],
