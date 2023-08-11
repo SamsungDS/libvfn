@@ -7,7 +7,6 @@ example_sources = [
 ]
 
 examples = {
-  'aer': ['aer.c'],
   'cmb': ['cmb.c'],
   'cmb-p2p': ['cmb-p2p.c'],
   'identify': ['identify.c'],
