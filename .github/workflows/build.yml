@@ -41,6 +41,16 @@ jobs:
         run: |
           meson test -C build libvfn:
 
+      - name: configure release build
+        run: meson setup --reconfigure build --buildtype=release
+
+      - name: compile
+        run: meson compile -C build
+
+      - name: unit tests
+        run: |
+          meson test -C build libvfn:
+
   sparse:
     name: "run sparse"
 
