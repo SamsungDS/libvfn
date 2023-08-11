@@ -35,7 +35,7 @@ static int test_timeout(void)
 	struct timespec timeout = {.tv_sec = 1};
 	int ret;
 
-	if (nvme_aen_enable(&ctrl, NULL))
+	if (nvme_aer(&ctrl, NULL))
 		err(1, "could not enable aen");
 
 	ret = nvme_cq_wait_cqes(ctrl.adminq.cq, &cqe, 1, &timeout);

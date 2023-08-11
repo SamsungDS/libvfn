@@ -17,8 +17,6 @@
 #define NVME_SQES 6
 #define NVME_CQES 4
 
-#define NVME_CID_AER (1 << 15)
-
 struct nvme_dbbuf {
 	void *doorbell;
 	void *eventidx;

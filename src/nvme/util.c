@@ -63,7 +63,7 @@ int nvme_set_errno_from_cqe(struct nvme_cqe *cqe)
 	return errno ? -1 : 0;
 }
 
-int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler)
+int nvme_aer(struct nvme_ctrl *ctrl, void *opaque)
 {
 	struct nvme_rq *rq;
 	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
@@ -74,43 +74,13 @@ int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler)
 		return -1;
 	}
 
-	nvme_rq_prep_cmd(rq, &cmd);
+	cmd.cid = rq->cid | NVME_CID_AER;
+	rq->opaque = opaque;
 
-	cmd.cid |= NVME_CID_AER;
-	rq->opaque = handler;
-
+	/* rq_exec overwrites the command identifier, so use sq_exec */
 	nvme_sq_exec(ctrl->adminq.sq, &cmd);
 
 	return 0;
-}
-
-void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe)
-{
-	struct nvme_rq *rq;
-	union nvme_cmd cmd = { .opcode = NVME_ADMIN_ASYNC_EVENT };
-
-	assert(cqe->cid & NVME_CID_AER);
-
-	cqe->cid &= ~NVME_CID_AER;
-
-	rq = nvme_rq_from_cqe(ctrl, cqe);
-
-	if (rq->opaque) {
-		cqe_handler h = rq->opaque;
-
-		h(cqe);
-	} else {
-		uint32_t dw0 = le32_to_cpu(cqe->dw0);
-
-		log_info("unhandled aen 0x%" PRIx32 " (type 0x%x info 0x%x lid 0x%x)\n", dw0,
-			 NVME_AEN_TYPE(dw0), NVME_AEN_INFO(dw0), NVME_AEN_LID(dw0));
-	}
-
-	nvme_rq_prep_cmd(rq, &cmd);
-
-	cmd.cid |= NVME_CID_AER;
-
-	nvme_rq_exec(rq, &cmd);
 }
 
 int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
@@ -136,11 +106,6 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 	nvme_rq_exec(rq, sqe);
 
 	while (nvme_rq_spin(rq, &cqe) < 0 && errno == EAGAIN) {
-		if (sq->id == NVME_AQ && (cqe.cid & NVME_CID_AER)) {
-			nvme_aen_handle(ctrl, &cqe);
-			continue;
-		}
-
 		log_error("SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
 			  rq->sq->cq->id, cqe.cid);
 	}

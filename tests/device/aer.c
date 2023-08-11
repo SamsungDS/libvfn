@@ -21,6 +21,7 @@
 
 #include <nvme/types.h>
 
+#include "ccan/array_size/array_size.h"
 #include "ccan/err/err.h"
 #include "ccan/opt/opt.h"
 #include "ccan/tap/tap.h"
@@ -28,6 +29,9 @@
 #include "vfn/nvme.h"
 
 #include "common.h"
+
+#define __foreach(x, arr) \
+	for (typeof(arr[0]) *x = arr; x < &arr[ARRAY_SIZE(arr)]; x++)
 
 static bool aen_received;
 
@@ -70,7 +74,7 @@ static void handle_aen(struct nvme_cqe *cqe)
 	info = NVME_AEN_INFO(dw0);
 	lid = NVME_AEN_LID(dw0);
 
-	printf("got aen 0x%"PRIx32" (type 0x%x info 0x%x lid 0x%x)\n", dw0, type, info, lid);
+	diag("got aen 0x%"PRIx32" (type 0x%x info 0x%x lid 0x%x)", dw0, type, info, lid);
 
 	if (dw0 == expected)
 		aen_received = true;
@@ -79,7 +83,10 @@ static void handle_aen(struct nvme_cqe *cqe)
 static int test_aer(void)
 {
 	union nvme_cmd cmd;
-	struct nvme_cqe cqe;
+	struct nvme_rq *rq;
+	struct nvme_cqe cqe, cqes[2];
+	struct timespec timeout = {.tv_sec = 1};
+	int ret;
 
 	uint32_t temp_thresh;
 
@@ -102,10 +109,10 @@ static int test_aer(void)
 
 	temp_thresh = le32_to_cpu(cqe.dw0);
 
-	diag("current temperature threshold is %"PRIu32" K\n", temp_thresh);
+	diag("current temperature threshold is %"PRIu32" K", temp_thresh);
 
-	if (nvme_aen_enable(&ctrl, handle_aen))
-		err(1, "could not enable aen");
+	if (nvme_aer(&ctrl, NULL))
+		err(1, "could not post aer");
 
 	cmd.features = (struct nvme_cmd_features) {
 		.opcode = nvme_admin_set_features,
@@ -113,10 +120,35 @@ static int test_aer(void)
 		.cdw11 = cpu_to_le32(NVME_SET(200, FEAT_TT_TMPTH)),
 	};
 
-	do {
-		if (nvme_admin(&ctrl, &cmd, NULL, 0x0, &cqe))
-			err(1, "could not set temperature threshold");
-	} while (!aen_received);
+	/*
+	 * We cannot use on the synchronous "oneshot" admin queue helper since
+	 * there is no guarantee that the Set Feature command completes prior to
+	 * the AER being delivered. So drop down a level and handle submission
+	 * and completions on our own.
+	 */
+
+	rq = nvme_rq_acquire(ctrl.adminq.sq);
+	if (!rq)
+		err(1, "could not acquire rq");
+
+	nvme_rq_exec(rq, &cmd);
+
+	ret = nvme_cq_wait_cqes(ctrl.adminq.cq, cqes, 2, &timeout);
+	if (ret < 2 && errno == ETIME)
+		err(errno, "not enough completions in time");
+
+	__foreach(cqe, cqes) {
+		if (cqe->cid & NVME_CID_AER) {
+			/* clear the AER bit so nvme_rq_from_cqe() can find the rq */
+			cqe->cid &= ~NVME_CID_AER;
+
+			handle_aen(cqe);
+		}
+
+		nvme_rq_release(nvme_rq_from_cqe(&ctrl, cqe));
+	}
+
+	assert(aen_received);
 
 	cmd.features = (struct nvme_cmd_features) {
 		.opcode = nvme_admin_set_features,

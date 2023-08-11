@@ -16,6 +16,8 @@
 #define NVME_VERSION(major, minor, tertiary) \
 	(((major) << 16) | ((minor) << 8) | (tertiary))
 
+#define NVME_CID_AER (1 << 15)
+
 /**
  * nvme_crc64 - calculate NVMe CRC64
  * @crc: starting value
@@ -53,27 +55,17 @@ static inline bool nvme_cqe_ok(struct nvme_cqe *cqe)
 int nvme_set_errno_from_cqe(struct nvme_cqe *cqe);
 
 /**
- * nvme_aen_enable - Enable handling of AENs
+ * nvme_aer - Submit an Asynchronous Event Request command
  * @ctrl: Controller reference
- * @handler: A &cqe_handler_fn
+ * @opaque: Opaque data pointer
  *
- * Issue an Asynchronous Event Request command and register @handler to be
- * called when the AER completes.
+ * Issue an Asynchronous Event Request command and associate @opaque with the
+ * request tracker.
  *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_aen_enable(struct nvme_ctrl *ctrl, cqe_handler handler);
-
-/**
- * nvme_aen_handle - Handle an asynchronous event notification
- * @ctrl: Controller reference
- * @cqe: Completion queue entry for the AEN
- *
- * Handle an AEN by calling the handler previously registered with
- * nvme_aen_enable() and post a fresh Asynchronous Event Request command.
- */
-void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe);
+int nvme_aer(struct nvme_ctrl *ctrl, void *opaque);
 
 /**
  * nvme_oneshot - Submit a command and wait for completion
@@ -87,13 +79,11 @@ void nvme_aen_handle(struct nvme_ctrl *ctrl, struct nvme_cqe *cqe);
  * Submit a command and wait for completion in a synchronous manner. If a
  * spurious completion queue entry is posted (i.e., the command identifier is
  * different from the one set in @sqe), the CQE is ignored and an error message
- * is logged. However, if waiting on the admin completion queue and the command
- * identifier indicates that this is an AEN, pass the cqe to a registered
- * handler (if any).
+ * is logged.
  *
  * **Note**: As the name indicate, this function should only be used for "one
- * shot" commands where it is guaranteed that no (non AEN) spurious CQEs are
- * posted on the completion queue.
+ * shot" commands where no spurious CQEs are expected to be posted on the
+ * completion queue.
  *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
