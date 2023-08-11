@@ -10,7 +10,7 @@ if host_machine.cpu_family() == 'x86_64'
   subdir('arch/x86_64')
 endif
 
-core_sources += support_sources
+vfn_sources += support_sources
 
 ticks_test = executable('ticks_test', [support_sources, 'ticks_test.c'],
   link_with: [ccan_lib],

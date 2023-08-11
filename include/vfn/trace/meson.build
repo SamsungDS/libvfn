@@ -6,5 +6,3 @@ trace_events_h = custom_target('events.h',
   install: true,
   install_dir: get_option('includedir') / 'vfn/trace',
 )
-
-trace_sources = [trace_events_h]

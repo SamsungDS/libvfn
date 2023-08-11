@@ -5,22 +5,24 @@ crc64table_h = custom_target('crc64table_h',
   build_by_default: true,
 )
 
-core_sources += crc64table_h
+gen_sources += crc64table_h
 
-vfn_sources += files(
+nvme_sources = files(
   'core.c',
   'queue.c',
   'util.c',
 )
 
 # tests
-rq_test = executable('rq_test', [trace_sources, support_sources, vfn_sources, crc64table_h, 'rq_test.c'],
+rq_test = executable('rq_test', [gen_sources, vfn_sources, nvme_sources, 'rq_test.c'],
   link_with: [ccan_lib],
   include_directories: [ccan_inc, core_inc, vfn_inc],
 )
 
-vfn_sources += files(
+nvme_sources += files(
   'rq.c',
 )
+
+vfn_sources += nvme_sources
 
 test('rq_test', rq_test)

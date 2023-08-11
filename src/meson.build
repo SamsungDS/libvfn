@@ -1,6 +1,6 @@
 core_inc = include_directories('.')
 
-core_sources = [
+gen_sources = [
   # custom (generated) targets
   config_host_h,
   ccan_config_h,
@@ -11,9 +11,7 @@ trace_sources = files(
   'trace.c',
 )
 
-vfn_sources = files(
-  'trace.c',
-)
+vfn_sources = trace_sources
 
 subdir('support')
 subdir('trace')
@@ -24,7 +22,7 @@ subdir('nvme')
 docs_deps += vfn_sources
 
 _vfn_sources = [
-  core_sources,
+  gen_sources,
   vfn_sources,
 ]
 

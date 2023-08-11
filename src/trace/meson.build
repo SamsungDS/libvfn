@@ -6,4 +6,5 @@ trace_events_c = custom_target('trace events source',
 )
 
 trace_sources += trace_events_c
-core_sources += trace_sources
+
+gen_sources += trace_events_c
