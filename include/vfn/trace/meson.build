@@ -1,4 +1,4 @@
-trace_events_h = custom_target('trace events header',
+trace_events_h = custom_target('events.h',
   input: meson.project_source_root() / get_option('trace-events-file'),
   output: 'events.h',
   capture: true,
