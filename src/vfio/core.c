@@ -322,35 +322,15 @@ static int vfio_container_configure_iommu(struct vfio_container *vfio)
 	return 0;
 }
 
-static int vfio_group_set_container(struct vfio_group *group, struct vfio_container *vfio)
+static int vfio_configure_iommu(struct vfio_container *vfio)
 {
-	if (ioctl(group->fd, VFIO_GROUP_SET_CONTAINER, &vfio->fd)) {
-		log_debug("failed to add group to vfio container\n");
-		return -1;
-	}
-
-	if (vfio_container_configure_iommu(vfio)) {
-		int errno_saved = errno;
-
-		log_error("failed to configure iommu: %s\n", strerror(errno_saved));
-
-		if (ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER)) {
-			log_debug("failed to remove group from vfio container\n");
-			return -1;
-		}
-
-		errno = errno_saved;
-
-		return -1;
-	}
-
-	return 0;
+	return vfio_container_configure_iommu(vfio);
 }
 
 int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 {
 	struct vfio_group *group;
-	int i;
+	int i, errno_saved;
 
 	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
 		group = &vfio->groups[i];
@@ -372,15 +352,40 @@ int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 	}
 
 	group->path = strdup(path);
+	if (!group->path)
+		/* errno set by strdup */
+		return -1;
 
 	group->fd = vfio_group_open(group->path);
-	if (group->fd < 0)
-		return -1;
+	if (group->fd < 0) {
+		errno_saved = errno;
+		goto free_group_path;
+	}
 
-	if (vfio_group_set_container(group, vfio))
-		return -1;
+	if (ioctl(group->fd, VFIO_GROUP_SET_CONTAINER, &vfio->fd)) {
+		log_debug("failed to add group to vfio container\n");
+		errno_saved = errno;
+		goto free_group_path;
+	}
+
+	if (vfio_configure_iommu(vfio)) {
+		errno_saved = errno;
+		log_error("failed to configure iommu: %s\n", strerror(errno_saved));
+		goto unset_container;
+	}
 
 	return group->fd;
+
+unset_container:
+	if (ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER))
+		log_debug("failed to remove group from vfio container\n");
+
+free_group_path:
+	free((void *)group->path);
+
+	errno = errno_saved;
+
+	return -1;
 }
 
 int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
