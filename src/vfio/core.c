@@ -280,6 +280,9 @@ static int vfio_container_configure_iommu(struct vfio_container *vfio)
 	__autofree struct vfio_iommu_type1_info *iommu_info = NULL;
 	uint32_t iommu_info_size = sizeof(*iommu_info);
 
+	if (vfio->iommu.nranges)
+		return 0;
+
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
 		log_debug("failed to set vfio iommu type\n");
 		return -1;
@@ -325,9 +328,6 @@ static int vfio_group_set_container(struct vfio_group *group, struct vfio_contai
 		log_debug("failed to add group to vfio container\n");
 		return -1;
 	}
-
-	if (vfio->iommu.nranges)
-		return 0;
 
 	if (vfio_container_configure_iommu(vfio)) {
 		int errno_saved = errno;
