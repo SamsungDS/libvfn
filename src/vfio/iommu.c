@@ -25,10 +25,9 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include <linux/vfio.h>
+#include <linux/types.h>
 
 #include <vfn/vfio/container.h>
 
