@@ -128,21 +128,61 @@ static void iommu_get_cap_dma_avail(struct iommu_state *iommu, struct vfio_info_
 #endif
 
 #ifdef VFIO_IOMMU_INFO_CAPS
-static void iommu_get_capabilities(struct iommu_state *iommu,
-				   struct vfio_iommu_type1_info *iommu_info)
+static int vfio_iommu_uninit(struct vfio_container *vfio);
+static struct vfio_iommu_type1_info *iommu_get_iommu_info(struct vfio_container *vfio)
 {
-	struct vfio_info_cap_header *cap = (void *)iommu_info + iommu_info->cap_offset;
+	struct vfio_iommu_type1_info *iommu_info = NULL;
+	uint32_t iommu_info_size = sizeof(*iommu_info);
+
+	iommu_info = xmalloc(iommu_info_size);
+	memset(iommu_info, 0x0, iommu_info_size);
+	iommu_info->argsz = iommu_info_size;
+
+	if (ioctl(vfio->fd, VFIO_IOMMU_GET_INFO, iommu_info)) {
+		log_debug("failed to get iommu info\n");
+		return NULL;
+	}
+
+	if (iommu_info->argsz > iommu_info_size) {
+		log_info("iommu has extended info\n");
+
+		iommu_info_size = iommu_info->argsz;
+		iommu_info = realloc(iommu_info, iommu_info_size);
+		memset(iommu_info, 0x0, iommu_info_size);
+		iommu_info->argsz = iommu_info_size;
+
+		if (ioctl(vfio->fd, VFIO_IOMMU_GET_INFO, iommu_info)) {
+			log_debug("failed to get extended iommu info\n");
+			vfio_iommu_uninit(vfio);
+			return NULL;
+		}
+	}
+	return iommu_info;
+}
+static int iommu_get_capabilities(struct vfio_container *vfio)
+{
+	__autofree struct vfio_iommu_type1_info *iommu_info = NULL;
+	struct vfio_info_cap_header *cap;
+
+	iommu_info = iommu_get_iommu_info(vfio);
+	if (!iommu_info)
+		return -1;
+
+	if (!(iommu_info->flags & VFIO_IOMMU_INFO_CAPS))
+		return -1;
+
+	cap = (void *)iommu_info + iommu_info->cap_offset;
 
 	do {
 		switch (cap->id) {
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 		case VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE:
-			iommu_get_cap_iova_ranges(iommu, cap);
+			iommu_get_cap_iova_ranges(&vfio->iommu, cap);
 			break;
 #endif
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
 		case VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL:
-			iommu_get_cap_dma_avail(iommu, cap);
+			iommu_get_cap_dma_avail(&vfio->iommu, cap);
 			break;
 #endif
 		default:
@@ -154,6 +194,8 @@ static void iommu_get_capabilities(struct iommu_state *iommu,
 
 		cap = (void *)iommu_info + cap->next;
 	} while (true);
+
+	return 0;
 }
 #endif
 
@@ -277,9 +319,6 @@ static int vfio_iommu_uninit(struct vfio_container *vfio)
 
 static int vfio_container_configure_iommu(struct vfio_container *vfio)
 {
-	__autofree struct vfio_iommu_type1_info *iommu_info = NULL;
-	uint32_t iommu_info_size = sizeof(*iommu_info);
-
 	if (vfio->iommu.nranges)
 		return 0;
 
@@ -290,34 +329,12 @@ static int vfio_container_configure_iommu(struct vfio_container *vfio)
 
 	iommu_init(&vfio->iommu);
 
-	iommu_info = xmalloc(iommu_info_size);
-	memset(iommu_info, 0x0, iommu_info_size);
-	iommu_info->argsz = iommu_info_size;
-
-	if (ioctl(vfio->fd, VFIO_IOMMU_GET_INFO, iommu_info)) {
-		log_debug("failed to get iommu info\n");
+#ifdef VFIO_IOMMU_INFO_CAPS
+	if (iommu_get_capabilities(vfio)) {
+		log_debug("failed to get iommu capabilities\n");
 		return -1;
 	}
-
-	if (iommu_info->argsz > iommu_info_size) {
-		log_info("iommu has extended info\n");
-
-		iommu_info_size = iommu_info->argsz;
-		iommu_info = realloc(iommu_info, iommu_info_size);
-		memset(iommu_info, 0x0, iommu_info_size);
-		iommu_info->argsz = iommu_info_size;
-
-		if (ioctl(vfio->fd, VFIO_IOMMU_GET_INFO, iommu_info)) {
-			log_debug("failed to get extended iommu info\n");
-			vfio_iommu_uninit(vfio);
-			return -1;
-		}
-
-#ifdef VFIO_IOMMU_INFO_CAPS
-		if (iommu_info->flags & VFIO_IOMMU_INFO_CAPS)
-			iommu_get_capabilities(&vfio->iommu, iommu_info);
 #endif
-	}
 
 	return 0;
 }
