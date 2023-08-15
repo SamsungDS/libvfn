@@ -4,6 +4,12 @@ vfio_sources = files(
   'pci.c',
 )
 
+if config_host.get('HAVE_VFIO_DEVICE_BIND_IOMMUFD', false)
+  vfio_sources += files('../iommufd/iommufd.c',)
+else
+  vfio_sources += files('container.c',)
+endif
+
 # tests
 iommu_test = executable('iommu_test', [gen_sources, vfn_sources, vfio_sources, 'iommu_test.c'],
   link_with: [ccan_lib],
