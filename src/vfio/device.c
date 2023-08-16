@@ -49,10 +49,10 @@
 #include "iommu.h"
 #include "container.h"
 
-int vfio_set_irq(struct vfio_device *dev, int *eventfds, unsigned int count)
+int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
 {
 	struct vfio_irq_set *irq_set;
-	uint32_t irq_set_size;
+	size_t irq_set_size;
 	int ret;
 
 	if (!(dev->irq_info.flags & VFIO_IRQ_INFO_EVENTFD)) {
@@ -65,7 +65,7 @@ int vfio_set_irq(struct vfio_device *dev, int *eventfds, unsigned int count)
 	irq_set = xmalloc(irq_set_size);
 
 	*irq_set = (struct vfio_irq_set) {
-		.argsz = irq_set_size,
+		.argsz = (uint32_t)irq_set_size,
 		.flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER,
 		.index = dev->irq_info.index,
 		.start = 0,

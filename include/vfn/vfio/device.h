@@ -33,7 +33,7 @@ struct vfio_device {
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int vfio_set_irq(struct vfio_device *dev, int *eventfds, unsigned int count);
+int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count);
 
 /**
  * vfio_disable_irq - Disable all IRQs
