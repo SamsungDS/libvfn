@@ -49,9 +49,8 @@
 #include "iommu.h"
 #include "container.h"
 
-struct vfio_container vfio_default_container = {
-	.fd = -1,
-};
+
+struct vfio_container vfio_default_container = {};
 
 static int vfio_init_container(struct vfio_container *vfio)
 {
