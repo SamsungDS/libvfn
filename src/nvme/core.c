@@ -72,8 +72,8 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
-	if (qid > ctrl->config.ncqa) {
-		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa);
+	if (qid && qid > ctrl->config.ncqa + 1) {
+		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa + 1);
 
 		errno = EINVAL;
 		return -1;
@@ -142,8 +142,8 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
-	if (qid > ctrl->config.nsqa) {
-		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa);
+	if (qid && qid > ctrl->config.nsqa + 1) {
+		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa + 1);
 
 		errno = EINVAL;
 		return -1;
