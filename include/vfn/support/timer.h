@@ -13,9 +13,9 @@
 #ifndef LIBVFN_SUPPORT_TIMER_H
 #define LIBVFN_SUPPORT_TIMER_H
 
-#define NS_PER_SEC 1E9
-#define US_PER_SEC 1E6
-#define MS_PER_SEC 1E3
+#define NS_PER_SEC 1000000000
+#define US_PER_SEC 1000000
+#define MS_PER_SEC 1000
 
 void __usleep(useconds_t usec);
 

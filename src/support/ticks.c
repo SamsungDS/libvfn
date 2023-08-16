@@ -23,7 +23,7 @@
 
 #include "ccan/time/time.h"
 
-#define TICKS_PER_10MHZ 1E7
+#define TICKS_PER_10MHZ 10000000ULL
 
 uint64_t __vfn_ticks_freq;
 
@@ -54,7 +54,7 @@ static uint64_t measure_ticks_freq(void)
 	ns = time_to_nsec(t_diff);
 
 	secs = (double)ns/NS_PER_SEC;
-	hz = (uint64_t)((end - start)/secs);
+	hz = (uint64_t)((double)(end - start)/secs);
 
 	return ROUND(hz, TICKS_PER_10MHZ);
 }
