@@ -275,7 +275,7 @@ static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
  *
  * Note: Does NOT update the cq head pointer. See nvme_cq_update_head().
  */
-void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n);
+void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n);
 
 /**
  * nvme_cq_wait_cqes - Get an exact number of cqes from a completion queue with
@@ -292,7 +292,6 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
  * Return: ``n`` on success. On timeout, returns the number of cqes reaped
  * (i.e., less than ``n``) and sets ``errno``.
  */
-int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n,
-		      struct timespec *ts);
+int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct timespec *ts);
 
 #endif /* LIBVFN_NVME_QUEUE_H */

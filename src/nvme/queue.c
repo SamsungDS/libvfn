@@ -37,7 +37,7 @@
 
 #include "ccan/time/time.h"
 
-void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
+void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n)
 {
 	struct nvme_cqe *cqe;
 
@@ -50,11 +50,10 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n)
 
 		if (cqes)
 			memcpy(cqes++, cqe, sizeof(*cqe));
-	} while (n);
+	} while (n > 0);
 }
 
-int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n,
-		      struct timespec *ts)
+int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct timespec *ts)
 {
 	struct nvme_cqe *cqe;
 
@@ -74,9 +73,9 @@ int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, unsigned int n,
 
 		if (cqes)
 			memcpy(cqes++, cqe, sizeof(*cqe));
-	} while (n && get_ticks() < timeout);
+	} while (n > 0 && get_ticks() < timeout);
 
-	if (n)
+	if (n > 0)
 		errno = ETIME;
 
 	return n;
