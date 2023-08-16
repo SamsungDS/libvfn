@@ -62,8 +62,7 @@ enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
 };
 
-static int nvme_configure_cq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-			     int vector)
+static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	uint64_t cap;
@@ -132,8 +131,8 @@ static void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	memset(cq, 0x0, sizeof(*cq));
 }
 
-static int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-			     struct nvme_cq *cq, unsigned int UNUSED flags)
+static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
+			     struct nvme_cq *cq, unsigned long UNUSED flags)
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
 	uint64_t cap;
@@ -181,11 +180,11 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned 
 	sq->rqs = zmallocn(qsize - 1, sizeof(struct nvme_rq));
 	sq->rq_top = &sq->rqs[qsize - 2];
 
-	for (unsigned int i = 0; i < qsize - 1; i++) {
+	for (int i = 0; i < qsize - 1; i++) {
 		struct nvme_rq *rq = &sq->rqs[i];
 
 		rq->sq = sq;
-		rq->cid = i;
+		rq->cid = (uint16_t)i;
 
 		rq->page.vaddr = sq->pages.vaddr + (i << __VFN_PAGESHIFT);
 		rq->page.iova = sq->pages.iova + (i << __VFN_PAGESHIFT);
@@ -249,7 +248,7 @@ static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	memset(sq, 0x0, sizeof(*sq));
 }
 
-static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned int sq_flags)
+static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 {
 	int aqa;
 
@@ -288,7 +287,7 @@ static int __admin(struct nvme_ctrl *ctrl, void *sqe)
 	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, NULL, 0x0, NULL);
 }
 
-int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector)
+int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	union nvme_cmd cmd;
@@ -303,14 +302,14 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 
 	if (vector != -1) {
 		qflags |= NVME_CQ_IEN;
-		iv = vector;
+		iv = (uint16_t)vector;
 	}
 
 	cmd.create_cq = (struct nvme_cmd_create_cq) {
 		.opcode = NVME_ADMIN_CREATE_CQ,
 		.prp1   = cpu_to_le64(cq->iova),
-		.qid    = cpu_to_le16(qid),
-		.qsize  = cpu_to_le16(qsize - 1),
+		.qid    = cpu_to_le16((uint16_t)qid),
+		.qsize  = cpu_to_le16((uint16_t)(qsize - 1)),
 		.qflags = cpu_to_le16(qflags),
 		.iv     = cpu_to_le16(iv),
 	};
@@ -318,7 +317,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 	return __admin(ctrl, &cmd);
 }
 
-int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
+int nvme_delete_iocq(struct nvme_ctrl *ctrl, int qid)
 {
 	union nvme_cmd cmd;
 
@@ -326,14 +325,14 @@ int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid)
 
 	cmd.delete_q = (struct nvme_cmd_delete_q) {
 		.opcode = NVME_ADMIN_DELETE_CQ,
-		.qid = cpu_to_le16(qid),
+		.qid = cpu_to_le16((uint16_t)qid),
 	};
 
 	return __admin(ctrl, &cmd);
 }
 
-int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-		     struct nvme_cq *cq, unsigned int flags)
+int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize, struct nvme_cq *cq,
+		     unsigned long flags)
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
 	union nvme_cmd cmd;
@@ -346,16 +345,16 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
 	cmd.create_sq = (struct nvme_cmd_create_sq) {
 		.opcode = NVME_ADMIN_CREATE_SQ,
 		.prp1   = cpu_to_le64(sq->iova),
-		.qid    = cpu_to_le16(qid),
-		.qsize  = cpu_to_le16(qsize - 1),
+		.qid    = cpu_to_le16((uint16_t)qid),
+		.qsize  = cpu_to_le16((uint16_t)(qsize - 1)),
 		.qflags = cpu_to_le16(NVME_Q_PC),
-		.cqid   = cpu_to_le16(cq->id),
+		.cqid   = cpu_to_le16((uint16_t)cq->id),
 	};
 
 	return __admin(ctrl, &cmd);
 }
 
-int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
+int nvme_delete_iosq(struct nvme_ctrl *ctrl, int qid)
 {
 	union nvme_cmd cmd;
 
@@ -363,14 +362,13 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid)
 
 	cmd.delete_q = (struct nvme_cmd_delete_q) {
 		.opcode = NVME_ADMIN_DELETE_SQ,
-		.qid = cpu_to_le16(qid),
+		.qid = cpu_to_le16((uint16_t)qid),
 	};
 
 	return __admin(ctrl, &cmd);
 }
 
-int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector,
-			unsigned int flags)
+int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector, unsigned long flags)
 {
 	if (nvme_create_iocq(ctrl, qid, qsize, vector)) {
 		log_debug("could not create io completion queue\n");
@@ -385,7 +383,7 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int q
 	return 0;
 }
 
-int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid)
+int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, int qid)
 {
 	if (nvme_delete_iosq(ctrl, qid)) {
 		log_debug("could not delete io submission queue\n");
@@ -519,8 +517,6 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	union nvme_cmd cmd = {};
 	struct nvme_cqe cqe;
 
-	unsigned int sq_flags = 0x0;
-
 	if (opts)
 		memcpy(&ctrl->opts, opts, sizeof(*opts));
 	else
@@ -576,7 +572,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	ctrl->sq = zmallocn(ctrl->opts.nsqr + 2, sizeof(struct nvme_sq));
 	ctrl->cq = zmallocn(ctrl->opts.ncqr + 2, sizeof(struct nvme_cq));
 
-	if (nvme_configure_adminq(ctrl, sq_flags)) {
+	if (nvme_configure_adminq(ctrl, 0x0)) {
 		log_debug("could not configure admin queue\n");
 		return -1;
 	}
@@ -602,9 +598,9 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	if (nvme_admin(ctrl, &cmd, NULL, 0x0, &cqe))
 		return -1;
 
-	ctrl->config.nsqa = min_t(uint16_t, ctrl->opts.nsqr,
+	ctrl->config.nsqa = min_t(int, ctrl->opts.nsqr,
 				  NVME_FIELD_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NSQR));
-	ctrl->config.ncqa = min_t(uint16_t, ctrl->opts.ncqr,
+	ctrl->config.ncqa = min_t(int, ctrl->opts.ncqr,
 				  NVME_FIELD_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NCQR));
 
 	len = pgmap(&vaddr, NVME_IDENTIFY_DATA_SIZE);

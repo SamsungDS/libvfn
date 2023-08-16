@@ -24,7 +24,7 @@
  * Note; @nsqr and @ncqr are zeroes based values.
  */
 struct nvme_ctrl_opts {
-	uint16_t nsqr, ncqr;
+	int nsqr, ncqr;
 #define NVME_QUIRK_BROKEN_DBBUF (1 << 0)
 	unsigned int quirks;
 };
@@ -80,7 +80,7 @@ struct nvme_ctrl {
 	 * @config: cached run-time controller configuration
 	 */
 	struct {
-		uint16_t nsqa, ncqa;
+		int nsqa, ncqa;
 	} config;
 
 	/* private: internal */
@@ -147,7 +147,7 @@ int nvme_enable(struct nvme_ctrl *ctrl);
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector);
+int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
 
 /**
  * nvme_delete_iocq - Delete an I/O Completion Queue
@@ -159,7 +159,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid);
+int nvme_delete_iocq(struct nvme_ctrl *ctrl, int qid);
 
 /**
  * nvme_create_iosq - Create an I/O Submission Queue
@@ -179,8 +179,8 @@ int nvme_delete_iocq(struct nvme_ctrl *ctrl, unsigned int qid);
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize,
-		     struct nvme_cq *cq, unsigned int flags);
+int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize,
+		     struct nvme_cq *cq, unsigned long flags);
 
 /**
  * nvme_delete_iosq - Delete an I/O Submission Queue
@@ -192,7 +192,7 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsiz
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid);
+int nvme_delete_iosq(struct nvme_ctrl *ctrl, int qid);
 
 /**
  * nvme_create_ioqpair - Create an I/O Completion/Submission Queue Pair
@@ -212,8 +212,8 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, unsigned int qid);
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int qsize, int vector,
-			unsigned int flags);
+int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector,
+			unsigned long flags);
 
 /**
  * nvme_delete_ioqpair - Delete an I/O Completion/Submission Queue Pair
@@ -225,6 +225,6 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid, unsigned int q
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, unsigned int qid);
+int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, int qid);
 
 #endif /* LIBVFN_NVME_CTRL_H */

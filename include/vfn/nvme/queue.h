@@ -32,7 +32,7 @@ struct nvme_cq {
 
 	int id;
 	uint16_t head;
-	unsigned int qsize;
+	int qsize;
 	size_t entry_size;
 
 	/* memory-mapped register */
@@ -60,7 +60,7 @@ struct nvme_sq {
 	} pages;
 
 	uint16_t tail, ptail;
-	unsigned int qsize;
+	int qsize;
 	int id;
 	size_t entry_size;
 
