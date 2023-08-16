@@ -63,7 +63,7 @@ void trace_set_active(const char *prefix, bool active)
 
 	len = strlen(prefix);
 
-	for (unsigned int i = 0; i < TRACE_NUM_EVENTS; i++) {
+	for (int i = 0; i < TRACE_NUM_EVENTS; i++) {
 		struct trace_event *event = &trace_events[i];
 
 		if (strncmp(prefix, event->name, len) == 0)

@@ -96,7 +96,7 @@ EOF
 
 	print "};\n\n";
 
-	printf "unsigned int TRACE_NUM_EVENTS = %d;\n", scalar @events;
+	printf "int TRACE_NUM_EVENTS = %d;\n", scalar @events;
 }
 
 if ($#ARGV == -1) {

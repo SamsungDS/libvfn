@@ -16,6 +16,6 @@ struct trace_event {
 };
 
 extern struct trace_event trace_events[];
-extern unsigned int TRACE_NUM_EVENTS;
+extern int TRACE_NUM_EVENTS;
 
 void trace_set_active(const char *prefix, bool active);
