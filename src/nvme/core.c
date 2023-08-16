@@ -85,6 +85,10 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 		return -1;
 	}
 
+	if (qid && qsize > ctrl->config.mqes + 1) {
+		log_debug("qsize %d invalid; max qsize is %d\n", qsize, ctrl->config.mqes + 1);
+	}
+
 	*cq = (struct nvme_cq) {
 		.id = qid,
 		.qsize = qsize,
@@ -153,6 +157,10 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		log_debug("qsize must be at least 2\n");
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (qid && qsize > ctrl->config.mqes + 1) {
+		log_debug("qsize %d invalid; max qsize is %d\n", qsize, ctrl->config.mqes + 1);
 	}
 
 	*sq = (struct nvme_sq) {
@@ -555,6 +563,8 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		errno = EINVAL;
 		return -1;
 	}
+
+	ctrl->config.mqes = NVME_FIELD_GET(cap, CAP_MQES);
 
 	if (nvme_reset(ctrl)) {
 		log_debug("could not reset controller\n");

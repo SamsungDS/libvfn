@@ -30,6 +30,8 @@ enum nvme_reg {
 };
 
 enum nvme_cap {
+	NVME_CAP_MQES_SHIFT		= 0,
+	NVME_CAP_MQES_MASK		= 0xffff,
 	NVME_CAP_TO_SHIFT		= 24,
 	NVME_CAP_TO_MASK		= 0xff,
 	NVME_CAP_DSTRD_SHIFT		= 32,
