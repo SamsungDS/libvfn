@@ -106,7 +106,7 @@ static inline bool __nvme_need_mmio(uint16_t eventidx, uint16_t val, uint16_t ol
 
 static inline int nvme_try_dbbuf(uint16_t v, struct nvme_dbbuf *dbbuf)
 {
-	uint16_t old, eventidx;
+	uint32_t old, eventidx;
 
 	if (!dbbuf->doorbell)
 		return -1;
@@ -122,7 +122,7 @@ static inline int nvme_try_dbbuf(uint16_t v, struct nvme_dbbuf *dbbuf)
 
 	eventidx = __LOAD_PTR(uint32_t *, dbbuf->eventidx);
 
-	if (!__nvme_need_mmio(eventidx, v, old)) {
+	if (!__nvme_need_mmio((uint16_t)eventidx, v, (uint16_t)old)) {
 		trace_guard(NVME_SKIP_MMIO) {
 			trace_emit("eventidx %u val %u old %u\n", eventidx, v, old);
 		}
