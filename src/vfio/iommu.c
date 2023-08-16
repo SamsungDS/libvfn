@@ -155,9 +155,9 @@ struct iova_mapping *iommu_find_mapping(struct iommu_state *iommu, void *vaddr)
 	return &n->mapping;
 }
 
-static inline unsigned int random_level(void)
+static inline int random_level(void)
 {
-	unsigned int k = 0;
+	int k = 0;
 
 	while (k < SKIPLIST_LEVELS - 1 && (rand() > (RAND_MAX / 2)))
 		k++;
