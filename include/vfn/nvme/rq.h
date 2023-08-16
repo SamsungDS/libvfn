@@ -229,8 +229,7 @@ int nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov,
-		     unsigned int niov);
+int nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov, int niov);
 
 /**
  * nvme_rq_spin - Spin for completion of the command associated with the request
