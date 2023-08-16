@@ -13,6 +13,10 @@
 #ifndef LIBVFN_VFIO_PCI_H
 #define LIBVFN_VFIO_PCI_H
 
+#ifndef PCI_STD_NUM_BARS
+# define PCI_STD_NUM_BARS 6
+#endif
+
 /**
  * struct vfio_pci_device - vfio pci device state
  * @dev: &struct vfio_device
@@ -26,7 +30,7 @@ struct vfio_pci_device {
 	const char *bdf;
 
 	struct vfio_region_info config_region_info;
-	struct vfio_region_info bar_region_info[6];
+	struct vfio_region_info bar_region_info[PCI_STD_NUM_BARS];
 };
 
 /**
@@ -54,7 +58,7 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf);
  * Return: On success, returns the virtual memory address mapped. On error,
  * returns ``NULL`` and sets ``errno``.
  */
-void *vfio_pci_map_bar(struct vfio_pci_device *pci, unsigned int idx, size_t len, uint64_t offset,
+void *vfio_pci_map_bar(struct vfio_pci_device *pci, int idx, size_t len, uint64_t offset,
 		       int prot);
 
 /**
@@ -68,7 +72,7 @@ void *vfio_pci_map_bar(struct vfio_pci_device *pci, unsigned int idx, size_t len
  * Unmap the virtual memory address, previously mapped to the vfio device memory
  * region identified by @idx.
  */
-void vfio_pci_unmap_bar(struct vfio_pci_device *pci, unsigned int idx, void *mem, size_t len,
+void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t len,
 			uint64_t offset);
 
 /**

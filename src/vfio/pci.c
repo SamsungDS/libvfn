@@ -68,9 +68,9 @@ static int pci_set_bus_master(struct vfio_pci_device *pci)
 	return 0;
 }
 
-static int vfio_pci_init_bar(struct vfio_pci_device *pci, unsigned int idx)
+static int vfio_pci_init_bar(struct vfio_pci_device *pci, int idx)
 {
-	assert(idx < ARRAY_SIZE(pci->bar_region_info));
+	assert(idx < PCI_STD_NUM_BARS);
 
 	pci->bar_region_info[idx] = (struct vfio_region_info) {
 		.index = VFIO_PCI_BAR0_REGION_INDEX + idx,
@@ -113,12 +113,12 @@ static int vfio_pci_init_irq(struct vfio_pci_device *pci)
 	return 0;
 }
 
-void *vfio_pci_map_bar(struct vfio_pci_device *pci, unsigned int idx, size_t len, uint64_t offset,
+void *vfio_pci_map_bar(struct vfio_pci_device *pci, int idx, size_t len, uint64_t offset,
 		       int prot)
 {
 	void *mem;
 
-	assert(idx < ARRAY_SIZE(pci->bar_region_info));
+	assert(idx < PCI_STD_NUM_BARS);
 
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 	offset = pci->bar_region_info[idx].offset + offset;
@@ -132,10 +132,10 @@ void *vfio_pci_map_bar(struct vfio_pci_device *pci, unsigned int idx, size_t len
 	return mem;
 }
 
-void vfio_pci_unmap_bar(struct vfio_pci_device *pci, unsigned int idx, void *mem, size_t len,
+void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t len,
 			uint64_t offset)
 {
-	assert(idx < ARRAY_SIZE(pci->bar_region_info));
+	assert(idx < PCI_STD_NUM_BARS);
 
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 
@@ -191,7 +191,7 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 		return -1;
 	}
 
-	for (unsigned int i = 0; i < ARRAY_SIZE(pci->bar_region_info); i++) {
+	for (int i = 0; i < PCI_STD_NUM_BARS; i++) {
 		if (vfio_pci_init_bar(pci, i))
 			return -1;
 	}
