@@ -107,7 +107,7 @@ static void iommu_get_cap_iova_ranges(struct iommu_state *iommu, struct vfio_inf
 	memcpy(iommu->iova_ranges, cap_iova_range->iova_ranges, len);
 
 	if (logv(LOG_INFO)) {
-		for (unsigned int i = 0; i < iommu->nranges; i++) {
+		for (int i = 0; i < iommu->nranges; i++) {
 			struct vfio_iova_range *r = &iommu->iova_ranges[i];
 
 			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->end);
@@ -350,7 +350,7 @@ static int vfio_group_set_container(struct vfio_group *group, struct vfio_contai
 int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 {
 	struct vfio_group *group;
-	unsigned int i;
+	int i;
 
 	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
 		group = &vfio->groups[i];

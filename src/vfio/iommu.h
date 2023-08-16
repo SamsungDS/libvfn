@@ -22,7 +22,7 @@ struct iova_mapping {
 typedef void (*iova_mapping_iter_fn)(void *opaque, struct iova_mapping *m);
 
 struct iommu_state {
-	unsigned int nranges;
+	int nranges;
 	struct vfio_iova_range *iova_ranges;
 
 	pthread_mutex_t lock;

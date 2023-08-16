@@ -309,7 +309,7 @@ int iommu_allocate_sticky_iova(struct iommu_state *iommu, size_t len, uint64_t *
 		return -1;
 	}
 
-	for (unsigned int i = 0; i < iommu->nranges; i++) {
+	for (int i = 0; i < iommu->nranges; i++) {
 		struct vfio_iova_range *r = &iommu->iova_ranges[i];
 		uint64_t top = iommu->top;
 
