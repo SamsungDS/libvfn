@@ -160,12 +160,12 @@ static inline uint16_t be16_to_cpu(beint16_t be_val)
 
 static inline void put_unaligned_be48(const uint64_t v, uint8_t *p)
 {
-	p[0] = v >> 40;
-	p[1] = v >> 32;
-	p[2] = v >> 24;
-	p[3] = v >> 16;
-	p[4] = v >> 8;
-	p[5] = v;
+	p[0] = (uint8_t)(v >> 40);
+	p[1] = (uint8_t)(v >> 32);
+	p[2] = (uint8_t)(v >> 24);
+	p[3] = (uint8_t)(v >> 16);
+	p[4] = (uint8_t)(v >> 8);
+	p[5] = (uint8_t)(v);
 }
 
 static inline uint64_t get_unaligned_be48(const uint8_t *p)
