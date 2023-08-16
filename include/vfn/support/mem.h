@@ -13,7 +13,7 @@
 #ifndef LIBVFN_SUPPORT_MEM_H
 #define LIBVFN_SUPPORT_MEM_H
 
-extern long __VFN_PAGESIZE;
+extern size_t __VFN_PAGESIZE;
 extern int __VFN_PAGESHIFT;
 
 void backtrace_abort(void);

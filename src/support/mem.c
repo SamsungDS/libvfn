@@ -31,15 +31,15 @@
 #include <vfn/support/log.h>
 #include <vfn/support/mem.h>
 
-long __VFN_PAGESIZE;
+size_t __VFN_PAGESIZE;
 int __VFN_PAGESHIFT;
 
 static void __attribute__((constructor)) init_page_size(void)
 {
 	__VFN_PAGESIZE = sysconf(_SC_PAGESIZE);
-	__VFN_PAGESHIFT = 31 - __builtin_clz(__VFN_PAGESIZE);
+	__VFN_PAGESHIFT = 63u - __builtin_clzl(__VFN_PAGESIZE);
 
-	log_debug("pagesize is %ld\n", __VFN_PAGESIZE);
+	log_debug("pagesize is %zu (shift %d)\n", __VFN_PAGESIZE, __VFN_PAGESHIFT);
 }
 
 void backtrace_abort(void)
