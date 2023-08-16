@@ -24,13 +24,16 @@ static void __attribute__((constructor)) init_log_level(void)
 {
 	char *buf = getenv("LOGV");
 	char *endptr;
+	long v;
 
 	if (!buf)
 		goto set_default;
 
-	__log_state.v = strtoul(buf, &endptr, 0);
-	if (endptr == buf)
+	v = strtol(buf, &endptr, 0);
+	if (endptr == buf || v > LOG_DEBUG)
 		goto set_default;
+
+	__log_state.v = (int)v;
 
 	return;
 

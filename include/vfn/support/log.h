@@ -14,7 +14,7 @@
 #define LIBVFN_SUPPORT_LOG_H
 
 extern struct log_state {
-	unsigned int v;
+	int v;
 } __log_state;
 
 enum __log_level {
@@ -29,7 +29,7 @@ enum __log_level {
  *
  * Return: ``true`` if verbosity is at least @v, ``false`` otherwise.
  */
-static inline bool logv(unsigned int v)
+static inline bool logv(int v)
 {
 	if (atomic_load_acquire(&__log_state.v) >= v)
 		return true;
@@ -41,7 +41,7 @@ static inline bool logv(unsigned int v)
  * logv_set - Set log verbosity level
  * @v: verbosity level
  */
-static inline void logv_set(unsigned int v)
+static inline void logv_set(int v)
 {
 	atomic_store_release(&__log_state.v, v);
 }
@@ -54,7 +54,7 @@ static inline void logv_set(unsigned int v)
  *
  * Log a formatted message to stderr if current verbosity level is at least @v.
  */
-static inline void __attribute__((format(printf, 2, 3))) __log(unsigned int v, char const *fmt, ...)
+static inline void __attribute__((format(printf, 2, 3))) __log(int v, char const *fmt, ...)
 {
 	va_list va;
 
