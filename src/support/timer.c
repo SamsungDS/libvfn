@@ -8,17 +8,18 @@
  */
 
 #include <errno.h>
+#include <unistd.h>
 
 #include <vfn/support/timer.h>
 
 #include "ccan/time/time.h"
 
-void __usleep(unsigned long us)
+void __usleep(useconds_t usec)
 {
 	struct timerel wait[2];
 	int idx = 0;
 
-	wait[0] = time_from_usec(us);
+	wait[0] = time_from_usec(usec);
 
 	while (nanosleep(&wait[idx].ts, &wait[1 - idx].ts) && errno == EINTR)
 		idx = 1 - idx;

@@ -17,6 +17,6 @@
 #define US_PER_SEC 1E6
 #define MS_PER_SEC 1E3
 
-void __usleep(unsigned long us);
+void __usleep(useconds_t usec);
 
 #endif /* LIBVFN_SUPPORT_TIMER_H */
