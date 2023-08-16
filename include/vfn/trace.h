@@ -84,7 +84,7 @@ extern __thread const char *__trace_event;
 #endif
 
 struct trace_ratelimit_state {
-	unsigned int interval, skipped;
+	int interval, skipped;
 	uint64_t tag;
 	uint64_t begin, end;
 };

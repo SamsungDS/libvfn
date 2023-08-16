@@ -47,6 +47,9 @@ vfn_lib = library('vfn', _vfn_sources,
     # sign conversions are useful and generally not a source of bugs
     '-Wno-sign-conversion',
 
+    # don't do bad things on integer overflow
+    '-fno-strict-overflow',
+
     # add -g3 for debug (more symbol information)
     get_option('buildtype') == 'debug' ? ['-g3'] : [],
   ],
