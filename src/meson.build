@@ -34,6 +34,22 @@ vfn_lib = library('vfn', _vfn_sources,
   include_directories: [ccan_inc, core_inc, vfn_inc],
   version: meson.project_version(),
   install: true,
+  c_args: [
+    # add some useful warnings
+    '-Wconversion', '-Wdouble-promotion', '-Wundef', '-Wno-trigraphs',
+
+    # warn about c99 declaration after statement
+    '-Wdeclaration-after-statement',
+
+    # variable-length arrays are a source of bugs
+    '-Wvla',
+
+    # sign conversions are useful and generally not a source of bugs
+    '-Wno-sign-conversion',
+
+    # add -g3 for debug (more symbol information)
+    get_option('buildtype') == 'debug' ? ['-g3'] : [],
+  ],
 )
 
 libvfn_dep = declare_dependency(
