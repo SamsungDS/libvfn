@@ -28,7 +28,7 @@ struct iommu_state {
 	pthread_mutex_t lock;
 
 	uint64_t top, bottom;
-	unsigned int nephemeral;
+	unsigned long long nephemeral;
 
 	void *map;
 };
