@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
 	union nvme_cmd cmd = {};
 	struct nvme_id_ctrl *id_ctrl;
-	struct vfio_iova_range *iova_ranges;
+	struct iova_range *iova_ranges;
 	int num_iova_ranges;
 
 	opt_register_table(opts, NULL);

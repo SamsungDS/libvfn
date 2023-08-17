@@ -56,7 +56,7 @@ static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64
 	size_t len;
 	int bir;
 	void *cmb;
-	struct vfio_iova_range *iova_ranges;
+	struct iova_range *iova_ranges;
 	int num_iova_ranges;
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));

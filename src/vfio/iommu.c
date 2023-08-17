@@ -255,7 +255,7 @@ void iommu_init(struct iommu_state *iommu)
 	iommu->top = VFIO_IOVA_MIN;
 	iommu->bottom = VFIO_IOVA_MAX;
 
-	iommu->iova_ranges = zmalloc(sizeof(struct vfio_iova_range));
+	iommu->iova_ranges = zmalloc(sizeof(struct iova_range));
 	iommu->iova_ranges[0].start = VFIO_IOVA_MIN;
 	iommu->iova_ranges[0].end = VFIO_IOVA_MAX - 1;
 }
@@ -309,7 +309,7 @@ int iommu_allocate_sticky_iova(struct iommu_state *iommu, size_t len, uint64_t *
 	}
 
 	for (int i = 0; i < iommu->nranges; i++) {
-		struct vfio_iova_range *r = &iommu->iova_ranges[i];
+		struct iova_range *r = &iommu->iova_ranges[i];
 		uint64_t top = iommu->top;
 
 		if (r->end < top)
@@ -342,7 +342,7 @@ int iommu_get_ephemeral_iova(struct iommu_state *iommu, size_t len, uint64_t *io
 	}
 
 	for (int i = iommu->nranges - 1; i >= 0; i--) {
-		struct vfio_iova_range *r = &iommu->iova_ranges[i];
+		struct iova_range *r = &iommu->iova_ranges[i];
 		uint64_t bottom = iommu->bottom;
 
 		if (r->start > bottom + 1)

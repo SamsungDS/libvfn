@@ -94,13 +94,11 @@ int vfio_map_vaddr_ephemeral(struct vfio_container *vfio, void *vaddr, size_t le
  */
 int vfio_unmap_ephemeral_iova(struct vfio_container *vfio, size_t len, uint64_t iova);
 
-#ifndef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
-struct vfio_iova_range {
-	__u64	start;
-	__u64	end;
+struct iova_range {
+	__u64 start;
+	__u64 end;
 };
-#endif
 
-int vfio_get_iova_ranges(struct vfio_container *vfio, struct vfio_iova_range **ranges);
+int vfio_get_iova_ranges(struct vfio_container *vfio, struct iova_range **ranges);
 
 #endif /* LIBVFN_VFIO_CONTAINER_H */
