@@ -63,13 +63,11 @@ int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_
  */
 int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len);
 
-#ifndef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
-struct vfio_iova_range {
-	__u64	start;
-	__u64	end;
+struct iova_range {
+	uint64_t start;
+	uint64_t end;
 };
-#endif
 
-int vfio_get_iova_ranges(struct vfio_container *vfio, struct vfio_iova_range **ranges);
+int vfio_get_iova_ranges(struct vfio_container *vfio, struct iova_range **ranges);
 
 #endif /* LIBVFN_VFIO_CONTAINER_H */
