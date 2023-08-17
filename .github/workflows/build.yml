@@ -140,15 +140,19 @@ jobs:
           - {os: 'almalinux', ver: '9'}
           - {os: 'alpine', ver: 'latest'}
           - {os: 'archlinux', ver: 'latest'}
+          - {os: 'debian', ver: 'trixie'}
           - {os: 'debian', ver: 'bookworm'}
           - {os: 'debian', ver: 'bullseye'}
           - {os: 'debian', ver: 'buster'}
+          - {os: 'fedora', ver: 'rawhide'}
+          - {os: 'fedora', ver: '38'}
           - {os: 'fedora', ver: '37'}
-          - {os: 'fedora', ver: '36'}
-          - {os: 'fedora', ver: '35'}
+          - {os: 'rockylinux', ver: '8'}
+          - {os: 'rockylinux', ver: '9'}
+          - {os: 'ubuntu', ver: 'mantic'}
+          - {os: 'ubuntu', ver: 'lunar'}
           - {os: 'ubuntu', ver: 'jammy'}
           - {os: 'ubuntu', ver: 'focal'}
-          - {os: 'ubuntu', ver: 'bionic'}
 
     container:
       image: ${{ matrix.container.os }}:${{ matrix.container.ver }}

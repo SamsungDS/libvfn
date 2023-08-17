@@ -1,1 +1,0 @@
-fedora-setup-35.sh
