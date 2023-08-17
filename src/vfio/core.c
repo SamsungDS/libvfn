@@ -108,9 +108,9 @@ static void iommu_get_cap_iova_ranges(struct iommu_state *iommu, struct vfio_inf
 
 	if (logv(LOG_INFO)) {
 		for (int i = 0; i < iommu->nranges; i++) {
-			struct vfio_iova_range *r = &iommu->iova_ranges[i];
+			struct iova_range *r = &iommu->iova_ranges[i];
 
-			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->end);
+			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n", i, r->start, r->end);
 		}
 	}
 }
@@ -483,7 +483,7 @@ int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
 	return 0;
 }
 
-int vfio_get_iova_ranges(struct vfio_container *vfio, struct vfio_iova_range **ranges)
+int vfio_get_iova_ranges(struct vfio_container *vfio, struct iova_range **ranges)
 {
 	*ranges = vfio->iommu.iova_ranges;
 

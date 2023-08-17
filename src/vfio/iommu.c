@@ -254,7 +254,7 @@ void iommu_init(struct iommu_state *iommu)
 	iommu->nranges = 1;
 	iommu->next = __VFN_IOVA_MIN;
 
-	iommu->iova_ranges = znew_t(struct vfio_iova_range, 1);
+	iommu->iova_ranges = znew_t(struct iova_range, 1);
 	iommu->iova_ranges[0].start = __VFN_IOVA_MIN;
 	iommu->iova_ranges[0].end = IOVA_MAX_39BITS - 1;
 }
@@ -308,7 +308,7 @@ int iommu_get_iova(struct iommu_state *iommu, size_t len, uint64_t *iova)
 	}
 
 	for (int i = 0; i < iommu->nranges; i++) {
-		struct vfio_iova_range *r = &iommu->iova_ranges[i];
+		struct iova_range *r = &iommu->iova_ranges[i];
 		uint64_t next = iommu->next;
 
 		if (r->end < next)
