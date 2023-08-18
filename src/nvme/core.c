@@ -558,7 +558,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
 
-	if (((12u + mpsmin) >> 12) > __VFN_PAGESIZE) {
+	if ((12 + mpsmin) > __VFN_PAGESHIFT) {
 		log_debug("controller minimum page size too large\n");
 		errno = EINVAL;
 		return -1;
