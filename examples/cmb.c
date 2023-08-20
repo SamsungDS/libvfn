@@ -68,19 +68,19 @@ int main(int argc, char **argv)
 	if (nvme_init(&ctrl, bdf, NULL))
 		err(1, "failed to init nvme controller");
 
-	vs = le32_to_cpu(mmio_read32(ctrl.regs + NVME_REG_VS));
+	vs = le32_to_cpu(mmio_read32(ctrl.regs, NVME_REG_VS));
 	if (vs < NVME_VERSION(1, 4, 0))
 		errx(1, "controller must be compliant with at least nvme v1.4.0");
 
-	cap = le64_to_cpu(mmio_read64(ctrl.regs + NVME_REG_CAP));
+	cap = le64_to_cpu(mmio_read64(ctrl.regs, NVME_REG_CAP));
 	if (!NVME_GET(cap, CAP_CMBS))
 		errx(1, "controller memory buffer not supported (cap 0x%lx)", cap);
 
 	/* enable the CMBSZ and CMBLOC registers */
-	mmio_hl_write64(ctrl.regs + NVME_REG_CMBMSC, cpu_to_le64(0x1));
+	mmio_hl_write64(ctrl.regs, NVME_REG_CMBMSC, cpu_to_le64(0x1));
 
-	cmbsz = le32_to_cpu(mmio_read32(ctrl.regs + NVME_REG_CMBSZ));
-	cmbloc = le32_to_cpu(mmio_read32(ctrl.regs + NVME_REG_CMBLOC));
+	cmbsz = le32_to_cpu(mmio_read32(ctrl.regs, NVME_REG_CMBSZ));
+	cmbloc = le32_to_cpu(mmio_read32(ctrl.regs, NVME_REG_CMBLOC));
 
 	szu = 1 << (12 + 4 * NVME_GET(cmbsz, CMBSZ_SZU));
 	len = szu * NVME_GET(cmbsz, CMBSZ_SZ);
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 	printf("assigned cmb base address is 0x%lx\n", cba);
 
 	/* set the base address and enable the memory space */
-	mmio_hl_write64(ctrl.regs + NVME_REG_CMBMSC, cpu_to_le64(cba | 0x3));
+	mmio_hl_write64(ctrl.regs, NVME_REG_CMBMSC, cpu_to_le64(cba | 0x3));
 
 	cmd = (union nvme_cmd) {
 		.opcode = nvme_admin_identify,

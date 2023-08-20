@@ -147,7 +147,7 @@ static inline void nvme_sq_update_tail(struct nvme_sq *sq)
 		/* do not reorder queue entry store with doorbell store */
 		wmb();
 
-		mmio_write32(sq->doorbell, cpu_to_le32(sq->tail));
+		mmio_write32(sq->doorbell, 0, cpu_to_le32(sq->tail));
 	}
 
 	sq->ptail = sq->tail;
@@ -190,7 +190,7 @@ static inline void nvme_cq_update_head(struct nvme_cq *cq)
 	}
 
 	if (nvme_try_dbbuf(cq->head, &cq->dbbuf))
-		mmio_write32(cq->doorbell, cpu_to_le32(cq->head));
+		mmio_write32(cq->doorbell, 0, cpu_to_le32(cq->head));
 }
 
 /**

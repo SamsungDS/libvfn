@@ -66,30 +66,30 @@ int main(int argc, char **argv)
 
 	regs = ctrl.regs;
 
-	cap = le64_to_cpu(mmio_read64(regs + NVME_REG_CAP));
-	vs = le32_to_cpu(mmio_read32(regs + NVME_REG_VS));
-	intms = le32_to_cpu(mmio_read32(regs + NVME_REG_INTMS));
-	intmc = le32_to_cpu(mmio_read32(regs + NVME_REG_INTMC));
-	cc = le32_to_cpu(mmio_read32(regs + NVME_REG_CC));
-	csts = le32_to_cpu(mmio_read32(regs + NVME_REG_CSTS));
-	nssr = le32_to_cpu(mmio_read32(regs + NVME_REG_NSSR));
-	aqa = le32_to_cpu(mmio_read32(regs + NVME_REG_AQA));
-	asq = le64_to_cpu(mmio_read64(regs + NVME_REG_ASQ));
-	acq = le64_to_cpu(mmio_read64(regs + NVME_REG_ACQ));
-	cmbloc = le32_to_cpu(mmio_read32(regs + NVME_REG_CMBLOC));
-	cmbsz = le32_to_cpu(mmio_read32(regs + NVME_REG_CMBSZ));
-	bpinfo = le32_to_cpu(mmio_read32(regs + NVME_REG_BPINFO));
-	bprsel = le32_to_cpu(mmio_read32(regs + NVME_REG_BPRSEL));
-	bpmbl = le64_to_cpu(mmio_read64(regs + NVME_REG_BPMBL));
-	cmbmsc = le64_to_cpu(mmio_read64(regs + NVME_REG_CMBMSC));
-	cmbsts = le32_to_cpu(mmio_read32(regs + NVME_REG_CMBSTS));
-	pmrcap = le32_to_cpu(mmio_read32(regs + NVME_REG_PMRCAP));
-	pmrctl = le32_to_cpu(mmio_read32(regs + NVME_REG_PMRCTL));
-	pmrsts = le32_to_cpu(mmio_read32(regs + NVME_REG_PMRSTS));
-	pmrebs = le32_to_cpu(mmio_read32(regs + NVME_REG_PMREBS));
-	pmrswtp = le32_to_cpu(mmio_read32(regs + NVME_REG_PMRSWTP));
-	pmrmsc = le32_to_cpu(mmio_read32(regs + NVME_REG_PMRMSCL)) |
-		(uint64_t)le32_to_cpu(mmio_read32(regs + NVME_REG_PMRMSCU)) << 32;
+	cap = le64_to_cpu(mmio_read64(regs, NVME_REG_CAP));
+	vs = le32_to_cpu(mmio_read32(regs, NVME_REG_VS));
+	intms = le32_to_cpu(mmio_read32(regs, NVME_REG_INTMS));
+	intmc = le32_to_cpu(mmio_read32(regs, NVME_REG_INTMC));
+	cc = le32_to_cpu(mmio_read32(regs, NVME_REG_CC));
+	csts = le32_to_cpu(mmio_read32(regs, NVME_REG_CSTS));
+	nssr = le32_to_cpu(mmio_read32(regs, NVME_REG_NSSR));
+	aqa = le32_to_cpu(mmio_read32(regs, NVME_REG_AQA));
+	asq = le64_to_cpu(mmio_read64(regs, NVME_REG_ASQ));
+	acq = le64_to_cpu(mmio_read64(regs, NVME_REG_ACQ));
+	cmbloc = le32_to_cpu(mmio_read32(regs, NVME_REG_CMBLOC));
+	cmbsz = le32_to_cpu(mmio_read32(regs, NVME_REG_CMBSZ));
+	bpinfo = le32_to_cpu(mmio_read32(regs, NVME_REG_BPINFO));
+	bprsel = le32_to_cpu(mmio_read32(regs, NVME_REG_BPRSEL));
+	bpmbl = le64_to_cpu(mmio_read64(regs, NVME_REG_BPMBL));
+	cmbmsc = le64_to_cpu(mmio_read64(regs, NVME_REG_CMBMSC));
+	cmbsts = le32_to_cpu(mmio_read32(regs, NVME_REG_CMBSTS));
+	pmrcap = le32_to_cpu(mmio_read32(regs, NVME_REG_PMRCAP));
+	pmrctl = le32_to_cpu(mmio_read32(regs, NVME_REG_PMRCTL));
+	pmrsts = le32_to_cpu(mmio_read32(regs, NVME_REG_PMRSTS));
+	pmrebs = le32_to_cpu(mmio_read32(regs, NVME_REG_PMREBS));
+	pmrswtp = le32_to_cpu(mmio_read32(regs, NVME_REG_PMRSWTP));
+	pmrmsc = le32_to_cpu(mmio_read32(regs, NVME_REG_PMRMSCL)) |
+		(uint64_t)le32_to_cpu(mmio_read32(regs, NVME_REG_PMRMSCU)) << 32;
 
 	printf("%-16s %lx\n",  "CAP", cap);
 	printf("%-16s %lx\n",  "CAP.MQES", NVME_CAP_MQES(cap));
