@@ -28,3 +28,4 @@ struct vfio_container {
 extern struct vfio_container vfio_default_container;
 
 int vfio_get_group_fd(struct vfio_container *vfio, const char *path);
+int vfio_configure_iommu(struct vfio_container *vfio);
