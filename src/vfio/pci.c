@@ -166,6 +166,12 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 	if (gfd < 0)
 		return -1;
 
+	if (vfio_configure_iommu(pci->dev.vfio)) {
+		// JAG: Should we unset group VFIO_GROUP_UNSET_CONTAINER on failure?
+		log_error("failed to configure iommu: %s\n", strerror(errno));
+		return -1;
+	}
+
 	pci->dev.fd = ioctl(gfd, VFIO_GROUP_GET_DEVICE_FD, bdf);
 	if (pci->dev.fd < 0) {
 		log_debug("failed to get device fd\n");

@@ -322,7 +322,7 @@ static int vfio_container_configure_iommu(struct vfio_container *vfio)
 	return 0;
 }
 
-static int vfio_configure_iommu(struct vfio_container *vfio)
+int vfio_configure_iommu(struct vfio_container *vfio)
 {
 	return vfio_container_configure_iommu(vfio);
 }
@@ -359,26 +359,17 @@ int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 	group->fd = vfio_group_open(group->path);
 	if (group->fd < 0) {
 		errno_saved = errno;
+		log_debug("failed to open vfio group\n");
 		goto free_group_path;
 	}
 
 	if (ioctl(group->fd, VFIO_GROUP_SET_CONTAINER, &vfio->fd)) {
-		log_debug("failed to add group to vfio container\n");
 		errno_saved = errno;
+		log_debug("failed to add group to vfio container\n");
 		goto free_group_path;
 	}
 
-	if (vfio_configure_iommu(vfio)) {
-		errno_saved = errno;
-		log_error("failed to configure iommu: %s\n", strerror(errno_saved));
-		goto unset_container;
-	}
-
 	return group->fd;
-
-unset_container:
-	if (ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER))
-		log_debug("failed to remove group from vfio container\n");
 
 free_group_path:
 	free((void *)group->path);
