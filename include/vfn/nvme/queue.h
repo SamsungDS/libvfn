@@ -255,7 +255,8 @@ static inline struct nvme_cqe *nvme_cq_get_cqe(struct nvme_cq *cq)
 		trace_emit("cq %d cid %" PRIu16 "\n", cq->id, cqe->cid);
 	}
 
-	barrier();
+	/* prevent load/load reordering between sfp and head */
+	dma_rmb();
 
 	if (unlikely(++cq->head == cq->qsize)) {
 		cq->head = 0;

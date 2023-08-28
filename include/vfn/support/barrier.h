@@ -16,13 +16,15 @@
 #define barrier() asm volatile("" ::: "memory")
 
 #if defined(__aarch64__)
-# define rmb() asm volatile("dsb ld" ::: "memory")
-# define wmb() asm volatile("dsb st" ::: "memory")
-# define mb()  asm volatile("dsb sy" ::: "memory")
+# define rmb()		asm volatile("dsb ld" ::: "memory")
+# define wmb()		asm volatile("dsb st" ::: "memory")
+# define mb()		asm volatile("dsb sy" ::: "memory")
+# define dma_rmb()	asm volatile("dmb oshld" ::: "memory")
 #elif defined(__x86_64__)
-# define rmb() asm volatile("lfence" ::: "memory")
-# define wmb() asm volatile("sfence" ::: "memory")
-# define mb()  asm volatile("mfence" ::: "memory")
+# define rmb()		asm volatile("lfence" ::: "memory")
+# define wmb()		asm volatile("sfence" ::: "memory")
+# define mb()		asm volatile("mfence" ::: "memory")
+# define dma_rmb()	barrier()
 #else
 # error unsupported architecture
 #endif
