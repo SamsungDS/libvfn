@@ -68,7 +68,7 @@ void setup_io(int argc, char *argv[])
 {
 	setup(argc, argv);
 
-	if (nvme_create_ioqpair(&ctrl, 1, 8, 0x0, -1))
+	if (nvme_create_ioqpair(&ctrl, 1, 8, -1, 0x0))
 		err(1, "could not create i/o queue pair");
 
 	sq = &ctrl.sq[1];

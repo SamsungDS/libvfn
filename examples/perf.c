@@ -295,7 +295,7 @@ int main(int argc, char **argv)
 
 	nsze = le64_to_cpu((__force leint64_t)(id_ns->nsze));
 
-	if (nvme_create_ioqpair(&ctrl, 1, qsize, 0x0, -1))
+	if (nvme_create_ioqpair(&ctrl, 1, qsize, -1, 0x0))
 		err(1, "nvme_create_ioqpair");
 
 	sq = &ctrl.sq[1];
