@@ -187,8 +187,8 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		rq->sq = sq;
 		rq->cid = (uint16_t)i;
 
-		rq->page.vaddr = sq->pages.vaddr + ((uint64_t)i << (12 + ctrl->config.mps));
-		rq->page.iova = sq->pages.iova + ((uint64_t)i << (12 + ctrl->config.mps));
+		rq->page.vaddr = sq->pages.vaddr + (i << __mps_to_pageshift(ctrl->config.mps));
+		rq->page.iova = sq->pages.iova + (i << __mps_to_pageshift(ctrl->config.mps));
 
 		if (i > 0)
 			rq->rq_next = &sq->rqs[i - 1];
@@ -551,11 +551,11 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	ctrl->config.mps = clamp_t(int, __VFN_PAGESHIFT - 12, mpsmin, mpsmax);
 
-	if ((12 + ctrl->config.mps) > __VFN_PAGESHIFT) {
+	if ((__mps_to_pageshift(ctrl->config.mps)) > __VFN_PAGESHIFT) {
 		log_error("mpsmin too large\n");
 		errno = EINVAL;
 		return -1;
-	} else if ((12 + ctrl->config.mps) < __VFN_PAGESHIFT) {
+	} else if ((__mps_to_pageshift(ctrl->config.mps)) < __VFN_PAGESHIFT) {
 		log_info("host memory page size is larger than mpsmax; clamping mps to %d\n",
 			 ctrl->config.mps);
 	}
