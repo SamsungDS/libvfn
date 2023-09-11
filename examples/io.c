@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	ret = nvme_rq_map_prp(rq, &cmd, iova, 0x1000);
+	ret = nvme_rq_map_prp(rq, &cmd, iova, 0x1000, ctrl->config.pgshift);
 	if (ret)
 		err(1, "could not map prps");
 

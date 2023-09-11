@@ -175,7 +175,10 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		sq->dbbuf.eventidx = sqtdbl(ctrl->dbbuf.eventidxs, qid, dstrd);
 	}
 
-	len = pgmapn(&sq->pages.vaddr, qsize, __VFN_PAGESIZE);
+	// We use ctrl->config.pgshift instead of host page size, as we have the
+	// opportunity to pack the allocations. Otherwise a 4K mps on a 16K system,
+	// would result in a 4 times too large allocation.
+	len = pgmapn(&sq->pages.vaddr, qsize, ctrl->config.pgsize);
 
 	if (len < 0)
 		return -1;
@@ -194,8 +197,8 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		rq->sq = sq;
 		rq->cid = (uint16_t)i;
 
-		rq->page.vaddr = sq->pages.vaddr + (i << __VFN_PAGESHIFT);
-		rq->page.iova = sq->pages.iova + (i << __VFN_PAGESHIFT);
+		rq->page.vaddr = sq->pages.vaddr + (i << ctrl->config.pgshift);
+		rq->page.iova = sq->pages.iova + (i << ctrl->config.pgshift);
 
 		if (i > 0)
 			rq->rq_next = &sq->rqs[i - 1];
@@ -220,7 +223,7 @@ unmap_pages:
 	if (vfio_unmap_vaddr(ctrl->pci.dev.vfio, sq->pages.vaddr, NULL))
 		log_debug("failed to unmap vaddr\n");
 
-	pgunmap(sq->pages.vaddr, (size_t)sq->qsize << __VFN_PAGESHIFT);
+	pgunmap(sq->pages.vaddr, (size_t)sq->qsize << ctrl->config.pgshift);
 
 	return -1;
 }
@@ -441,7 +444,7 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	css = NVME_FIELD_GET(cap, CAP_CSS);
 
 	cc =
-		NVME_FIELD_SET(__VFN_PAGESHIFT - 12, CC_MPS) |
+		NVME_FIELD_SET(ctrl->config.pgshift - 12, CC_MPS) |
 		NVME_FIELD_SET(NVME_CC_AMS_RR,	     CC_AMS) |
 		NVME_FIELD_SET(NVME_CC_SHN_NONE,     CC_SHN) |
 		NVME_FIELD_SET(NVME_SQES,            CC_IOSQES) |
@@ -517,7 +520,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 {
 	unsigned long long classcode;
 	uint64_t cap;
-	uint8_t mpsmin;
+	uint8_t mpsmin, mpsmax;
 	uint16_t oacs;
 	ssize_t len;
 	void *vaddr;
@@ -557,11 +560,18 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
+	mpsmax = NVME_FIELD_GET(cap, CAP_MPSMAX);
 
 	if ((12 + mpsmin) > __VFN_PAGESHIFT) {
 		log_debug("controller minimum page size too large\n");
 		errno = EINVAL;
 		return -1;
+	}
+
+	if ((12 + mpsmax) < __VFN_PAGESHIFT) {
+		ctrl->config.pgshift = 12 + mpsmax;
+		ctrl->config.pgsize = 1 << ctrl->config.pgshift;
+		log_debug("controller maximum page size is smaller than native page size. Capping page size to %u\n", ctrl->config.pgsize);
 	}
 
 	ctrl->config.mqes = NVME_FIELD_GET(cap, CAP_MQES);

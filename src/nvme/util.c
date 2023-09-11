@@ -100,7 +100,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 		if (ret)
 			goto release_rq;
 
-		ret = nvme_rq_map_prp(rq, sqe, iova, len);
+		ret = nvme_rq_map_prp(rq, sqe, iova, len, ctrl->config.pgshift);
 		if (ret) {
 			savederrno = errno;
 

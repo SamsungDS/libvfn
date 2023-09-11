@@ -82,6 +82,10 @@ struct nvme_ctrl {
 	struct {
 		int nsqa, ncqa;
 		int mqes;
+		// Page shifts for controller, already including +12 unlike NVMe spec.
+		int pgshift;
+		// Page size for controller in bytes.
+		size_t pgsize;
 	} config;
 
 	/* private: internal */
