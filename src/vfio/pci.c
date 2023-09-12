@@ -145,34 +145,12 @@ void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t 
 
 int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 {
-	__autofree char *group = NULL;
-	int gfd;
-
 	pci->bdf = bdf;
-
-	group = pci_get_iommu_group(bdf);
-	if (!group) {
-		log_error("could not determine iommu group for device %s\n", bdf);
-		errno = EINVAL;
-		return -1;
-	}
-
-	log_info("vfio iommu group is %s\n", group);
 
 	if (!pci->dev.vfio)
 		pci->dev.vfio = &vfio_default_container;
 
-	gfd = vfio_get_group_fd(pci->dev.vfio, group);
-	if (gfd < 0)
-		return -1;
-
-	if (vfio_configure_iommu(pci->dev.vfio)) {
-		// JAG: Should we unset group VFIO_GROUP_UNSET_CONTAINER on failure?
-		log_error("failed to configure iommu: %s\n", strerror(errno));
-		return -1;
-	}
-
-	pci->dev.fd = ioctl(gfd, VFIO_GROUP_GET_DEVICE_FD, bdf);
+	pci->dev.fd = vfio_get_device_fd(pci->dev.vfio, bdf);
 	if (pci->dev.fd < 0) {
 		log_debug("failed to get device fd\n");
 		return -1;

@@ -38,6 +38,7 @@
 #include "vfn/support/compiler.h"
 #include "vfn/support/log.h"
 #include "vfn/support/mem.h"
+#include "vfn/pci/util.h"
 
 #include "vfn/vfio/container.h"
 
@@ -338,11 +339,43 @@ static int vfio_container_configure_iommu(struct vfio_container *vfio)
 	return 0;
 }
 
-int vfio_configure_iommu(struct vfio_container *vfio)
+static int vfio_configure_iommu(struct vfio_container *vfio)
 {
 	return vfio_container_configure_iommu(vfio);
 }
 
+int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
+{
+	__autofree char *group = NULL;
+	int gfd, ret_fd;
+
+	group = pci_get_iommu_group(bdf);
+	if (!group) {
+		log_error("could not determine iommu group for device %s\n", bdf);
+		errno = EINVAL;
+		return -1;
+	}
+	log_info("vfio iommu group is %s\n", group);
+
+	gfd = vfio_get_group_fd(vfio, group);
+	if (gfd < 0)
+		return -1;
+
+	if (vfio_configure_iommu(vfio)) {
+		// JAG: Should we unset group VFIO_GROUP_UNSET_CONTAINER on failure?
+		log_error("failed to configure iommu: %s\n", strerror(errno));
+		return -1;
+	}
+
+	ret_fd = ioctl(gfd, VFIO_GROUP_GET_DEVICE_FD, bdf);
+	if (ret_fd < 0) {
+		log_debug("failed to get device fd\n");
+		return -1;
+	}
+
+	return ret_fd;
+
+}
 int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 {
 	struct vfio_group *group;
