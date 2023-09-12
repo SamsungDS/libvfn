@@ -1,10 +1,11 @@
 support_sources = files(
   'io.c',
   'log.c',
-  'mem.c',
   'ticks.c',
   'timer.c',
 )
+
+subdir('platform/linux')
 
 if host_machine.cpu_family() == 'x86_64'
   subdir('arch/x86_64')
