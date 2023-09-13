@@ -113,7 +113,7 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, v
 	while (nvme_rq_spin(rq, &cqe) < 0) {
 		if (errno == EAGAIN) {
 			log_error("SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
-				  rq->sq->cq->id, cqe.cid);
+				  (uint16_t)rq->sq->cq->id, cqe.cid);
 
 			continue;
 		}

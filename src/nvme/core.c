@@ -187,8 +187,10 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		rq->sq = sq;
 		rq->cid = (uint16_t)i;
 
-		rq->page.vaddr = sq->pages.vaddr + (i << __mps_to_pageshift(ctrl->config.mps));
-		rq->page.iova = sq->pages.iova + (i << __mps_to_pageshift(ctrl->config.mps));
+		rq->page.vaddr = (void *)((uintptr_t)sq->pages.vaddr +
+			((uint64_t)i << __mps_to_pageshift(ctrl->config.mps)));
+		rq->page.iova = sq->pages.iova +
+			((uint64_t)i << __mps_to_pageshift(ctrl->config.mps));
 
 		if (i > 0)
 			rq->rq_next = &sq->rqs[i - 1];
@@ -625,7 +627,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		goto out;
 	}
 
-	oacs = le16_to_cpu(*(leint16_t *)(vaddr + NVME_IDENTIFY_CTRL_OACS));
+	oacs = le16_to_cpu(*(leint16_t *)(((uintptr_t) vaddr) + NVME_IDENTIFY_CTRL_OACS));
 
 	if (oacs & NVME_IDENTIFY_CTRL_OACS_DBCONFIG)
 		ret = nvme_init_dbconfig(ctrl);
