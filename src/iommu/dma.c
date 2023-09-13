@@ -32,7 +32,7 @@ static int iova_cmp(const void *vaddr, const struct skiplist_node *n)
 
 	if (vaddr < m->vaddr)
 		return -1;
-	else if (vaddr >= m->vaddr + m->len)
+	else if ((uintptr_t)vaddr >= ((uintptr_t)m->vaddr) + m->len)
 		return 1;
 
 	return 0;
@@ -106,7 +106,7 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova)
 	struct iova_mapping *m = iova_map_find(&ctx->map, vaddr);
 
 	if (m) {
-		*iova = m->iova + (vaddr - m->vaddr);
+		*iova = m->iova + ((uintptr_t)vaddr - (uintptr_t)m->vaddr);
 		return true;
 	}
 
@@ -173,7 +173,7 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 
 static void __unmap_mapping(void *opaque, struct skiplist_node *n)
 {
-	struct iommu_ctx *ctx = opaque;
+	struct iommu_ctx *ctx = (struct iommu_ctx *)opaque;
 	struct iova_mapping *m = container_of_var(n, m, list);
 
 	log_fatal_if(ctx->ops.dma_unmap(ctx, m->len, m->iova),

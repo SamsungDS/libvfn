@@ -100,7 +100,7 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
 		    size_t len)
 {
 	int prpcount;
-	leint64_t *prplist = rq->page.vaddr;
+	leint64_t *prplist = (leint64_t *)rq->page.vaddr;
 
 	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len,
 			       __mps_to_pageshift(ctrl->config.mps));
@@ -123,7 +123,7 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 		     struct iovec *iov, int niov)
 {
 	int prpcount, _prpcount;
-	leint64_t *prplist = rq->page.vaddr;
+	leint64_t *prplist = (leint64_t *)rq->page.vaddr;
 	uint64_t iova = (uint64_t)iov->iov_base;
 	size_t len = iov->iov_len;
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
@@ -164,7 +164,7 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 
 
 		if (!ALIGNED(iova, pagesize)) {
-			log_error("unaligned iov[%u].iov_base (0x%"PRIx64")\n", i, iova);
+			log_error("unaligned iov[%u].iov_base (0x%" PRIx64 ")\n", i, iova);
 
 			goto invalid;
 		}
@@ -213,7 +213,7 @@ int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
 		if (logv(LOG_DEBUG)) {
 			uint16_t status = le16_to_cpu(cqe.sfp) >> 1;
 
-			log_debug("cqe status 0x%" PRIx16 "\n", status & 0x7ff);
+			log_debug("cqe status 0x%" PRIx16 "\n", (uint16_t)(status & 0x7ff));
 		}
 
 		return nvme_set_errno_from_cqe(&cqe);
