@@ -83,16 +83,4 @@ static inline void __attribute__((format(printf, 2, 3))) __log(int v, char const
 # define log_debug(fmt, ...) __log(LOG_DEBUG, log_fmt(fmt), ##__VA_ARGS__)
 #endif /* DEBUG */
 
-#define log_fatal(fmt, ...) \
-	do { \
-		log_error(fmt, ##__VA_ARGS__); \
-		exit(errno); \
-	} while (0)
-
-#define log_fatal_if(expr, fmt, ...) \
-	do { \
-		if (expr) \
-			log_fatal(fmt, ##__VA_ARGS__); \
-	} while (0)
-
 #endif /* LIBVFN_SUPPORT_LOG_H */
