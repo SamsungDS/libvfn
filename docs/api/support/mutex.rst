@@ -3,4 +3,4 @@
 Autolockable Mutex
 ==================
 
-.. kernel-doc:: include/vfn/support/mutex.h
+.. kernel-doc:: include/vfn/support/platform/linux/mutex.h
