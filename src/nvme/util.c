@@ -89,7 +89,7 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 	struct nvme_cqe cqe;
 	struct nvme_rq *rq;
 	uint64_t iova;
-	int savederrno, ret = 0;
+	int savederrno = 0, ret = 0;
 
 	rq = nvme_rq_acquire_atomic(sq);
 	if (!rq)
