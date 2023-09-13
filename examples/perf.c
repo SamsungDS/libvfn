@@ -23,13 +23,13 @@
 #include "ccan/err/err.h"
 #include "ccan/likely/likely.h"
 #include "ccan/opt/opt.h"
-#include "ccan/time/time.h"
 #include "ccan/str/str.h"
 
 #include "common.h"
 
 static char *io_pattern = "read";
 static unsigned long nsid, runtime_in_seconds = 10, warmup_in_seconds, update_stats_interval = 1;
+static int io_depth = 1, io_qsize = -1;
 
 static struct opt_table opts[] = {
 	OPT_SUBTABLE(opts_base, NULL),
@@ -42,32 +42,28 @@ static struct opt_table opts[] = {
 	OPT_WITH_ARG("-u|--update-stats-interval SECONDS", opt_set_ulongval, opt_show_ulongval,
 		     &update_stats_interval, "update stats interval in seconds"),
 	OPT_WITH_ARG("-p|--io-pattern", opt_set_charp, opt_show_charp, &io_pattern, "i/o pattern"),
+	OPT_WITH_ARG("-q|--io-depth", opt_set_intval, opt_show_intval, &io_depth, "i/o depth"),
+	OPT_WITH_ARG("-n|--io-qsize", opt_set_intval, opt_show_intval, &io_qsize, "i/o queue size"),
 	OPT_ENDTABLE,
 };
 
 static struct nvme_ctrl ctrl;
-
-static const struct nvme_ctrl_opts ctrl_opts = {
-	.nsqr = 63,
-	.ncqr = 63,
-};
 
 static struct nvme_sq *sq;
 static struct nvme_cq *cq;
 
 static bool draining;
 static bool random_io;
-static unsigned int qsize = 64;
 static unsigned int queued;
 static uint64_t nsze, slba;
 
 static struct {
 	unsigned long completed, completed_quantum;
-	struct timerel ttotal, tmin, tmax;
+	uint64_t ttotal, tmin, tmax;
 } stats;
 
 struct iod {
-	struct timemono tsubmit;
+	uint64_t tsubmit;
 	union nvme_cmd cmd;
 };
 
@@ -78,13 +74,13 @@ static void io_issue(struct nvme_rq *rq)
 	if (random_io) {
 		slba = rand() % nsze;
 	} else {
-		if (++slba == nsze)
+		if (unlikely(++slba == nsze))
 			slba = 0;
 	}
 
 	iod->cmd.rw.slba = cpu_to_le64(slba);
 
-	iod->tsubmit = time_mono();
+	iod->tsubmit = get_ticks();
 
 	nvme_sq_post(rq->sq, &iod->cmd);
 
@@ -94,18 +90,18 @@ static void io_issue(struct nvme_rq *rq)
 static void io_complete(struct nvme_rq *rq)
 {
 	struct iod *iod = rq->opaque;
-	struct timerel diff;
+	uint64_t diff;
 
 	stats.completed_quantum++;
 	queued--;
 
-	diff = timemono_since(iod->tsubmit);
-	stats.ttotal = timerel_add(stats.ttotal, diff);
+	diff = get_ticks() - iod->tsubmit;
+	stats.ttotal += diff;
 
-	if (unlikely(time_greater(stats.tmin, diff)))
+	if (unlikely(diff < stats.tmin))
 		stats.tmin = diff;
 
-	if (unlikely(time_greater(diff, stats.tmax)))
+	if (unlikely(diff > stats.tmax))
 		stats.tmax = diff;
 
 	if (unlikely(draining)) {
@@ -124,7 +120,7 @@ static void update_and_print_stats(bool warmup)
 		goto out;
 
 	iops = (float)stats.completed_quantum / update_stats_interval;
-	mbps = iops * 4096 / (1024 * 1024);
+	mbps = iops * 512 / (1024 * 1024);
 
 	printf("%10s iops %10.2f mbps %10.2f\r", warmup ? "(warmup)" : "", iops, mbps);
 	fflush(stdout);
@@ -134,10 +130,10 @@ out:
 	stats.completed_quantum = 0;
 }
 
-static void reap(void)
+static int reap(void)
 {
 	struct nvme_cqe *cqe;
-	unsigned int reaped = 0;
+	int reaped = 0;
 
 	do {
 		cqe = nvme_cq_get_cqe(cq);
@@ -149,33 +145,36 @@ static void reap(void)
 		io_complete(__nvme_rq_from_cqe(sq, cqe));
 	} while (1);
 
-	if (likely(reaped))
+	if (reaped)
 		nvme_cq_update_head(cq);
+
+	return reaped;
 }
 
 static void run(void)
 {
-	struct timeabs deadline, update_stats, now = time_now();
-	struct timerel twarmup, trun, tupdate;
+	uint64_t deadline, update_stats, now = get_ticks();
+	uint64_t twarmup, trun, tupdate;
 	bool warmup = (warmup_in_seconds > 0);
 	float iops, mbps, lavg, lmin, lmax;
 	uint64_t iova;
 	void *mem;
+	unsigned int to_submit = io_depth;
 
-	twarmup = time_from_sec(warmup_in_seconds);
-	trun = time_from_sec(runtime_in_seconds);
-	tupdate = time_from_sec(update_stats_interval);
+	twarmup = warmup_in_seconds * __vfn_ticks_freq;
+	trun = runtime_in_seconds * __vfn_ticks_freq;
+	tupdate = update_stats_interval * __vfn_ticks_freq;
 
-	deadline = timeabs_add(now, warmup ? twarmup : trun);
-	update_stats = timeabs_add(now, tupdate);
+	deadline = now + (warmup ? twarmup : trun);
+	update_stats = now + tupdate;
 
-	stats.tmin = time_from_sec(INT_MAX);
+	stats.tmin = UINT64_MAX;
 
-	mem = mmap(NULL, 64 * 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+	mem = mmap(NULL, io_depth * 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 	if (!mem)
 		err(1, "mmap");
 
-	if (vfio_map_vaddr(ctrl.pci.dev.vfio, mem, 64 * 0x1000, &iova))
+	if (vfio_map_vaddr(ctrl.pci.dev.vfio, mem, io_depth * 0x1000, &iova))
 		err(1, "failed to map");
 
 	do {
@@ -199,27 +198,31 @@ static void run(void)
 		rq->opaque = iod;
 
 		io_issue(rq);
-	} while (true);
+	} while (true && --to_submit > 0);
+
+	nvme_sq_update_tail(sq);
 
 	do {
+
+		while (!reap())
+			;
+
 		nvme_sq_update_tail(sq);
 
-		reap();
+		now = get_ticks();
 
-		now = time_now();
-
-		if (time_after(now, update_stats)) {
-			update_stats = timeabs_add(update_stats, tupdate);
+		if (now > update_stats) {
+			update_stats = update_stats + tupdate;
 			update_and_print_stats(warmup);
 		}
 
-		if (time_after(now, deadline)) {
+		if (now > deadline) {
 			if (warmup) {
 				warmup = false;
 
 				memset(&stats, 0x0, sizeof(stats));
-				stats.tmin = time_from_sec(INT_MAX);
-				deadline = timeabs_add(now, trun);
+				stats.tmin = UINT64_MAX;
+				deadline = now + trun;
 
 				continue;
 			}
@@ -231,10 +234,10 @@ static void run(void)
 	update_and_print_stats(false);
 
 	iops = (float)stats.completed / runtime_in_seconds;
-	mbps = iops * 4096 / (1024 * 1024);
-	lmin = (float)time_to_nsec(stats.tmin) / 1000;
-	lmax = (float)time_to_nsec(stats.tmax) / 1000;
-	lavg = ((float)time_to_nsec(stats.ttotal) / stats.completed) / 1000;
+	mbps = iops * 512 / (1024 * 1024);
+	lmin = (float)stats.tmin * 1000 * 1000 / __vfn_ticks_freq;
+	lmax = (float)stats.tmax * 1000 * 1000 / __vfn_ticks_freq;
+	lavg = ((float)stats.ttotal * 1000 * 1000 / __vfn_ticks_freq) / stats.completed;
 
 	printf("%10s %10s %10s %10s %10s\n", "iops", "mbps", "lavg", "lmin", "lmax");
 	printf("%10.2f %10.2f %10.2f %10.2f %10.2f\n", iops, mbps, lavg, lmin, lmax);
@@ -275,7 +278,10 @@ int main(int argc, char **argv)
 	if (!streq(io_pattern, "read"))
 		errx(1, "unsupported i/o pattern");
 
-	if (nvme_init(&ctrl, bdf, &ctrl_opts))
+	if (io_depth < 1)
+		errx(1, "invalid io-depth");
+
+	if (nvme_init(&ctrl, bdf, NULL))
 		err(1, "failed to init nvme controller");
 
 	len = pgmap(&vaddr, NVME_IDENTIFY_DATA_SIZE);
@@ -295,7 +301,13 @@ int main(int argc, char **argv)
 
 	nsze = le64_to_cpu((__force leint64_t)(id_ns->nsze));
 
-	if (nvme_create_ioqpair(&ctrl, 1, qsize, -1, 0x0))
+	if (io_qsize < 0)
+		io_qsize = ctrl.config.mqes + 1;
+
+	if (io_depth > io_qsize - 1)
+		errx(1, "io-depth must be less than io-qsize");
+
+	if (nvme_create_ioqpair(&ctrl, 1, io_qsize, -1, 0x0))
 		err(1, "nvme_create_ioqpair");
 
 	sq = &ctrl.sq[1];
