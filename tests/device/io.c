@@ -32,6 +32,7 @@
 static int test_io(void)
 {
 	void *vaddr;
+	uint64_t iova;
 	ssize_t len;
 	int ret;
 
@@ -46,7 +47,14 @@ static int test_io(void)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	ret = nvme_oneshot(&ctrl, sq, &cmd, vaddr, len, NULL);
+	ret = vfio_map_vaddr(ctrl.pci.dev.vfio, vaddr, len, &iova, 0x0);
+	if (ret)
+		err(1, "failed to map vaddr");
+
+	ret = nvme_sync(sq, &cmd, iova, len, NULL);
+
+	if (vfio_unmap_vaddr(ctrl.pci.dev.vfio, vaddr, NULL))
+		err(1, "failed to unmap vaddr");
 
 	pgunmap(vaddr, len);
 

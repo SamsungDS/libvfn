@@ -383,14 +383,17 @@ int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 	return group->fd;
 }
 
-int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova)
+int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
+		   unsigned long flags)
 {
 	uint64_t _iova;
 
 	if (iommu_vaddr_to_iova(&vfio->iommu, vaddr, &_iova))
 		goto out;
 
-	if (iommu_allocate_sticky_iova(&vfio->iommu, len, &_iova)) {
+	if (flags & IOMMU_MAP_FIXED_IOVA) {
+		_iova = *iova;
+	} else if (iommu_get_iova(&vfio->iommu, len, &_iova)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
@@ -431,36 +434,6 @@ int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
 	}
 
 	iommu_remove_mapping(&vfio->iommu, m->vaddr);
-
-	return 0;
-}
-
-int vfio_map_vaddr_ephemeral(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova)
-{
-	if (iommu_get_ephemeral_iova(&vfio->iommu, len, iova)) {
-		log_error("failed to allocate ephemeral iova\n");
-
-		return -1;
-	}
-
-	if (vfio_do_map_dma(vfio, vaddr, len, *iova)) {
-		log_error("failed to map dma\n");
-
-		if (atomic_dec_fetch(&vfio->iommu.nephemeral) == 0)
-			iommu_recycle_ephemeral_iovas(&vfio->iommu);
-
-		return -1;
-	}
-
-	return 0;
-}
-
-int vfio_unmap_ephemeral_iova(struct vfio_container *vfio, size_t len, uint64_t iova)
-{
-	if (vfio_do_unmap_dma(vfio, len, iova))
-		return -1;
-
-	iommu_put_ephemeral_iova(&vfio->iommu);
 
 	return 0;
 }
