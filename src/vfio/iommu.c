@@ -253,12 +253,11 @@ void iommu_init(struct iommu_state *iommu)
 	pthread_mutex_init(&iommu->lock, NULL);
 
 	iommu->nranges = 1;
-	iommu->top = VFIO_IOVA_MIN;
-	iommu->bottom = VFIO_IOVA_MAX;
+	iommu->next = __VFN_IOVA_MIN;
 
 	iommu->iova_ranges = znew_t(struct vfio_iova_range, 1);
-	iommu->iova_ranges[0].start = VFIO_IOVA_MIN;
-	iommu->iova_ranges[0].end = VFIO_IOVA_MAX - 1;
+	iommu->iova_ranges[0].start = __VFN_IOVA_MIN;
+	iommu->iova_ranges[0].end = IOVA_MAX_39BITS - 1;
 }
 
 void iommu_clear_with(struct iommu_state *iommu, iova_mapping_iter_fn fn, void *opaque)
@@ -299,7 +298,7 @@ void iommu_remove_mapping(struct iommu_state *iommu, void *vaddr)
 	iova_map_remove(iommu->map, vaddr);
 }
 
-int iommu_allocate_sticky_iova(struct iommu_state *iommu, size_t len, uint64_t *iova)
+int iommu_get_iova(struct iommu_state *iommu, size_t len, uint64_t *iova)
 {
 	__autolock(&iommu->lock);
 
@@ -311,83 +310,25 @@ int iommu_allocate_sticky_iova(struct iommu_state *iommu, size_t len, uint64_t *
 
 	for (int i = 0; i < iommu->nranges; i++) {
 		struct vfio_iova_range *r = &iommu->iova_ranges[i];
-		uint64_t top = iommu->top;
+		uint64_t next = iommu->next;
 
-		if (r->end < top)
+		if (r->end < next)
 			continue;
 
-		top = max_t(uint64_t, top, r->start);
+		next = max_t(uint64_t, next, r->start);
 
-		if (top > r->end || r->end - top + 1 < len)
+		if (next > r->end || r->end - next + 1 < len)
 			continue;
 
-		iommu->top = top + len;
+		iommu->next = next + len;
 
-		*iova = top;
+		*iova = next;
 
 		return 0;
 	}
 
 	errno = ENOMEM;
 	return -1;
-}
-
-int iommu_get_ephemeral_iova(struct iommu_state *iommu, size_t len, uint64_t *iova)
-{
-	__autolock(&iommu->lock);
-
-	if (!ALIGNED(len, __VFN_PAGESIZE)) {
-		log_debug("len is not page aligned\n");
-		errno = EINVAL;
-		return -1;
-	}
-
-	for (int i = iommu->nranges - 1; i >= 0; i--) {
-		struct vfio_iova_range *r = &iommu->iova_ranges[i];
-		uint64_t bottom = iommu->bottom;
-
-		if (r->start > bottom + 1)
-			continue;
-
-		bottom = min_t(uint64_t, bottom, r->end + 1);
-		*iova = bottom - len;
-
-		if ((bottom - len) < r->start || (bottom - len) - r->start < len)
-			continue;
-
-		iommu->bottom = bottom - len;
-		atomic_inc(&iommu->nephemeral);
-
-		return 0;
-	}
-
-	errno = ENOMEM;
-	return -1;
-}
-
-int iommu_allocate_iova(struct iommu_state *iommu, size_t len, uint64_t *iova, bool ephemeral)
-{
-	if (ephemeral)
-		return iommu_get_ephemeral_iova(iommu, len, iova);
-
-	return iommu_allocate_sticky_iova(iommu, len, iova);
-}
-
-void iommu_recycle_ephemeral_iovas(struct iommu_state *iommu)
-{
-	__autolock(&iommu->lock);
-
-	trace_guard(VFIO_IOMMU_RECYCLE_EPHEMERAL_IOVAS) {
-		trace_emit("iova range [0x%" PRIx64 "; 0x%llx]\n", iommu->bottom, VFIO_IOVA_MAX);
-	}
-
-	iommu->bottom = VFIO_IOVA_MAX;
-}
-
-void iommu_put_ephemeral_iova(struct iommu_state *iommu)
-{
-	if (atomic_dec_fetch(&iommu->nephemeral) == 0)
-		iommu_recycle_ephemeral_iovas(iommu);
 }
 
 bool iommu_vaddr_to_iova(struct iommu_state *iommu, void *vaddr, uint64_t *iova)

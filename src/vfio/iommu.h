@@ -10,8 +10,7 @@
  * COPYING and LICENSE files for more information.
  */
 
-#define VFIO_IOVA_MIN 0x0
-#define VFIO_IOVA_MAX (1ULL << 39)
+#define IOVA_MAX_39BITS (1ULL << 39)
 
 struct iova_mapping {
 	void *vaddr;
@@ -27,8 +26,7 @@ struct iommu_state {
 
 	pthread_mutex_t lock;
 
-	uint64_t top, bottom;
-	unsigned long long nephemeral;
+	uint64_t next;
 
 	void *map;
 };
@@ -39,11 +37,7 @@ void iommu_destroy(struct iommu_state *iommu);
 int iommu_add_mapping(struct iommu_state *iommu, void *vaddr, size_t len, uint64_t iova);
 void iommu_remove_mapping(struct iommu_state *iommu, void *vaddr);
 
-int iommu_allocate_sticky_iova(struct iommu_state *iommu, size_t len, uint64_t *iova);
-int iommu_allocate_iova(struct iommu_state *iommu, size_t len, uint64_t *iova, bool ephemeral);
-int iommu_get_ephemeral_iova(struct iommu_state *iommu, size_t len, uint64_t *iova);
-void iommu_put_ephemeral_iova(struct iommu_state *iommu);
-void iommu_recycle_ephemeral_iovas(struct iommu_state *iommu);
+int iommu_get_iova(struct iommu_state *iommu, size_t len, uint64_t *iova);
 bool iommu_vaddr_to_iova(struct iommu_state *iommu, void *vaddr, uint64_t *iova);
 struct iova_mapping *iommu_find_mapping(struct iommu_state *iommu, void *vaddr);
 void iommu_clear(struct iommu_state *iommu);

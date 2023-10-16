@@ -103,7 +103,7 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 
 	len = pgmapn(&cq->vaddr, qsize, 1 << NVME_CQES);
 
-	if (vfio_map_vaddr(ctrl->pci.dev.vfio, cq->vaddr, len, &cq->iova)) {
+	if (vfio_map_vaddr(ctrl->pci.dev.vfio, cq->vaddr, len, &cq->iova, 0x0)) {
 		log_debug("failed to map vaddr\n");
 
 		pgunmap(cq->vaddr, len);
@@ -180,7 +180,7 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	if (len < 0)
 		return -1;
 
-	if (vfio_map_vaddr(ctrl->pci.dev.vfio, sq->pages.vaddr, len, &sq->pages.iova)) {
+	if (vfio_map_vaddr(ctrl->pci.dev.vfio, sq->pages.vaddr, len, &sq->pages.iova, 0x0)) {
 		log_debug("failed to map vaddr\n");
 		goto unmap_pages;
 	}
@@ -205,7 +205,7 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	if (len < 0)
 		goto free_sq_rqs;
 
-	if (vfio_map_vaddr(ctrl->pci.dev.vfio, sq->vaddr, len, &sq->iova)) {
+	if (vfio_map_vaddr(ctrl->pci.dev.vfio, sq->vaddr, len, &sq->iova, 0x0)) {
 		log_debug("failed to map vaddr\n");
 		goto unmap_sq;
 	}
@@ -292,7 +292,7 @@ discard_cq:
 
 static int __admin(struct nvme_ctrl *ctrl, void *sqe)
 {
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, NULL, 0x0, NULL);
+	return nvme_sync(ctrl->adminq.sq, sqe, 0x0, 0, NULL);
 }
 
 int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
@@ -478,13 +478,13 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 	if (pgmap((void **)&ctrl->dbbuf.doorbells, __VFN_PAGESIZE) < 0)
 		return -1;
 
-	if (vfio_map_vaddr(ctrl->pci.dev.vfio, ctrl->dbbuf.doorbells, __VFN_PAGESIZE, &prp1))
+	if (vfio_map_vaddr(ctrl->pci.dev.vfio, ctrl->dbbuf.doorbells, __VFN_PAGESIZE, &prp1, 0x0))
 		return -1;
 
 	if (pgmap((void **)&ctrl->dbbuf.eventidxs, __VFN_PAGESIZE) < 0)
 		return -1;
 
-	if (vfio_map_vaddr(ctrl->pci.dev.vfio, ctrl->dbbuf.eventidxs, __VFN_PAGESIZE, &prp2))
+	if (vfio_map_vaddr(ctrl->pci.dev.vfio, ctrl->dbbuf.eventidxs, __VFN_PAGESIZE, &prp2, 0x0))
 		return -1;
 
 	cmd = (union nvme_cmd) {
@@ -521,6 +521,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	uint16_t oacs;
 	ssize_t len;
 	void *vaddr;
+	int ret;
 
 	union nvme_cmd cmd = {};
 	struct nvme_cqe cqe;
@@ -605,8 +606,10 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		NVME_FIELD_SET(ctrl->opts.nsqr, FEAT_NRQS_NSQR) |
 		NVME_FIELD_SET(ctrl->opts.ncqr, FEAT_NRQS_NCQR));
 
-	if (nvme_admin(ctrl, &cmd, NULL, 0x0, &cqe))
+	if (nvme_admin(ctrl, &cmd, NULL, 0, &cqe)) {
+		log_debug("could not set number of queues\n");
 		return -1;
+	}
 
 	ctrl->config.nsqa = min_t(int, ctrl->opts.nsqr,
 				  NVME_FIELD_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NSQR));
@@ -623,20 +626,21 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		.cns = NVME_IDENTIFY_CNS_CTRL,
 	};
 
-	if (nvme_admin(ctrl, &cmd, vaddr, len, NULL))
-		return -1;
-
+	ret = nvme_admin(ctrl, &cmd, vaddr, len, NULL);
+	if (ret) {
+		log_debug("could not identify\n");
+		goto out;
+	}
 
 	oacs = le16_to_cpu(*(leint16_t *)(vaddr + NVME_IDENTIFY_CTRL_OACS));
 
+	if (oacs & NVME_IDENTIFY_CTRL_OACS_DBCONFIG)
+		ret = nvme_init_dbconfig(ctrl);
+
+out:
 	pgunmap(vaddr, len);
 
-	if (oacs & NVME_IDENTIFY_CTRL_OACS_DBCONFIG) {
-		if (nvme_init_dbconfig(ctrl))
-			return -1;
-	}
-
-	return 0;
+	return ret;
 }
 
 void nvme_close(struct nvme_ctrl *ctrl)

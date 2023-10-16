@@ -96,7 +96,7 @@ static int test_aer(void)
 		.cdw11 = cpu_to_le32(NVME_SET(NVME_SMART_CRIT_TEMPERATURE, FEAT_AE_SMART)),
 	};
 
-	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, NULL))
+	if (nvme_admin(&ctrl, &cmd, NULL, 0, NULL))
 		err(1, "could not set asynchronous event configuration");
 
 	cmd.features = (struct nvme_cmd_features) {
@@ -104,7 +104,7 @@ static int test_aer(void)
 		.fid = NVME_FEAT_FID_TEMP_THRESH,
 	};
 
-	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, &cqe))
+	if (nvme_admin(&ctrl, &cmd, NULL, 0, &cqe))
 		err(1, "could not get current temperature threshold");
 
 	temp_thresh = le32_to_cpu(cqe.dw0);
@@ -156,7 +156,7 @@ static int test_aer(void)
 		.cdw11 = cpu_to_le32(NVME_SET(temp_thresh, FEAT_TT_TMPTH)),
 	};
 
-	if (nvme_admin(&ctrl, &cmd, NULL, 0x0, &cqe))
+	if (nvme_admin(&ctrl, &cmd, NULL, 0, &cqe))
 		err(1, "could not reset temperature threshold");
 
 	if (get_smart_log())

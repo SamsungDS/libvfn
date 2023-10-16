@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 		.dptr.prp1 = cpu_to_le64(hwaddr),
 	};
 
-	if (nvme_admin(&src, &cmd, NULL, 0x0, NULL))
+	if (nvme_admin(&src, &cmd, NULL, 0, NULL))
 		err(1, "nvme_admin");
 
 	id_ctrl = (struct nvme_id_ctrl __force *)cmb;
