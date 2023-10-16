@@ -16,6 +16,7 @@
  * more details.
  */
 
+#include <inttypes.h>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -35,10 +36,10 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 
 	ok1(tsc_new > tsc_old);
 
-	diag("TSC OLD:  %ld\n", tsc_old);
-	diag("TSC NEW:  %ld\n", tsc_new);
-	diag("TSC DIFF: %ld\n", tsc_new - tsc_old);
-	diag("TSC HZ:   %ld\n", __vfn_ticks_freq);
+	diag("TSC OLD:  %" PRIu64 "\n", tsc_old);
+	diag("TSC NEW:  %" PRIu64 "\n", tsc_new);
+	diag("TSC DIFF: %" PRIu64 "\n", tsc_new - tsc_old);
+	diag("TSC HZ:   %" PRIu64 "\n", __vfn_ticks_freq);
 	diag("%.10f\n", (double)(tsc_new - tsc_old) / __vfn_ticks_freq);
 
 	return exit_status();
