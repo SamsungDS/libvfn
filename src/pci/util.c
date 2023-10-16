@@ -160,7 +160,7 @@ char *pci_get_driver(const char *bdf)
 		goto out;
 	}
 
-	driver = mallocn(PATH_MAX, sizeof(char));
+	driver = new_t(char, PATH_MAX);
 
 	ret = readlink(link, driver, PATH_MAX - 1);
 	if (ret < 0) {
@@ -202,7 +202,7 @@ char *pci_get_iommu_group(const char *bdf)
 		goto out;
 	}
 
-	group = mallocn(PATH_MAX, sizeof(char));
+	group = new_t(char, PATH_MAX);
 
 	ret = readlink(link, group, PATH_MAX - 1);
 	if (ret < 0) {

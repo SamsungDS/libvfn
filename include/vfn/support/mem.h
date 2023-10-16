@@ -88,6 +88,12 @@ static inline void *zmallocn(unsigned int n, size_t sz)
 	return zmalloc(n * sz);
 }
 
+#define _new_t(t, n, f) \
+	((t *) f(n, sizeof(t)))
+
+#define new_t(t, n) _new_t(t, n, mallocn)
+#define znew_t(t, n) _new_t(t, n, zmallocn)
+
 ssize_t pgmap(void **mem, size_t sz);
 ssize_t pgmapn(void **mem, unsigned int n, size_t sz);
 

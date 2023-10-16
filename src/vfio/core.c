@@ -77,7 +77,7 @@ static int vfio_init_container(struct vfio_container *vfio)
 
 struct vfio_container *vfio_new(void)
 {
-	struct vfio_container *vfio = zmallocn(1, sizeof(*vfio));
+	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
 
 	if (vfio_init_container(vfio) < 0) {
 		free(vfio);

@@ -192,7 +192,7 @@ static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t 
 		return -1;
 	}
 
-	n = zmalloc(sizeof(*n));
+	n = znew_t(struct iova_map_entry, 1);
 	if (!n) {
 		errno = ENOMEM;
 		return -1;
@@ -246,7 +246,7 @@ static int iova_map_remove(struct iova_map *map, void *vaddr)
 
 void iommu_init(struct iommu_state *iommu)
 {
-	iommu->map = zmalloc(sizeof(struct iova_map));
+	iommu->map = znew_t(struct iova_map, 1);
 
 	iova_map_init(iommu->map);
 
@@ -256,7 +256,7 @@ void iommu_init(struct iommu_state *iommu)
 	iommu->top = VFIO_IOVA_MIN;
 	iommu->bottom = VFIO_IOVA_MAX;
 
-	iommu->iova_ranges = zmalloc(sizeof(struct vfio_iova_range));
+	iommu->iova_ranges = znew_t(struct vfio_iova_range, 1);
 	iommu->iova_ranges[0].start = VFIO_IOVA_MIN;
 	iommu->iova_ranges[0].end = VFIO_IOVA_MAX - 1;
 }
