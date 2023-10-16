@@ -68,11 +68,10 @@ int nvme_set_errno_from_cqe(struct nvme_cqe *cqe);
 int nvme_aer(struct nvme_ctrl *ctrl, void *opaque);
 
 /**
- * nvme_oneshot - Submit a command and wait for completion
- * @ctrl: Controller reference
+ * nvme_sync - Submit a command and wait for completion
  * @sq: Submission queue
  * @sqe: Submission queue entry
- * @buf: Command payload
+ * @iova: Mapped command payload
  * @len: Command payload length
  * @cqe: Completion queue entry to fill
  *
@@ -81,15 +80,14 @@ int nvme_aer(struct nvme_ctrl *ctrl, void *opaque);
  * different from the one set in @sqe), the CQE is ignored and an error message
  * is logged.
  *
- * **Note**: As the name indicate, this function should only be used for "one
- * shot" commands where no spurious CQEs are expected to be posted on the
- * completion queue.
+ * **Note**: This function should only be used for synchronous commands where no
+ * spurious CQEs are expected to be posted on the completion queue. Any spurious
+ * CQEs will be logged and dropped.
  *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
-		 void *cqe);
+int nvme_sync(struct nvme_sq *sq, void *sqe, uint64_t iova, size_t len, void *cqe);
 
 /**
  * nvme_admin - Submit an Admin command and wait for completion
@@ -99,7 +97,8 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
  * @len: Command payload length
  * @cqe: Completion queue entry to fill
  *
- * Shortcut for nvme_oneshot(), submitting to the admin submission queue.
+ * Shortcut for nvme_sync(), mapping the buffer using the reserved iova space
+ * and submitting to the admin submission queue.
  *
  * Return: On success, returns ``0``. On error, returnes ``-1`` and sets
  * ``errno``.

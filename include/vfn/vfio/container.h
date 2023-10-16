@@ -13,6 +13,8 @@
 #ifndef LIBVFN_VFIO_CONTAINER_H
 #define LIBVFN_VFIO_CONTAINER_H
 
+#define __VFN_IOVA_MIN 0x10000
+
 /**
  * vfio_new - create a new vfio container
  *
@@ -22,12 +24,15 @@
  */
 struct vfio_container *vfio_new(void);
 
+#define IOMMU_MAP_FIXED_IOVA (1 << 0)
+
 /**
  * vfio_map_vaddr - map a virtual memory address to an I/O virtual address
  * @vfio: &struct vfio_container
  * @vaddr: virtual memory address to map
  * @len: number of bytes to map
  * @iova: output parameter for mapped I/O virtual address
+ * @flags: combination of IOMMU_MAP flags
  *
  * Allocate an I/O virtual address (iova) and program the IOMMU to create a
  * mapping to the virtual memory address in @vaddr. If @iova is not ``NULL``,
@@ -41,7 +46,8 @@ struct vfio_container *vfio_new(void);
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova);
+int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
+		   unsigned long flags);
 
 /**
  * vfio_unmap_vaddr - unmap a virtual memory address in the IOMMU
@@ -56,43 +62,6 @@ int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
 int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len);
-
-/**
- * vfio_map_vaddr_ephemeral - map a virtual memory address to an I/O virtual address
- * @vfio: &struct vfio_container
- * @vaddr: virtual memory address to map
- * @len: number of bytes to map
- * @iova: output parameter for mapped I/O virtual address
- *
- * Allocate an I/O virtual address (iova) and program the IOMMU to create a
- * mapping to the virtual memory address in @vaddr. If @iova is not ``NULL``,
- * store the allocated iova in the pointee.
- *
- * The mapping will be "ephemeral", that is, it will not be tracked and
- * subsequent calls to either vfio_map_vaddr() or vfio_map_vaddr_ephemeral()
- * will not reuse the mapping. However, in contrast to the IOVAs allocated using
- * vfio_map_vaddr(), ephemeral mappings allows reuse of the allocated IOVAs.
- * Ephemeral mappings should be used for short-lived "one shot" commands and
- * should be unmapped as soon as possible. Any lingering ephemeral mapping will
- * block recycling of ephemeral IOVAs.
- *
- * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
- */
-int vfio_map_vaddr_ephemeral(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova);
-
-/**
- * vfio_unmap_ephemeral_iova - free an ephemeral iova
- * @vfio: &struct vfio_container
- * @len: length of mapping
- * @iova: I/O virtual address to unmap
- *
- * Free the ephemeral I/O virtual address indicated by @iova. If after unmapping
- * the address, there are no ephemeral iovas in use, the library will recycle
- * the ephemeral range.
- *
- * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
- */
-int vfio_unmap_ephemeral_iova(struct vfio_container *vfio, size_t len, uint64_t iova);
 
 #ifndef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 struct vfio_iova_range {

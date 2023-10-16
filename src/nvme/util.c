@@ -83,28 +83,20 @@ int nvme_aer(struct nvme_ctrl *ctrl, void *opaque)
 	return 0;
 }
 
-int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
-		 void *cqe_copy)
+int nvme_sync(struct nvme_sq *sq, void *sqe, uint64_t iova, size_t len, void *cqe_copy)
 {
 	struct nvme_cqe cqe;
 	struct nvme_rq *rq;
-	uint64_t iova;
-	int savederrno = 0, ret = 0;
+	int ret = 0;
 
 	rq = nvme_rq_acquire_atomic(sq);
 	if (!rq)
 		return -1;
 
-	if (buf) {
-		ret = vfio_map_vaddr_ephemeral(ctrl->pci.dev.vfio, buf, len, &iova);
-		if (ret)
-			goto release_rq;
-
+	if (len) {
 		ret = nvme_rq_map_prp(rq, sqe, iova, len);
 		if (ret) {
-			savederrno = errno;
-
-			goto unmap;
+			goto release_rq;
 		}
 	}
 
@@ -118,7 +110,6 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 			continue;
 		}
 
-		savederrno = errno;
 		ret = -1;
 
 		break;
@@ -126,16 +117,6 @@ int nvme_oneshot(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *bu
 
 	if (cqe_copy)
 		memcpy(cqe_copy, &cqe, 1 << NVME_CQES);
-
-unmap:
-	if (buf) {
-		if (vfio_unmap_ephemeral_iova(ctrl->pci.dev.vfio, len, iova)) {
-			log_error("failed to unmap ephemeral iova: %s\n", strerror(errno));
-
-			ret = -1;
-			errno = savederrno;
-		}
-	}
 
 release_rq:
 	nvme_rq_release_atomic(rq);
@@ -145,5 +126,23 @@ release_rq:
 
 int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe_copy)
 {
-	return nvme_oneshot(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
+	uint64_t iova = 0x0;
+	int ret;
+
+	if (len > __VFN_IOVA_MIN) {
+		errno = ENOMEM;
+		return -1;
+	} else if (len) {
+		if (vfio_map_vaddr(ctrl->pci.dev.vfio, buf, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
+			log_debug("failed to map vaddr\n");
+			return -1;
+		}
+	}
+
+	ret = nvme_sync(ctrl->adminq.sq, sqe, iova, len, cqe_copy);
+
+	if (len && vfio_unmap_vaddr(ctrl->pci.dev.vfio, buf, NULL))
+		log_debug("failed to unmap vaddr\n");
+
+	return ret;
 }
