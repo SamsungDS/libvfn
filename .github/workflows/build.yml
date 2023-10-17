@@ -215,7 +215,8 @@ jobs:
 
       - name: copy source
         run: |
-          scp -P 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null build/meson-dist/libvfn-*.tar.xz root@localhost:
+          eval $(vmctl -c "$VMCONFIG" vars | grep -E '^GUEST_SSH_PORT=')
+          scp -P "$GUEST_SSH_PORT" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null build/meson-dist/libvfn-*.tar.xz root@localhost:
 
       - name: build
         run: |
