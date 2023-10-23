@@ -40,7 +40,7 @@
 #include "vfn/vfio/container.h"
 #include "vfn/iommu/dma.h"
 
-#include "vfio/container.h"
+#include "container.h"
 
 struct vfio_container vfio_default_container = {};
 
