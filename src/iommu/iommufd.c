@@ -35,6 +35,7 @@
 #include "vfn/support/compiler.h"
 #include "vfn/support/log.h"
 #include "vfn/support/mem.h"
+#include "vfn/trace.h"
 #include "vfn/pci.h"
 
 #include "vfn/vfio/container.h"
@@ -216,6 +217,10 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 		.ioas_id = vfio->ioas_id
 	};
 
+	trace_guard(IOMMU_MAP_DMA) {
+		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
+	}
+
 	if (ioctl(vfio->fd, IOMMU_IOAS_MAP, &map)) {
 		log_error("failed to map: %s\n", strerror(errno));
 		return -1;
@@ -232,6 +237,10 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 		.iova = iova,
 		.length = len
 	};
+
+	trace_guard(IOMMU_UNMAP_DMA) {
+		trace_emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
+	}
 
 	if (ioctl(vfio->fd, IOMMU_IOAS_UNMAP, &unmap)) {
 		log_error("failed to unmap: %s\n", strerror(errno));
