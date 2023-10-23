@@ -97,4 +97,15 @@ char *pci_get_driver(const char *bdf);
  */
 char *pci_get_iommu_group(const char *bdf);
 
+/**
+ * pci_get_device_vfio_id - get vfio device id
+ * @bdf: pci device identifier ("bus:device:function")
+ *
+ * Get the vfio device id (/sys/bus/pci/devices/%s/vfio-dev/vfio%d) of the
+ * device identified by @bdf.
+ *
+ * Return: The vfio device id name
+ */
+char *pci_get_device_vfio_id(const char *bdf);
+
 #endif /* LIBVFN_PCI_UTIL_H */

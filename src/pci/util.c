@@ -11,6 +11,7 @@
  */
 
 #include <byteswap.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -228,4 +229,54 @@ out:
 	free(group);
 
 	return path;
+}
+
+char *pci_get_device_vfio_id(const char *bdf)
+{
+	__autofree char *path = NULL;
+	char *vfio_id = NULL;
+	struct dirent *dentry;
+	DIR *dp;
+
+	if (asprintf(&path, "/sys/bus/pci/devices/%s/vfio-dev", bdf) < 0) {
+		log_debug("asprintf failed\n");
+		return NULL;
+	}
+
+	dp = opendir(path);
+	if (!dp) {
+		log_debug("could not open directory; is %s bound to vfio-pci?\n", bdf);
+		return NULL;
+	}
+
+	do {
+		/*
+		 * If readdir() reaches the end of the directory stream, errno
+		 * is NOT changed. errno may have been left at some non-zero
+		 * value, so reset it.
+		 */
+		errno = 0;
+
+		dentry = readdir(dp);
+		if (!dentry) {
+			if (!errno)
+				errno = EINVAL;
+
+			goto out;
+		}
+
+		if (strncmp("vfio", dentry->d_name, 4) == 0)
+			break;
+	} while (dentry != NULL);
+
+	if (dentry == NULL) {
+		errno = EINVAL;
+		goto out;
+	}
+
+	vfio_id = strdup(dentry->d_name);
+out:
+	log_fatal_if(closedir(dp), "closedir");
+
+	return vfio_id;
 }
