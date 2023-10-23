@@ -36,5 +36,6 @@ struct vfio_container {
 extern struct vfio_container vfio_default_container;
 
 int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf);
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova);
+int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova,
+		    unsigned long flags);
 int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova);

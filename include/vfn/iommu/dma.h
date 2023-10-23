@@ -16,9 +16,13 @@
 /**
  * enum iommu_map_flags - flags for DMA mapping
  * @IOMMU_MAP_FIXED_IOVA: If cleared, an appropriate IOVA will be allocated
+ * @IOMMU_MAP_WRITABLE: DMA is allowed to write to this mapping
+ * @IOMMU_MAP_READABLE: DMA is allowed to read from this mapping
  */
 enum iommu_map_flags {
 	IOMMU_MAP_FIXED_IOVA = 1 << 0,
+	IOMMU_MAP_NOWRITE = 1 << 1,
+	IOMMU_MAP_NOREAD = 1 << 2,
 };
 
 /**
