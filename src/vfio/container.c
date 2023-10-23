@@ -42,7 +42,6 @@
 #include "vfn/support/mem.h"
 #include "vfn/support/align.h"
 
-#include "iommu.h"
 #include "container.h"
 
 static void UNNEEDED __unmap_mapping(void *opaque, struct iova_mapping *m)
@@ -54,7 +53,7 @@ static void UNNEEDED __unmap_mapping(void *opaque, struct iova_mapping *m)
 }
 
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
-static void iommu_get_cap_iova_ranges(struct iommu_state *iommu, struct vfio_info_cap_header *cap)
+static void iommu_get_cap_iova_ranges(struct iova_map *map, struct vfio_info_cap_header *cap)
 {
 	struct vfio_iommu_type1_info_cap_iova_range *cap_iova_range;
 	size_t len;
@@ -62,13 +61,13 @@ static void iommu_get_cap_iova_ranges(struct iommu_state *iommu, struct vfio_inf
 	cap_iova_range = (struct vfio_iommu_type1_info_cap_iova_range *)cap;
 	len = sizeof(struct vfio_iova_range) * cap_iova_range->nr_iovas;
 
-	iommu->nranges = cap_iova_range->nr_iovas;
-	iommu->iova_ranges = realloc(iommu->iova_ranges, len);
-	memcpy(iommu->iova_ranges, cap_iova_range->iova_ranges, len);
+	map->nranges = cap_iova_range->nr_iovas;
+	map->iova_ranges = realloc(map->iova_ranges, len);
+	memcpy(map->iova_ranges, cap_iova_range->iova_ranges, len);
 
 	if (logv(LOG_INFO)) {
-		for (int i = 0; i < iommu->nranges; i++) {
-			struct iova_range *r = &iommu->iova_ranges[i];
+		for (int i = 0; i < map->nranges; i++) {
+			struct iova_range *r = &map->iova_ranges[i];
 
 			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n",
 				 i, r->start, r->end);
@@ -78,7 +77,7 @@ static void iommu_get_cap_iova_ranges(struct iommu_state *iommu, struct vfio_inf
 #endif //VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
-static void iommu_get_cap_dma_avail(struct iommu_state *iommu, struct vfio_info_cap_header *cap)
+static void iommu_get_cap_dma_avail(struct vfio_info_cap_header *cap)
 {
 	struct vfio_iommu_type1_info_dma_avail *dma;
 
@@ -102,9 +101,9 @@ static int vfio_unmap_all(struct vfio_container *vfio)
 		return -1;
 	}
 
-	iommu_clear(&vfio->iommu);
+	iova_map_clear(&vfio->map);
 #else
-	iommu_clear_with(&vfio->iommu, __unmap_mapping, vfio);
+	iova_map_clear_with(&vfio->map, __unmap_mapping, vfio);
 #endif //VFIO_UNMAP_ALL
 	return 0;
 }
@@ -114,7 +113,7 @@ static int vfio_iommu_uninit(struct vfio_container *vfio)
 	if (vfio_unmap_all(vfio))
 		return -1;
 
-	iommu_destroy(&vfio->iommu);
+	iova_map_destroy(&vfio->map);
 
 	return 0;
 }
@@ -169,12 +168,12 @@ static int iommu_get_capabilities(struct vfio_container *vfio)
 		switch (cap->id) {
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 		case VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE:
-			iommu_get_cap_iova_ranges(&vfio->iommu, cap);
+			iommu_get_cap_iova_ranges(&vfio->map, cap);
 			break;
 #endif
 #ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
 		case VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL:
-			iommu_get_cap_dma_avail(&vfio->iommu, cap);
+			iommu_get_cap_dma_avail(cap);
 			break;
 #endif
 		default:
@@ -193,7 +192,7 @@ static int iommu_get_capabilities(struct vfio_container *vfio)
 
 static int vfio_configure_iommu(struct vfio_container *vfio)
 {
-	if (vfio->iommu.nranges)
+	if (vfio->map.nranges)
 		return 0;
 
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
@@ -201,7 +200,7 @@ static int vfio_configure_iommu(struct vfio_container *vfio)
 		return -1;
 	}
 
-	iommu_init(&vfio->iommu);
+	iova_map_init(&vfio->map);
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 	if (iommu_get_capabilities(vfio)) {

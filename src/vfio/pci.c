@@ -46,7 +46,6 @@
 #include "ccan/minmax/minmax.h"
 #include "ccan/str/str.h"
 
-#include "iommu.h"
 #include "container.h"
 
 static int pci_set_bus_master(struct vfio_pci_device *pci)

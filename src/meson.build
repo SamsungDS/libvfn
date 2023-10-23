@@ -15,6 +15,7 @@ vfn_sources = trace_sources
 
 subdir('support')
 subdir('trace')
+subdir('util')
 subdir('pci')
 subdir('iommu')
 subdir('vfio')

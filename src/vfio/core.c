@@ -27,7 +27,6 @@
 
 #include "vfn/vfio/container.h"
 
-#include "iommu.h"
 #include "container.h"
 
 struct vfio_container vfio_default_container = {};
@@ -55,12 +54,12 @@ int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_
 {
 	uint64_t _iova;
 
-	if (iommu_vaddr_to_iova(&vfio->iommu, vaddr, &_iova))
+	if (iova_map_translate(&vfio->map, vaddr, &_iova))
 		goto out;
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
-	} else if (iommu_get_iova(&vfio->iommu, len, &_iova)) {
+	} else if (iova_map_reserve(&vfio->map, len, &_iova)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
@@ -70,7 +69,7 @@ int vfio_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_
 		return -1;
 	}
 
-	if (iommu_add_mapping(&vfio->iommu, vaddr, len, _iova)) {
+	if (iova_map_add(&vfio->map, vaddr, len, _iova)) {
 		log_debug("failed to add mapping\n");
 		return -1;
 	}
@@ -86,7 +85,7 @@ int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
 {
 	struct iova_mapping *m;
 
-	m = iommu_find_mapping(&vfio->iommu, vaddr);
+	m = iova_map_find(&vfio->map, vaddr);
 	if (!m) {
 		errno = ENOENT;
 		return -1;
@@ -100,14 +99,14 @@ int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
 		return -1;
 	}
 
-	iommu_remove_mapping(&vfio->iommu, m->vaddr);
+	iova_map_remove(&vfio->map, m->vaddr);
 
 	return 0;
 }
 
 int vfio_get_iova_ranges(struct vfio_container *vfio, struct iova_range **ranges)
 {
-	*ranges = vfio->iommu.iova_ranges;
+	*ranges = vfio->map.iova_ranges;
 
-	return vfio->iommu.nranges;
+	return vfio->map.nranges;
 }

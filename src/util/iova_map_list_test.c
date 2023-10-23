@@ -24,31 +24,29 @@
 
 #include <linux/vfio.h>
 
-#include <vfn/vfio/container.h>
-
 #include "ccan/compiler/compiler.h"
 #include "ccan/tap/tap.h"
 
-#include "iommu.c"
+#include "iova_map.c"
 
-static struct iova_map map;
+static struct iova_map_list list;
 
 static int add_one(void *vaddr, size_t len)
 {
-	return iova_map_add(&map, vaddr, len, 0x0);
+	return iova_map_list_add(&list, vaddr, len, 0x0);
 }
 
-static UNNEEDED void iova_map_print(struct iova_map *map)
+static UNNEEDED void iova_map_list_print(struct iova_map_list *list)
 {
-	struct iova_map_entry *n, *next;
+	struct iova_mapping *m, *next;
 
-	skip_list_for_each_safe(map, n, next) {
-		if (n == &map->nil)
+	skiplist_for_each_safe(list, m, next) {
+		if (m == &list->nil)
 			printf("NIL ");
-		else if (n == &map->sentinel)
+		else if (m == &list->sentinel)
 			printf("SENTINEL ");
 		else
-			printf("NODE(vaddr %p len %lu) ", n->mapping.vaddr, n->mapping.len);
+			printf("NODE(vaddr %p len %lu) ", m->vaddr, m->len);
 	}
 
 	printf("\n");
@@ -58,9 +56,9 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 {
 	plan_tests(8);
 
-	iova_map_init(&map);
+	iova_map_list_init(&list);
 
-	ok1(map.height == 0);
+	ok1(list.height == 0);
 
 	/* add ok */
 	ok1(add_one((void *)0x0, 1) == 0);
@@ -75,7 +73,7 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 	ok1(add_one((void *)0x5, 1) == 0);
 
 	/* remove ok */
-	ok1(iova_map_remove(&map, (void *)0x1) == 0);
+	ok1(iova_map_list_remove(&list, (void *)0x1) == 0);
 
 	return exit_status();
 }
