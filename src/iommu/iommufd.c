@@ -10,7 +10,7 @@
  * COPYING and LICENSE files for more information.
  */
 
-#define log_fmt(fmt) "iommufd/core: " fmt
+#define log_fmt(fmt) "iommu/iommufd: " fmt
 
 #include <errno.h>
 #include <fcntl.h>
