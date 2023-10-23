@@ -4,10 +4,11 @@ tests_sources = [
 ]
 
 include_bundle_tests = {
-  'nvme': ['include-bundle-nvme.c'],
-  'vfio': ['include-bundle-vfio.c'],
-  'pci': ['include-bundle-pci.c'],
   'support': ['include-bundle-support.c'],
+  'pci': ['include-bundle-pci.c'],
+  'iommu': ['include-bundle-iommu.c'],
+  'vfio': ['include-bundle-vfio.c'],
+  'nvme': ['include-bundle-nvme.c'],
 }
 
 foreach name, sources : include_bundle_tests

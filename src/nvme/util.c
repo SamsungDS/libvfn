@@ -29,18 +29,10 @@
 #include <linux/vfio.h>
 
 #include <vfn/vfio.h>
-#include <vfn/support/atomic.h>
-#include <vfn/support/barrier.h>
-#include <vfn/support/compiler.h>
-#include <vfn/support/endian.h>
-#include <vfn/support/log.h>
-#include <vfn/support/mmio.h>
+#include <vfn/iommu.h>
+#include <vfn/support.h>
 #include <vfn/trace.h>
-#include <vfn/nvme/types.h>
-#include <vfn/nvme/queue.h>
-#include <vfn/nvme/ctrl.h>
-#include <vfn/nvme/rq.h>
-#include <vfn/nvme/util.h>
+#include <vfn/nvme.h>
 
 #include "types.h"
 
@@ -133,7 +125,7 @@ int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *c
 		errno = ENOMEM;
 		return -1;
 	} else if (len) {
-		if (vfio_map_vaddr(ctrl->pci.dev.vfio, buf, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
+		if (iommu_map_vaddr(ctrl->pci.dev.vfio, buf, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
 			log_debug("failed to map vaddr\n");
 			return -1;
 		}
@@ -141,7 +133,7 @@ int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *c
 
 	ret = nvme_sync(ctrl->adminq.sq, sqe, iova, len, cqe_copy);
 
-	if (len && vfio_unmap_vaddr(ctrl->pci.dev.vfio, buf, NULL))
+	if (len && iommu_unmap_vaddr(ctrl->pci.dev.vfio, buf, NULL))
 		log_debug("failed to unmap vaddr\n");
 
 	return ret;

@@ -29,7 +29,8 @@
 #include <sys/mman.h>
 
 #include <vfn/support.h>
-#include <vfn/vfio/container.h>
+#include <vfn/vfio.h>
+#include <vfn/iommu.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/list/list.h"
