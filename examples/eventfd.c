@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 
 	vaddr = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
-	if (iommu_map_vaddr(ctrl.pci.dev.vfio, vaddr, 0x1000, &iova, 0x0))
+	if (iommu_map_vaddr(__iommu_ctx(&ctrl), vaddr, 0x1000, &iova, 0x0))
 		err(1, "failed to reserve iova");
 
 	rq = nvme_rq_acquire(&ctrl.sq[1]);

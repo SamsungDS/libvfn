@@ -174,7 +174,7 @@ static void run(void)
 	if (!mem)
 		err(1, "mmap");
 
-	if (iommu_map_vaddr(ctrl.pci.dev.vfio, mem, io_depth * 0x1000, &iova, 0x0))
+	if (iommu_map_vaddr(__iommu_ctx(&ctrl), mem, io_depth * 0x1000, &iova, 0x0))
 		err(1, "failed to map");
 
 	do {

@@ -22,6 +22,8 @@ struct vfio_device {
 	struct vfio_irq_info irq_info;
 };
 
+#define __iommu_ctx(x) (((struct vfio_device *)(x))->vfio)
+
 /**
  * vfio_set_irq - Enable IRQs through eventfds
  * @dev: &struct vfio_device
