@@ -39,7 +39,7 @@ int iommu_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 		return -1;
 	}
 
-	if (vfio_do_map_dma(vfio, vaddr, len, _iova)) {
+	if (vfio_do_map_dma(vfio, vaddr, len, _iova, flags)) {
 		log_debug("failed to map dma\n");
 		return -1;
 	}

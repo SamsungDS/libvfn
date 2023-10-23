@@ -374,7 +374,8 @@ static void __attribute__((constructor)) open_default_container(void)
 		log_debug("default container not initialized\n");
 }
 
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova)
+int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova,
+		    unsigned long flags)
 {
 	struct vfio_iommu_type1_dma_map dma_map = {
 		.argsz = sizeof(dma_map),
@@ -383,6 +384,12 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 		.iova  = iova,
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
+
+	if (flags & IOMMU_MAP_NOWRITE)
+		dma_map.flags &= ~VFIO_DMA_MAP_FLAG_WRITE;
+
+	if (flags & IOMMU_MAP_NOREAD)
+		dma_map.flags &= ~VFIO_DMA_MAP_FLAG_READ;
 
 	trace_guard(IOMMU_MAP_DMA) {
 		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
