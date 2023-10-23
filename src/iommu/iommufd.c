@@ -22,7 +22,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <dirent.h>
 #include <limits.h>
 
 #include <sys/ioctl.h>
@@ -36,6 +35,7 @@
 #include "vfn/support/compiler.h"
 #include "vfn/support/log.h"
 #include "vfn/support/mem.h"
+#include "vfn/pci.h"
 
 #include "vfn/vfio/container.h"
 
@@ -82,84 +82,25 @@ ioas_ranges_error:
 	return 0;
 }
 
-static int vfio_iommufd_get_device_id(const char *bdf, unsigned long *id)
-{
-	int err;
-	char *path = NULL, *dir_nptr, *dir_endptr = NULL;
-	DIR *dp;
-	struct dirent *dentry;
-
-	if (asprintf(&path, "/sys/bus/pci/devices/%s/vfio-dev", bdf) < 0) {
-		log_debug("asprintf failed\n");
-		return -1;
-	}
-
-	dp = opendir(path);
-	if (!dp) {
-		err = errno;
-		log_debug("opendir failed (errno %d)\n", err);
-		goto out;
-	}
-
-	do {
-		dentry = readdir(dp);
-		if (!dentry) {
-			err = errno;
-			log_debug("readdir failed (errno %d)\n", err);
-			goto close_dir;
-		}
-
-		if (strncmp("vfio", dentry->d_name, 4) == 0)
-			break;
-	} while (dentry != NULL);
-
-	if (dentry == NULL) {
-		log_debug("directory vfioX was not found in %s\n", path);
-		err = -1;
-		goto close_dir;
-	}
-
-	dir_nptr = dentry->d_name + 4;
-	*id = strtoul(dir_nptr, &dir_endptr, 10);
-	if (*id == ULONG_MAX || dir_nptr == dir_endptr) {
-		err = -1;
-		log_debug("could not extract vfio id from directory\n");
-		goto close_dir;
-	}
-
-	err = 0;
-
-close_dir:
-	if (closedir(dp)) {
-		err = errno;
-		log_debug("closedir failed: %s\n", strerror(err));
-	}
-out:
-	free(path);
-	return err;
-}
-
 static int __vfio_iommufd_get_dev_fd(const char *bdf)
 {
-	unsigned long vfio_id;
+	char __autofree *vfio_id = NULL, __autofree *path = NULL;
 	int devfd;
-	__autofree char *devpath;
 
-	if (vfio_iommufd_get_device_id(bdf, &vfio_id)) {
-		log_error("could not determine the vfio device id for %s\n", bdf);
-		errno = EINVAL;
+	vfio_id = pci_get_device_vfio_id(bdf);
+	if (!vfio_id) {
+		log_debug("could not determine the vfio device id for %s\n", bdf);
 		return -1;
 	}
 
-	if (asprintf(&devpath, "/dev/vfio/devices/vfio%ld", vfio_id) < 0) {
+	if (asprintf(&path, "/dev/vfio/devices/%s", vfio_id) < 0) {
 		log_debug("asprintf failed\n");
-		errno = EINVAL;
 		return -1;
 	}
 
-	devfd = open(devpath, O_RDWR);
+	devfd = open(path, O_RDWR);
 	if (devfd < 0)
-		log_error("could not open %s\n", devpath);
+		log_error("could not open %s\n", path);
 
 	return devfd;
 }
