@@ -28,9 +28,9 @@
 
 #include <linux/vfio.h>
 
-#include <vfn/vfio.h>
-#include <vfn/iommu.h>
 #include <vfn/support.h>
+#include <vfn/iommu.h>
+#include <vfn/vfio.h>
 #include <vfn/trace.h>
 #include <vfn/nvme.h>
 

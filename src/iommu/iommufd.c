@@ -31,27 +31,40 @@
 #include <linux/iommufd.h>
 #include <linux/vfio.h>
 
-#include "vfn/support/atomic.h"
-#include "vfn/support/compiler.h"
-#include "vfn/support/log.h"
-#include "vfn/support/mem.h"
 #include "vfn/trace.h"
+#include "vfn/support.h"
 #include "vfn/pci.h"
+#include "vfn/iommu.h"
 
-#include "vfn/vfio/container.h"
-#include "vfn/iommu/dma.h"
+#include "ccan/list/list.h"
 
-#include "container.h"
+#include "util/iova_map.h"
+#include "context.h"
+#include "trace.h"
 
 static int __iommufd = -1;
 
-struct vfio_container vfio_default_container = {};
+struct iommu_ioas {
+	struct iommu_ctx ctx;
 
-static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
+	char *name;
+	uint32_t id;
+};
+
+static struct iommu_ioas iommufd_default_ioas = {
+	.name = "default",
+};
+
+struct iommu_ctx *get_default_iommu_ctx(void)
+{
+	return &iommufd_default_ioas.ctx;
+}
+
+static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 {
 	struct iommu_ioas_iova_ranges iova_ranges = {
 		.size = sizeof(iova_ranges),
-		.ioas_id = vfio->ioas_id,
+		.ioas_id = ioas->id,
 		.num_iovas = 0,
 	};
 
@@ -61,11 +74,12 @@ static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
 			return -1;
 		}
 
-		vfio->map.nranges = iova_ranges.num_iovas;
-		vfio->map.iova_ranges = reallocn(vfio->map.iova_ranges, iova_ranges.num_iovas,
-						 sizeof(struct iommu_iova_range));
+		ioas->ctx.map.nranges = iova_ranges.num_iovas;
+		ioas->ctx.map.iova_ranges = reallocn(ioas->ctx.map.iova_ranges,
+						     iova_ranges.num_iovas,
+						     sizeof(struct iommu_iova_range));
 
-		iova_ranges.allowed_iovas = (uintptr_t)&vfio->map.iova_ranges->start;
+		iova_ranges.allowed_iovas = (uintptr_t)ioas->ctx.map.iova_ranges;
 
 		if (ioctl(__iommufd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges)) {
 			log_debug("could not get ioas iova ranges\n");
@@ -74,18 +88,21 @@ static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
 	}
 
 	if (logv(LOG_INFO)) {
-		for (int i = 0; i < vfio->map.nranges; i++) {
-			struct iova_range *r = &vfio->map.iova_ranges[i];
+		for (int i = 0; i < ioas->ctx.map.nranges; i++) {
+			struct iova_range *r = &ioas->ctx.map.iova_ranges[i];
 
-			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n", i, r->start, r->end);
+			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n",
+				 i, r->start, r->end);
 		}
 	}
 
 	return 0;
 }
 
-int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
+static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
+	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
+
 	__autofree char *vfio_id = NULL;
 	__autofree char *path = NULL;
 	int devfd;
@@ -99,7 +116,7 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 	struct vfio_device_attach_iommufd_pt attach_data = {
 		.argsz = sizeof(attach_data),
 		.flags = 0,
-		.pt_id = vfio->ioas_id,
+		.pt_id = ioas->id,
 	};
 
 	vfio_id = pci_get_device_vfio_id(bdf);
@@ -129,7 +146,7 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 		goto close_dev;
 	}
 
-	if (iommu_ioas_update_iova_ranges(vfio)) {
+	if (iommu_ioas_update_iova_ranges(ioas)) {
 		log_debug("could not update iova ranges\n");
 		goto close_dev;
 	}
@@ -143,17 +160,17 @@ close_dev:
 	return -1;
 }
 
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
-		    unsigned long flags)
+static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
+				 unsigned long flags)
 {
+	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
+
 	struct iommu_ioas_map map = {
 		.size = sizeof(map),
 		.flags = IOMMU_IOAS_MAP_READABLE | IOMMU_IOAS_MAP_WRITEABLE,
-		.__reserved = 0,
+		.ioas_id = ioas->id,
 		.user_va = (uint64_t)vaddr,
-		.iova = 0,
 		.length = len,
-		.ioas_id = vfio->ioas_id
 	};
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
@@ -191,11 +208,13 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 	return 0;
 }
 
-int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
+static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, size_t len)
 {
+	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
+
 	struct iommu_ioas_unmap unmap = {
 		.size = sizeof(unmap),
-		.ioas_id = vfio->ioas_id,
+		.ioas_id = ioas->id,
 		.iova = iova,
 		.length = len
 	};
@@ -212,7 +231,14 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 	return 0;
 }
 
-static int vfio_init_container(struct vfio_container *vfio)
+struct iommu_ctx_ops iommufd_ops = {
+	.get_device_fd = iommufd_get_device_fd,
+
+	.dma_map = iommu_ioas_do_dma_map,
+	.dma_unmap = iommu_ioas_do_dma_unmap,
+};
+
+static int iommu_ioas_init(struct iommu_ioas *ioas)
 {
 	struct iommu_ioas_alloc alloc_data = {
 		.size = sizeof(alloc_data),
@@ -224,23 +250,27 @@ static int vfio_init_container(struct vfio_container *vfio)
 		return -1;
 	}
 
-	vfio->ioas_id = alloc_data.out_ioas_id;
+	ioas->id = alloc_data.out_ioas_id;
 
-	iova_map_init(&vfio->map);
+	iova_map_init(&ioas->ctx.map);
+
+	memcpy(&ioas->ctx.ops, &iommufd_ops, sizeof(ioas->ctx.ops));
 
 	return 0;
 }
 
-struct vfio_container *vfio_new(void)
+struct iommu_ctx *get_iommu_ctx(const char *name)
 {
-	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
+	struct iommu_ioas *ioas = znew_t(struct iommu_ioas, 1);
 
-	if (vfio_init_container(vfio) < 0) {
-		free(vfio);
+	if (iommu_ioas_init(ioas) < 0) {
+		free(ioas);
 		return NULL;
 	}
 
-	return vfio;
+	ioas->name = strdup(name);
+
+	return &ioas->ctx;
 }
 
 static void __attribute__((constructor)) init_iommufd(void)
@@ -249,6 +279,6 @@ static void __attribute__((constructor)) init_iommufd(void)
 	if (__iommufd < 0)
 		log_fatal("could not open /dev/iommu\n");
 
-	if (vfio_init_container(&vfio_default_container))
-		log_debug("default container not initialized\n");
+	if (iommu_ioas_init(&iommufd_default_ioas))
+		log_fatal("could not initialize default ioas: %s\n", strerror(errno));
 }

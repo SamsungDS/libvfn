@@ -16,13 +16,13 @@
 struct vfio_device {
 	int fd;
 
-	struct vfio_container *vfio;
+	struct iommu_ctx *ctx;
 
 	struct vfio_device_info device_info;
 	struct vfio_irq_info irq_info;
 };
 
-#define __iommu_ctx(x) (((struct vfio_device *)(x))->vfio)
+#define __iommu_ctx(x) (((struct vfio_device *)(x))->ctx)
 
 /**
  * vfio_set_irq - Enable IRQs through eventfds

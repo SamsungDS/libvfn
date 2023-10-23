@@ -45,7 +45,7 @@ enum iommu_map_flags {
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int iommu_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
+int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags);
 
 /**
@@ -60,13 +60,13 @@ int iommu_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int iommu_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len);
+int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len);
 
 struct iova_range {
 	uint64_t start;
 	uint64_t end;
 };
 
-int iommu_get_iova_ranges(struct vfio_container *vfio, struct iova_range **ranges);
+int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iova_range **ranges);
 
 #endif /* LIBVFN_IOMMU_DMA_H */

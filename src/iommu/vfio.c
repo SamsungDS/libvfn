@@ -12,6 +12,8 @@
 
 #define log_fmt(fmt) "iommu/vfio: " fmt
 
+#include <assert.h>
+#include <byteswap.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -22,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -31,8 +34,6 @@
 
 #include <linux/types.h>
 #include <linux/vfio.h>
-
-#include "container.h"
 
 #include "vfn/iommu.h"
 #include "vfn/trace.h"
@@ -44,7 +45,34 @@
 #include "vfn/support/mem.h"
 #include "vfn/support/align.h"
 
-struct vfio_container vfio_default_container = {};
+#include "util/iova_map.h"
+#include "context.h"
+
+struct vfio_group {
+	int fd;
+	struct vfio_container *container;
+
+	char *path;
+};
+
+struct vfio_container {
+	struct iommu_ctx ctx;
+	char *name;
+
+	int fd;
+
+#define VFN_MAX_VFIO_GROUPS 64
+	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
+};
+
+static struct vfio_container vfio_default_container = {
+	.name = "default",
+};
+
+struct iommu_ctx *get_default_iommu_ctx(void)
+{
+	return &vfio_default_container.ctx;
+}
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
@@ -55,7 +83,7 @@ static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
 	size_t len;
 
 	cap_iova_range = (struct vfio_iommu_type1_info_cap_iova_range *)cap;
-	len = sizeof(struct vfio_iova_range) * cap_iova_range->nr_iovas;
+	len = sizeof(struct iova_range) * cap_iova_range->nr_iovas;
 
 	map->nranges = cap_iova_range->nr_iovas;
 	map->iova_ranges = realloc(map->iova_ranges, len);
@@ -131,7 +159,7 @@ static int vfio_iommu_type1_get_capabilities(struct vfio_container *vfio)
 		switch (cap->id) {
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 		case VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE:
-			vfio_iommu_type1_get_cap_iova_ranges(&vfio->map, cap);
+			vfio_iommu_type1_get_cap_iova_ranges(&vfio->ctx.map, cap);
 			break;
 # endif
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
@@ -155,20 +183,20 @@ static int vfio_iommu_type1_get_capabilities(struct vfio_container *vfio)
 
 static int vfio_iommu_type1_init(struct vfio_container *vfio)
 {
-	vfio->flags |= IOMMU_F_REQUIRE_IOVA;
+	vfio->ctx.flags |= IOMMU_F_REQUIRE_IOVA;
 
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
 		log_debug("failed to set vfio iommu type\n");
 		return -1;
 	}
 
-	iova_map_init(&vfio->map);
+	iova_map_init(&vfio->ctx.map);
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 	if (vfio_iommu_type1_get_capabilities(vfio)) {
 		log_debug("failed to get iommu capabilities\n");
 
-		iova_map_destroy(&vfio->map);
+		iova_map_destroy(&vfio->ctx.map);
 
 		return -1;
 	}
@@ -277,8 +305,10 @@ free_group_path:
 	return -1;
 }
 
-int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
+int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
 	__autofree char *group = NULL;
 	int gfd, ret_fd;
 
@@ -303,9 +333,11 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 	return ret_fd;
 }
 
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
-		    unsigned long flags)
+static int vfio_iommu_type1_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
+				       uint64_t *iova, unsigned long flags)
 {
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
 	struct vfio_iommu_type1_dma_map dma_map = {
 		.argsz = sizeof(dma_map),
 		.vaddr = (uintptr_t)vaddr,
@@ -338,8 +370,10 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 	return 0;
 }
 
-int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
+static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, size_t len)
 {
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
 	struct vfio_iommu_type1_dma_unmap dma_unmap = {
 		.argsz = sizeof(dma_unmap),
 		.size = len,
@@ -358,7 +392,14 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 	return 0;
 }
 
-int vfio_init_container(struct vfio_container *vfio)
+struct iommu_ctx_ops vfio_ops = {
+	.get_device_fd = vfio_get_device_fd,
+
+	.dma_map = vfio_iommu_type1_do_dma_map,
+	.dma_unmap = vfio_iommu_type1_do_dma_unmap,
+};
+
+static int vfio_init_container(struct vfio_container *vfio)
 {
 	vfio->fd = open("/dev/vfio/vfio", O_RDWR);
 	if (vfio->fd < 0) {
@@ -375,10 +416,13 @@ int vfio_init_container(struct vfio_container *vfio)
 		log_debug("vfio type 1 iommu not supported\n");
 		return -1;
 	}
+
+	memcpy(&vfio->ctx.ops, &vfio_ops, sizeof(vfio->ctx.ops));
+
 	return 0;
 }
 
-struct vfio_container *vfio_new(void)
+struct iommu_ctx *get_iommu_context(const char *name)
 {
 	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
 
@@ -387,7 +431,9 @@ struct vfio_container *vfio_new(void)
 		return NULL;
 	}
 
-	return vfio;
+	vfio->name = strdup(name);
+
+	return &vfio->ctx;
 }
 
 static void __attribute__((constructor)) open_default_container(void)

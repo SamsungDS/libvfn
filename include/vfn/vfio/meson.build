@@ -1,5 +1,4 @@
 vfn_vfio_headers = files([
-  'container.h',
   'device.h',
   'pci.h',
 ])
