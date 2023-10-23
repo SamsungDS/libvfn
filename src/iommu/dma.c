@@ -34,12 +34,13 @@ int iommu_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
-	} else if (iova_map_reserve(&vfio->map, len, &_iova)) {
+	} else if (vfio->flags & IOMMU_F_REQUIRE_IOVA &&
+		   iova_map_reserve(&vfio->map, len, &_iova)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
 
-	if (vfio_do_map_dma(vfio, vaddr, len, _iova, flags)) {
+	if (vfio_do_map_dma(vfio, vaddr, len, &_iova, flags)) {
 		log_debug("failed to map dma\n");
 		return -1;
 	}

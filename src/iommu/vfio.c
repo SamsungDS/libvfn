@@ -193,6 +193,8 @@ static int iommu_get_capabilities(struct vfio_container *vfio)
 
 static int vfio_configure_iommu(struct vfio_container *vfio)
 {
+	vfio->flags |= IOMMU_F_REQUIRE_IOVA;
+
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
 		log_debug("failed to set vfio iommu type\n");
 		return -1;
@@ -374,14 +376,14 @@ static void __attribute__((constructor)) open_default_container(void)
 		log_debug("default container not initialized\n");
 }
 
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova,
+int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
 {
 	struct vfio_iommu_type1_dma_map dma_map = {
 		.argsz = sizeof(dma_map),
 		.vaddr = (uintptr_t)vaddr,
 		.size  = len,
-		.iova  = iova,
+		.iova  = *iova,
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
 
@@ -392,10 +394,10 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 		dma_map.flags &= ~VFIO_DMA_MAP_FLAG_READ;
 
 	trace_guard(IOMMU_MAP_DMA) {
-		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
+		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, *iova, len);
 	}
 
-	if (!ALIGNED(((uintptr_t)vaddr | len | iova), __VFN_PAGESIZE)) {
+	if (!ALIGNED(((uintptr_t)vaddr | len | *iova), __VFN_PAGESIZE)) {
 		log_debug("vaddr, len or iova not page aligned\n");
 		errno = EINVAL;
 		return -1;

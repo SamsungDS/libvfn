@@ -204,19 +204,23 @@ static void __attribute__((constructor)) open_default_container(void)
 		log_debug("default container not initialized\n");
 }
 
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova,
+int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
 {
 	struct iommu_ioas_map map = {
 		.size = sizeof(map),
-		.flags = IOMMU_IOAS_MAP_READABLE | IOMMU_IOAS_MAP_WRITEABLE |
-			 IOMMU_IOAS_MAP_FIXED_IOVA,
+		.flags = IOMMU_IOAS_MAP_READABLE | IOMMU_IOAS_MAP_WRITEABLE,
 		.__reserved = 0,
 		.user_va = (uint64_t)vaddr,
-		.iova = iova,
+		.iova = 0,
 		.length = len,
 		.ioas_id = vfio->ioas_id
 	};
+
+	if (flags & IOMMU_MAP_FIXED_IOVA) {
+		map.flags |= IOMMU_IOAS_MAP_FIXED_IOVA;
+		map.iova = *iova;
+	}
 
 	if (flags & IOMMU_MAP_NOWRITE)
 		map.flags &= ~IOMMU_IOAS_MAP_WRITEABLE;
@@ -225,12 +229,24 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 		map.flags &= ~IOMMU_IOAS_MAP_READABLE;
 
 	trace_guard(IOMMU_MAP_DMA) {
-		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, iova, len);
+		if (flags & IOMMU_MAP_FIXED_IOVA)
+			trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, *iova, len);
+		else
+			trace_emit("vaddr %p iova AUTO len %zu\n", vaddr, len);
 	}
 
 	if (ioctl(vfio->fd, IOMMU_IOAS_MAP, &map)) {
 		log_error("failed to map: %s\n", strerror(errno));
 		return -1;
+	}
+
+	if (flags & IOMMU_MAP_FIXED_IOVA)
+		return 0;
+
+	*iova = map.iova;
+
+	trace_guard(IOMMU_MAP_DMA) {
+		trace_emit("allocated iova 0x%" PRIx64 "\n", *iova);
 	}
 
 	return 0;
