@@ -39,7 +39,6 @@
 
 #include "vfn/vfio/container.h"
 
-#include "vfio/iommu.h"
 #include "vfio/container.h"
 
 static int vfio_configure_iommu(struct vfio_container *vfio)
@@ -51,18 +50,18 @@ static int vfio_configure_iommu(struct vfio_container *vfio)
 		.num_iovas = 0,
 	};
 
-	if (vfio->iommu.nranges)
+	if (vfio->map.nranges)
 		return 0;
 
-	iommu_init(&vfio->iommu);
+	iova_map_init(&vfio->map);
 
 	ret = ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges);
 	if (ret && errno == EMSGSIZE) {
 		size_t iova_range_len = iova_ranges.num_iovas * sizeof(struct iova_range);
 
-		vfio->iommu.nranges = iova_ranges.num_iovas;
-		vfio->iommu.iova_ranges = realloc(vfio->iommu.iova_ranges, iova_range_len);
-		iova_ranges.allowed_iovas = (uintptr_t)&vfio->iommu.iova_ranges->start;
+		vfio->map.nranges = iova_ranges.num_iovas;
+		vfio->map.iova_ranges = realloc(vfio->map.iova_ranges, iova_range_len);
+		iova_ranges.allowed_iovas = (uintptr_t)&vfio->map.iova_ranges->start;
 
 		if (ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges))
 			goto ioas_ranges_error;
@@ -73,8 +72,8 @@ ioas_ranges_error:
 	}
 
 	if (logv(LOG_INFO)) {
-		for (int i = 0; i < vfio->iommu.nranges; i++) {
-			struct iova_range *r = &vfio->iommu.iova_ranges[i];
+		for (int i = 0; i < vfio->map.nranges; i++) {
+			struct iova_range *r = &vfio->map.iova_ranges[i];
 
 			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n", i, r->start, r->end);
 		}

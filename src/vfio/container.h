@@ -10,6 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
+#include "util/iova_map.h"
+
 #ifndef HAVE_VFIO_DEVICE_BIND_IOMMUFD
 struct vfio_group {
 	int fd;
@@ -23,7 +25,7 @@ struct vfio_group {
 
 struct vfio_container {
 	int fd;
-	struct iommu_state iommu;
+	struct iova_map map;
 #ifndef HAVE_VFIO_DEVICE_BIND_IOMMUFD
 	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
 #else
