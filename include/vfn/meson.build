@@ -3,6 +3,7 @@ vfn_headers = files([
   'pci.h',
   'support.h',
   'trace.h',
+  'iommu.h',
   'vfio.h',
 ])
 
@@ -14,4 +15,5 @@ subdir('support')
 subdir('nvme')
 subdir('pci')
 subdir('trace')
+subdir('iommu')
 subdir('vfio')

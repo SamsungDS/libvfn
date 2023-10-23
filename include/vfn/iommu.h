@@ -10,18 +10,27 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_VFIO_CONTAINER_H
-#define LIBVFN_VFIO_CONTAINER_H
+#ifndef LIBVFN_IOMMU_H
+#define LIBVFN_IOMMU_H
 
-#define __VFN_IOVA_MIN 0x10000
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/**
- * vfio_new - create a new vfio container
- *
- * Create a new VFIO container.
- *
- * Return: Container handle or ``NULL`` on error.
- */
-struct vfio_container *vfio_new(void);
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <unistd.h>
 
-#endif /* LIBVFN_VFIO_CONTAINER_H */
+#include <pthread.h>
+
+#include <linux/vfio.h>
+#include <linux/pci_regs.h>
+
+#include <vfn/iommu/dma.h>
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* LIBVFN_IOMMU_H */

@@ -33,6 +33,7 @@
 #include <linux/vfio.h>
 
 #include "vfn/vfio/container.h"
+#include "vfn/iommu.h"
 #include "vfn/trace.h"
 #include "vfn/pci/util.h"
 

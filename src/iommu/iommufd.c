@@ -38,6 +38,7 @@
 #include "vfn/pci.h"
 
 #include "vfn/vfio/container.h"
+#include "vfn/iommu/dma.h"
 
 #include "vfio/container.h"
 
@@ -57,7 +58,7 @@ static int vfio_configure_iommu(struct vfio_container *vfio)
 
 	ret = ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges);
 	if (ret && errno == EMSGSIZE) {
-		size_t iova_range_len = iova_ranges.num_iovas * sizeof(struct iova_range);
+		size_t iova_range_len = iova_ranges.num_iovas * sizeof(struct iommu_iova_range);
 
 		vfio->map.nranges = iova_ranges.num_iovas;
 		vfio->map.iova_ranges = realloc(vfio->map.iova_ranges, iova_range_len);

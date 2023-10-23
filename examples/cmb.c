@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 		err(1, "failed to map cmb");
 
 	/* choose a base address that is guaranteed not to be involved in dma */
-	num_iova_ranges = vfio_get_iova_ranges(ctrl.pci.dev.vfio, &iova_ranges);
+	num_iova_ranges = iommu_get_iova_ranges(ctrl.pci.dev.vfio, &iova_ranges);
 	cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].end + 1, 4096);
 	printf("assigned cmb base address is 0x%lx\n", cba);
 
