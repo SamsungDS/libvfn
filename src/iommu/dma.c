@@ -18,34 +18,33 @@
 
 #include "ccan/list/list.h"
 
-#include "vfn/vfio.h"
 #include "vfn/iommu.h"
 #include "vfn/support.h"
 
-#include "container.h"
+#include "util/iova_map.h"
+#include "context.h"
 
-int iommu_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
+int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
 {
 	uint64_t _iova;
 
-	if (iova_map_translate(&vfio->map, vaddr, &_iova))
+	if (iova_map_translate(&ctx->map, vaddr, &_iova))
 		goto out;
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
-	} else if (vfio->flags & IOMMU_F_REQUIRE_IOVA &&
-		   iova_map_reserve(&vfio->map, len, &_iova)) {
+	} else if (ctx->flags & IOMMU_F_REQUIRE_IOVA && iova_map_reserve(&ctx->map, len, &_iova)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
 
-	if (vfio_do_map_dma(vfio, vaddr, len, &_iova, flags)) {
+	if (ctx->ops.dma_map(ctx, vaddr, len, &_iova, flags)) {
 		log_debug("failed to map dma\n");
 		return -1;
 	}
 
-	if (iova_map_add(&vfio->map, vaddr, len, _iova)) {
+	if (iova_map_add(&ctx->map, vaddr, len, _iova)) {
 		log_debug("failed to add mapping\n");
 		return -1;
 	}
@@ -57,11 +56,11 @@ out:
 	return 0;
 }
 
-int iommu_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
+int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 {
 	struct iova_mapping *m;
 
-	m = iova_map_find(&vfio->map, vaddr);
+	m = iova_map_find(&ctx->map, vaddr);
 	if (!m) {
 		errno = ENOENT;
 		return -1;
@@ -70,19 +69,19 @@ int iommu_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
 	if (len)
 		*len = m->len;
 
-	if (vfio_do_unmap_dma(vfio, m->len, m->iova)) {
+	if (ctx->ops.dma_unmap(ctx, m->iova, m->len)) {
 		log_debug("failed to unmap dma\n");
 		return -1;
 	}
 
-	iova_map_remove(&vfio->map, m->vaddr);
+	iova_map_remove(&ctx->map, m->vaddr);
 
 	return 0;
 }
 
-int iommu_get_iova_ranges(struct vfio_container *vfio, struct iova_range **ranges)
+int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iova_range **ranges)
 {
-	*ranges = vfio->map.iova_ranges;
+	*ranges = ctx->map.iova_ranges;
 
-	return vfio->map.nranges;
+	return ctx->map.nranges;
 }

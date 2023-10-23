@@ -10,21 +10,11 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_IOMMU_H
-#define LIBVFN_IOMMU_H
+#ifndef LIBVFN_IOMMU_CONTEXT_H
+#define LIBVFN_IOMMU_CONTEXT_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define __VFN_IOVA_MIN 0x10000
 
-#include <stddef.h>
-#include <stdint.h>
+struct iommu_ctx *get_iommu_context(const char *name);
 
-#include <vfn/iommu/context.h>
-#include <vfn/iommu/dma.h>
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* LIBVFN_IOMMU_H */
+#endif /* LIBVFN_IOMMU_CONTEXT_H */

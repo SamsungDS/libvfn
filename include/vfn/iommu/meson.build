@@ -1,4 +1,5 @@
 vfn_iommu_headers = files([
+  'context.h',
   'dma.h',
 ])
 

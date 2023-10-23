@@ -33,20 +33,18 @@
 #include <linux/vfio.h>
 #include <linux/pci_regs.h>
 
-#include "vfn/support/atomic.h"
-#include "vfn/support/compiler.h"
-#include "vfn/support/log.h"
-#include "vfn/support/mem.h"
-#include "vfn/vfio/container.h"
-#include "vfn/vfio/device.h"
-#include "vfn/vfio/pci.h"
-#include "vfn/pci/util.h"
+#include "vfn/support.h"
+#include "vfn/iommu.h"
+#include "vfn/vfio.h"
+#include "vfn/pci.h"
 
 #include "ccan/array_size/array_size.h"
 #include "ccan/minmax/minmax.h"
 #include "ccan/str/str.h"
+#include "ccan/list/list.h"
 
-#include "iommu/container.h"
+#include "util/iova_map.h"
+#include "iommu/context.h"
 
 static int pci_set_bus_master(struct vfio_pci_device *pci)
 {
@@ -146,10 +144,10 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 {
 	pci->bdf = bdf;
 
-	if (!pci->dev.vfio)
-		pci->dev.vfio = &vfio_default_container;
+	if (!pci->dev.ctx)
+		pci->dev.ctx = get_default_iommu_ctx();
 
-	pci->dev.fd = vfio_get_device_fd(pci->dev.vfio, bdf);
+	pci->dev.fd = pci->dev.ctx->ops.get_device_fd(pci->dev.ctx, bdf);
 	if (pci->dev.fd < 0) {
 		log_debug("failed to get device fd\n");
 		return -1;
