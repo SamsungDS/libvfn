@@ -10,7 +10,7 @@
  * COPYING and LICENSE files for more information.
  */
 
-#define log_fmt(fmt) "vfio/container: " fmt
+#define log_fmt(fmt) "iommu/vfio: " fmt
 
 #include <errno.h>
 #include <fcntl.h>
@@ -32,7 +32,8 @@
 #include <linux/types.h>
 #include <linux/vfio.h>
 
-#include "vfn/vfio/container.h"
+#include "container.h"
+
 #include "vfn/iommu.h"
 #include "vfn/trace.h"
 #include "vfn/pci/util.h"
@@ -42,8 +43,6 @@
 #include "vfn/support/log.h"
 #include "vfn/support/mem.h"
 #include "vfn/support/align.h"
-
-#include "container.h"
 
 struct vfio_container vfio_default_container = {};
 

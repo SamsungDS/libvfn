@@ -46,8 +46,6 @@
 #include "ccan/minmax/minmax.h"
 #include "ccan/str/str.h"
 
-#include "container.h"
-
 int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
 {
 	struct vfio_irq_set *irq_set;

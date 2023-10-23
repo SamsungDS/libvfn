@@ -1,8 +1,11 @@
-vfn_sources += files(
+iommu_sources = files(
   'dma.c',
 )
 
-as_sources = []
 if config_host.get('HAVE_VFIO_DEVICE_BIND_IOMMUFD', false)
-  as_sources += files('iommufd.c',)
+  iommu_sources += files('iommufd.c',)
+else
+  iommu_sources += files('vfio.c')
 endif
+
+vfn_sources += iommu_sources

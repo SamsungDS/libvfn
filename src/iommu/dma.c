@@ -22,7 +22,7 @@
 #include "vfn/iommu.h"
 #include "vfn/support.h"
 
-#include "vfio/container.h"
+#include "container.h"
 
 int iommu_map_vaddr(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
