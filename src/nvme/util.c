@@ -125,7 +125,7 @@ int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *c
 		errno = ENOMEM;
 		return -1;
 	} else if (len) {
-		if (iommu_map_vaddr(ctrl->pci.dev.vfio, buf, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
+		if (iommu_map_vaddr(__iommu_ctx(ctrl), buf, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
 			log_debug("failed to map vaddr\n");
 			return -1;
 		}
@@ -133,7 +133,7 @@ int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *c
 
 	ret = nvme_sync(ctrl->adminq.sq, sqe, iova, len, cqe_copy);
 
-	if (len && iommu_unmap_vaddr(ctrl->pci.dev.vfio, buf, NULL))
+	if (len && iommu_unmap_vaddr(__iommu_ctx(ctrl), buf, NULL))
 		log_debug("failed to unmap vaddr\n");
 
 	return ret;
