@@ -31,11 +31,14 @@ struct vfio_container {
 #else
 	uint32_t ioas_id;
 #endif // HAVE_VFIO_DEVICE_BIND_IOMMUFD
+
+#define IOMMU_F_REQUIRE_IOVA (1 << 0)
+	unsigned int flags;
 };
 
 extern struct vfio_container vfio_default_container;
 
 int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf);
-int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova,
+int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags);
 int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova);
