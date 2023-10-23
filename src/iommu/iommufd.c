@@ -61,10 +61,10 @@ static int vfio_configure_iommu(struct vfio_container *vfio)
 
 	ret = ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges);
 	if (ret && errno == EMSGSIZE) {
-		size_t iova_range_len = iova_ranges.num_iovas * sizeof(struct iommu_iova_range);
-
 		vfio->map.nranges = iova_ranges.num_iovas;
-		vfio->map.iova_ranges = realloc(vfio->map.iova_ranges, iova_range_len);
+		vfio->map.iova_ranges = reallocn(vfio->map.iova_ranges, iova_ranges.num_iovas,
+						 sizeof(struct iommu_iova_range));
+
 		iova_ranges.allowed_iovas = (uintptr_t)&vfio->map.iova_ranges->start;
 
 		if (ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges))

@@ -88,6 +88,17 @@ static inline void *zmallocn(unsigned int n, size_t sz)
 	return zmalloc(n * sz);
 }
 
+static inline void *reallocn(void *mem, unsigned int n, size_t sz)
+{
+	if (would_overflow(n, sz)) {
+		fprintf(stderr, "allocation of %d * %zu bytes would overflow\n", n, sz);
+
+		backtrace_abort();
+	}
+
+	return realloc(mem, n * sz);
+}
+
 #define _new_t(t, n, f) \
 	((t *) f(n, sizeof(t)))
 
