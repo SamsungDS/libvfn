@@ -249,7 +249,7 @@ close_fd:
 static int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 {
 	struct vfio_group *group;
-	int i, errno_saved;
+	int i;
 
 	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
 		group = &vfio->groups[i];
@@ -272,18 +272,15 @@ static int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 
 	group->path = strdup(path);
 	if (!group->path)
-		// errno is set by strdup
 		return -1;
 
 	group->fd = vfio_group_open(group->path);
 	if (group->fd < 0) {
-		errno_saved = errno;
 		log_debug("failed to open vfio group\n");
 		goto free_group_path;
 	}
 
 	if (ioctl(group->fd, VFIO_GROUP_SET_CONTAINER, &vfio->fd)) {
-		errno_saved = errno;
 		log_debug("failed to add group to vfio container\n");
 		goto free_group_path;
 	}
@@ -292,8 +289,6 @@ static int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 
 free_group_path:
 	free(group->path);
-
-	errno = errno_saved;
 
 	return -1;
 }
