@@ -17,7 +17,7 @@ struct vfio_group {
 	int fd;
 	struct vfio_container *container;
 
-	const char *path;
+	char *path;
 };
 #endif // HAVE_VFIO_DEVICE_BIND_IOMMUFD
 

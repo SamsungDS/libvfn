@@ -291,7 +291,7 @@ static int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 	return group->fd;
 
 free_group_path:
-	free((void *)group->path);
+	free(group->path);
 
 	errno = errno_saved;
 
