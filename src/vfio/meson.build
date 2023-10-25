@@ -1,5 +1,4 @@
 vfio_sources = files(
-  'core.c',
   'device.c',
   'pci.c',
 )

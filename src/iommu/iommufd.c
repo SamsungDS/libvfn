@@ -42,6 +42,8 @@
 
 #include "vfio/container.h"
 
+struct vfio_container vfio_default_container = {};
+
 static int vfio_configure_iommu(struct vfio_container *vfio)
 {
 	int ret;
@@ -172,7 +174,7 @@ close_dev:
 	return -1;
 }
 
-int vfio_init_container(struct vfio_container *vfio)
+static int vfio_init_container(struct vfio_container *vfio)
 {
 	vfio->fd = open("/dev/iommu", O_RDWR);
 	if (vfio->fd < 0) {
@@ -181,6 +183,24 @@ int vfio_init_container(struct vfio_container *vfio)
 	}
 
 	return 0;
+}
+
+struct vfio_container *vfio_new(void)
+{
+	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
+
+	if (vfio_init_container(vfio) < 0) {
+		free(vfio);
+		return NULL;
+	}
+
+	return vfio;
+}
+
+static void __attribute__((constructor)) open_default_container(void)
+{
+	if (vfio_init_container(&vfio_default_container))
+		log_debug("default container not initialized\n");
 }
 
 int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t iova)
