@@ -10,6 +10,5 @@ the library code.
 .. toctree::
    :maxdepth: 1
 
-   container
    device
    pci
