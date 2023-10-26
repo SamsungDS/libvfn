@@ -161,7 +161,7 @@ static int iommu_get_capabilities(struct vfio_container *vfio)
 		return -1;
 
 	if (!(iommu_info->flags & VFIO_IOMMU_INFO_CAPS))
-		return -1;
+		return 0;
 
 	cap = (void *)iommu_info + iommu_info->cap_offset;
 
