@@ -242,7 +242,8 @@ static int vfio_group_open(const char *path)
 	return fd;
 
 close_fd:
-	close(fd);
+	log_fatal_if(close(fd), "close\n");
+
 	return -1;
 }
 

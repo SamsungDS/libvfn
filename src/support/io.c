@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include <vfn/support/io.h>
+#include "vfn/support.h"
 
 ssize_t writeallfd(int fd, const void *buf, size_t count)
 {
@@ -55,7 +55,7 @@ ssize_t writeall(const char *path, const void *buf, size_t count)
 
 	ret = writeallfd(fd, buf, count);
 
-	close(fd);
+	log_fatal_if(close(fd), "close\n");
 
 	return ret;
 }
@@ -93,7 +93,7 @@ ssize_t readmax(const char *path, void *buf, size_t count)
 
 	ret = readmaxfd(fd, buf, count);
 
-	close(fd);
+	log_fatal_if(close(fd), "close\n");
 
 	return ret;
 }
