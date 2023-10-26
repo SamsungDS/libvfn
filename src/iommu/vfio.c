@@ -193,9 +193,6 @@ static int iommu_get_capabilities(struct vfio_container *vfio)
 
 static int vfio_configure_iommu(struct vfio_container *vfio)
 {
-	if (vfio->map.nranges)
-		return 0;
-
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
 		log_debug("failed to set vfio iommu type\n");
 		return -1;
@@ -209,6 +206,26 @@ static int vfio_configure_iommu(struct vfio_container *vfio)
 		return -1;
 	}
 #endif
+
+	return 0;
+}
+
+static int vfio_group_set_container(struct vfio_group *group, struct vfio_container *vfio)
+{
+	log_info("adding group '%s' to container\n", group->path);
+
+	if (ioctl(group->fd, VFIO_GROUP_SET_CONTAINER, &vfio->fd)) {
+		log_debug("failed to add group to vfio container\n");
+		return -1;
+	}
+
+	if (vfio_configure_iommu(vfio)) {
+		log_error("failed to configure iommu\n");
+
+		log_fatal_if(ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER), "unset container\n");
+
+		return -1;
+	}
 
 	return 0;
 }
@@ -280,8 +297,8 @@ static int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
 		goto free_group_path;
 	}
 
-	if (ioctl(group->fd, VFIO_GROUP_SET_CONTAINER, &vfio->fd)) {
-		log_debug("failed to add group to vfio container\n");
+	if (vfio_group_set_container(group, vfio)) {
+		log_fatal_if(close(group->fd), "close group fd\n");
 		goto free_group_path;
 	}
 
@@ -309,12 +326,6 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 	gfd = vfio_get_group_fd(vfio, group);
 	if (gfd < 0)
 		return -1;
-
-	if (vfio_configure_iommu(vfio)) {
-		// JAG: Should we unset group VFIO_GROUP_UNSET_CONTAINER on failure?
-		log_error("failed to configure iommu: %s\n", strerror(errno));
-		return -1;
-	}
 
 	ret_fd = ioctl(gfd, VFIO_GROUP_GET_DEVICE_FD, bdf);
 	if (ret_fd < 0) {
