@@ -187,7 +187,7 @@ static int vfio_group_set_container(struct vfio_group *group, struct vfio_contai
 	}
 
 	if (vfio_iommu_type1_init(vfio)) {
-		log_error("failed to configure iommu\n");
+		log_debug("failed to configure iommu\n");
 
 		log_fatal_if(ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER), "unset container\n");
 
@@ -284,7 +284,7 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 
 	group = pci_get_iommu_group(bdf);
 	if (!group) {
-		log_error("could not determine iommu group for device %s\n", bdf);
+		log_debug("could not determine iommu group for device %s\n", bdf);
 		errno = EINVAL;
 		return -1;
 	}
@@ -331,7 +331,7 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 	}
 
 	if (ioctl(vfio->fd, VFIO_IOMMU_MAP_DMA, &dma_map)) {
-		log_error("could not map: %s\n", strerror(errno));
+		log_debug("could not map\n");
 		return -1;
 	}
 
@@ -351,7 +351,7 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 	}
 
 	if (ioctl(vfio->fd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
-		log_error("could not unmap: %s\n", strerror(errno));
+		log_debug("could not unmap\n");
 		return -1;
 	}
 

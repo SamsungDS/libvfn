@@ -57,7 +57,7 @@ static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
 
 	if (ioctl(__iommufd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges)) {
 		if (errno != EMSGSIZE) {
-			log_error("could not get ioas iova ranges\n");
+			log_debug("could not get ioas iova ranges\n");
 			return -1;
 		}
 
@@ -68,7 +68,7 @@ static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
 		iova_ranges.allowed_iovas = (uintptr_t)&vfio->map.iova_ranges->start;
 
 		if (ioctl(__iommufd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges)) {
-			log_error("could not get ioas iova ranges\n");
+			log_debug("could not get ioas iova ranges\n");
 			return -1;
 		}
 	}
@@ -103,14 +103,14 @@ static int __vfio_iommufd_get_dev_fd(const char *bdf)
 
 	devfd = open(path, O_RDWR);
 	if (devfd < 0)
-		log_error("could not open %s\n", path);
+		log_debug("could not open %s\n", path);
 
 	return devfd;
 }
 
 int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 {
-	int devfd, saved_errno;
+	int devfd;
 	struct vfio_device_bind_iommufd bind = {
 		.argsz = sizeof(bind),
 		.flags = 0,
@@ -125,23 +125,17 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 
 	devfd = __vfio_iommufd_get_dev_fd(bdf);
 	if (devfd < 0) {
-		saved_errno = errno;
-		log_error("failed to get the cdev file descriptor %s\n", strerror(saved_errno));
-		return devfd;
+		log_debug("could not open the device cdev\n");
+		return -1;
 	}
 
 	if (ioctl(devfd, VFIO_DEVICE_BIND_IOMMUFD, &bind)) {
-		saved_errno = errno;
-		log_error("could not bind iommufd %d to cdev %d, %s\n",
-			  __iommufd, devfd, strerror(saved_errno));
+		log_debug("could not bind device to iommufd\n");
 		goto close_dev;
 	}
 
 	if (ioctl(devfd, VFIO_DEVICE_ATTACH_IOMMUFD_PT, &attach_data)) {
-		saved_errno = errno;
-		log_error("could not attach cdev %d to ioas id %d, %s\n",
-			  devfd, attach_data.pt_id, strerror(saved_errno));
-		//JAG: Should we deallocate this explicitly?
+		log_debug("could not associate device with ioas\n");
 		goto close_dev;
 	}
 
@@ -156,7 +150,6 @@ close_dev:
 	/* closing devfd will automatically unbind it from iommufd */
 	log_fatal_if(close(devfd), "close: %s\n", strerror(errno));
 
-	errno = saved_errno;
 	return -1;
 }
 
@@ -233,7 +226,7 @@ int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64
 	}
 
 	if (ioctl(__iommufd, IOMMU_IOAS_MAP, &map)) {
-		log_error("failed to map: %s\n", strerror(errno));
+		log_debug("failed to map\n");
 		return -1;
 	}
 
@@ -263,7 +256,7 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 	}
 
 	if (ioctl(__iommufd, IOMMU_IOAS_UNMAP, &unmap)) {
-		log_error("failed to unmap: %s\n", strerror(errno));
+		log_debug("failed to unmap\n");
 		return -1;
 	}
 
