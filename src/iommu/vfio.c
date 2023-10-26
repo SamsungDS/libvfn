@@ -303,44 +303,6 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 	return ret_fd;
 }
 
-int vfio_init_container(struct vfio_container *vfio)
-{
-	vfio->fd = open("/dev/vfio/vfio", O_RDWR);
-	if (vfio->fd < 0) {
-		log_debug("failed to open vfio device\n");
-		return -1;
-	}
-
-	if (ioctl(vfio->fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION) {
-		log_debug("invalid vfio version\n");
-		return -1;
-	}
-
-	if (!ioctl(vfio->fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU)) {
-		log_debug("vfio type 1 iommu not supported\n");
-		return -1;
-	}
-	return 0;
-}
-
-struct vfio_container *vfio_new(void)
-{
-	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
-
-	if (vfio_init_container(vfio) < 0) {
-		free(vfio);
-		return NULL;
-	}
-
-	return vfio;
-}
-
-static void __attribute__((constructor)) open_default_container(void)
-{
-	if (vfio_init_container(&vfio_default_container))
-		log_debug("default container not initialized\n");
-}
-
 int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
 {
@@ -394,4 +356,42 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 	}
 
 	return 0;
+}
+
+int vfio_init_container(struct vfio_container *vfio)
+{
+	vfio->fd = open("/dev/vfio/vfio", O_RDWR);
+	if (vfio->fd < 0) {
+		log_debug("failed to open vfio device\n");
+		return -1;
+	}
+
+	if (ioctl(vfio->fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION) {
+		log_debug("invalid vfio version\n");
+		return -1;
+	}
+
+	if (!ioctl(vfio->fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU)) {
+		log_debug("vfio type 1 iommu not supported\n");
+		return -1;
+	}
+	return 0;
+}
+
+struct vfio_container *vfio_new(void)
+{
+	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
+
+	if (vfio_init_container(vfio) < 0) {
+		free(vfio);
+		return NULL;
+	}
+
+	return vfio;
+}
+
+static void __attribute__((constructor)) open_default_container(void)
+{
+	if (vfio_init_container(&vfio_default_container))
+		log_debug("default container not initialized\n");
 }
