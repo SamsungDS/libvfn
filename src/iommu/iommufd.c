@@ -168,8 +168,7 @@ int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 
 close_dev:
 	/* closing devfd will automatically unbind it from iommufd */
-	if (close(devfd))
-		log_error("failed to close cdev fd: %d\n", devfd);
+	log_fatal_if(close(devfd), "close: %s\n", strerror(errno));
 
 	errno = saved_errno;
 	return -1;
