@@ -143,47 +143,6 @@ close_dev:
 	return -1;
 }
 
-static int vfio_init_container(struct vfio_container *vfio)
-{
-	struct iommu_ioas_alloc alloc_data = {
-		.size = sizeof(alloc_data),
-		.flags = 0,
-	};
-
-	if (ioctl(__iommufd, IOMMU_IOAS_ALLOC, &alloc_data)) {
-		log_debug("could not allocate ioas\n");
-		return -1;
-	}
-
-	vfio->ioas_id = alloc_data.out_ioas_id;
-
-	iova_map_init(&vfio->map);
-
-	return 0;
-}
-
-struct vfio_container *vfio_new(void)
-{
-	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
-
-	if (vfio_init_container(vfio) < 0) {
-		free(vfio);
-		return NULL;
-	}
-
-	return vfio;
-}
-
-static void __attribute__((constructor)) init_iommufd(void)
-{
-	__iommufd = open("/dev/iommu", O_RDWR);
-	if (__iommufd < 0)
-		log_fatal("could not open /dev/iommu\n");
-
-	if (vfio_init_container(&vfio_default_container))
-		log_debug("default container not initialized\n");
-}
-
 int vfio_do_map_dma(struct vfio_container *vfio, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
 {
@@ -251,4 +210,45 @@ int vfio_do_unmap_dma(struct vfio_container *vfio, size_t len, uint64_t iova)
 	}
 
 	return 0;
+}
+
+static int vfio_init_container(struct vfio_container *vfio)
+{
+	struct iommu_ioas_alloc alloc_data = {
+		.size = sizeof(alloc_data),
+		.flags = 0,
+	};
+
+	if (ioctl(__iommufd, IOMMU_IOAS_ALLOC, &alloc_data)) {
+		log_debug("could not allocate ioas\n");
+		return -1;
+	}
+
+	vfio->ioas_id = alloc_data.out_ioas_id;
+
+	iova_map_init(&vfio->map);
+
+	return 0;
+}
+
+struct vfio_container *vfio_new(void)
+{
+	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
+
+	if (vfio_init_container(vfio) < 0) {
+		free(vfio);
+		return NULL;
+	}
+
+	return vfio;
+}
+
+static void __attribute__((constructor)) init_iommufd(void)
+{
+	__iommufd = open("/dev/iommu", O_RDWR);
+	if (__iommufd < 0)
+		log_fatal("could not open /dev/iommu\n");
+
+	if (vfio_init_container(&vfio_default_container))
+		log_debug("default container not initialized\n");
 }
