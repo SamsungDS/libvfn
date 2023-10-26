@@ -46,15 +46,8 @@
 
 struct vfio_container vfio_default_container = {};
 
-static void UNNEEDED __unmap_mapping(void *opaque, struct iova_mapping *m)
-{
-	struct vfio_container *vfio = opaque;
-
-	if (vfio_do_unmap_dma(vfio, m->len, m->iova))
-		log_debug("failed to unmap dma: len %zu iova 0x%" PRIx64 "\n", m->len, m->iova);
-}
-
-#ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
+#ifdef VFIO_IOMMU_INFO_CAPS
+# ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
 						 struct vfio_info_cap_header *cap)
 {
@@ -76,9 +69,9 @@ static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
 		}
 	}
 }
-#endif
+# endif
 
-#ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
+# ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
 static void vfio_iommu_type1_get_cap_dma_avail(struct vfio_info_cap_header *cap)
 {
 	struct vfio_iommu_type1_info_dma_avail *dma;
@@ -87,38 +80,7 @@ static void vfio_iommu_type1_get_cap_dma_avail(struct vfio_info_cap_header *cap)
 
 	log_info("dma avail %"PRIu32"\n", dma->avail);
 }
-#endif
-
-#ifdef VFIO_IOMMU_INFO_CAPS
-static int vfio_iommu_type1_dma_unmap_all(struct vfio_container *vfio)
-{
-#ifdef VFIO_UNMAP_ALL
-	struct vfio_iommu_type1_dma_unmap dma_unmap = {
-		.argsz = sizeof(dma_unmap),
-		.flags = VFIO_DMA_UNMAP_FLAG_ALL,
-	};
-
-	if (ioctl(vfio->fd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
-		log_debug("failed to unmap dma\n");
-		return -1;
-	}
-
-	iova_map_clear(&vfio->map);
-#else
-	iova_map_clear_with(&vfio->map, __unmap_mapping, vfio);
-#endif
-	return 0;
-}
-
-static int vfio_iommu_type1_uninit(struct vfio_container *vfio)
-{
-	if (vfio_iommu_type1_dma_unmap_all(vfio))
-		return -1;
-
-	iova_map_destroy(&vfio->map);
-
-	return 0;
-}
+# endif
 
 static struct vfio_iommu_type1_info *vfio_iommu_type1_get_iommu_info(struct vfio_container *vfio)
 {
@@ -145,7 +107,6 @@ static struct vfio_iommu_type1_info *vfio_iommu_type1_get_iommu_info(struct vfio
 
 		if (ioctl(vfio->fd, VFIO_IOMMU_GET_INFO, iommu_info)) {
 			log_debug("failed to get extended iommu info\n");
-			vfio_iommu_type1_uninit(vfio);
 			return NULL;
 		}
 	}
@@ -168,16 +129,16 @@ static int vfio_iommu_type1_get_capabilities(struct vfio_container *vfio)
 
 	do {
 		switch (cap->id) {
-#ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
+# ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 		case VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE:
 			vfio_iommu_type1_get_cap_iova_ranges(&vfio->map, cap);
 			break;
-#endif
-#ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
+# endif
+# ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
 		case VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL:
 			vfio_iommu_type1_get_cap_dma_avail(cap);
 			break;
-#endif
+# endif
 		default:
 			break;
 		}
@@ -206,6 +167,9 @@ static int vfio_iommu_type1_init(struct vfio_container *vfio)
 #ifdef VFIO_IOMMU_INFO_CAPS
 	if (vfio_iommu_type1_get_capabilities(vfio)) {
 		log_debug("failed to get iommu capabilities\n");
+
+		iova_map_destroy(&vfio->map);
+
 		return -1;
 	}
 #endif
