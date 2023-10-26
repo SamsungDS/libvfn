@@ -87,7 +87,8 @@ ioas_ranges_error:
 
 static int __vfio_iommufd_get_dev_fd(const char *bdf)
 {
-	char __autofree *vfio_id = NULL, __autofree *path = NULL;
+	__autofree char *vfio_id = NULL;
+	__autofree char *path = NULL;
 	int devfd;
 
 	vfio_id = pci_get_device_vfio_id(bdf);
