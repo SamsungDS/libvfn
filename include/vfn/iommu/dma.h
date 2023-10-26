@@ -16,8 +16,8 @@
 /**
  * enum iommu_map_flags - flags for DMA mapping
  * @IOMMU_MAP_FIXED_IOVA: If cleared, an appropriate IOVA will be allocated
- * @IOMMU_MAP_WRITABLE: DMA is allowed to write to this mapping
- * @IOMMU_MAP_READABLE: DMA is allowed to read from this mapping
+ * @IOMMU_MAP_NOWRITE: DMA is not allowed to write to this mapping
+ * @IOMMU_MAP_NOREAD: DMA is not allowed to read from this mapping
  */
 enum iommu_map_flags {
 	IOMMU_MAP_FIXED_IOVA = 1 << 0,
@@ -27,7 +27,7 @@ enum iommu_map_flags {
 
 /**
  * iommu_map_vaddr - map a virtual memory address to an I/O virtual address
- * @vfio: &struct vfio_container
+ * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to map
  * @len: number of bytes to map
  * @iova: output parameter for mapped I/O virtual address
@@ -40,8 +40,8 @@ enum iommu_map_flags {
  * If @vaddr falls within an already mapped area, calculate the corresponding
  * iova instead.
  *
- * Note that the allocated IOVA can never be reused in the lifetime of the
- * process, so use this for mapping memory that will be reused.
+ * Note that, for the vfio backend, the allocated IOVA is not recycled when the
+ * mapping is removed; the IOVA will never be allocated again.
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
@@ -50,7 +50,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 
 /**
  * iommu_unmap_vaddr - unmap a virtual memory address in the IOMMU
- * @vfio: &struct vfio_container
+ * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to unmap
  * @len: output parameter for length of mapping
  *
@@ -67,6 +67,15 @@ struct iova_range {
 	uint64_t end;
 };
 
+/**
+ * iommu_get_iova_ranges - get iova ranges
+ * @ctx: &struct iommu_ctx
+ * @ranges: output parameter
+ *
+ * Store the address of an array into @ranges and return the number of elements.
+ *
+ * Return: the number of elements in the array pointed to.
+ */
 int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iova_range **ranges);
 
 #endif /* LIBVFN_IOMMU_DMA_H */

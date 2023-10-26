@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: GPL-2.0-or-later or CC-BY-4.0
 
-=====================================
- Application-developer Documentation
-=====================================
+=======
+ IOMMU
+=======
 
 This contains documentation mostly generated from kernel-doc-style comments in
 the library code.
@@ -10,8 +10,5 @@ the library code.
 .. toctree::
    :maxdepth: 1
 
-   nvme/index
-   pci/index
-   iommu/index
-   vfio/index
-   support/index
+   context
+   dma
