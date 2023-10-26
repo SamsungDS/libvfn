@@ -84,11 +84,23 @@ static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
 	return 0;
 }
 
-static int __vfio_iommufd_get_dev_fd(const char *bdf)
+int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
 {
 	__autofree char *vfio_id = NULL;
 	__autofree char *path = NULL;
 	int devfd;
+
+	struct vfio_device_bind_iommufd bind = {
+		.argsz = sizeof(bind),
+		.flags = 0,
+		.iommufd = __iommufd,
+	};
+
+	struct vfio_device_attach_iommufd_pt attach_data = {
+		.argsz = sizeof(attach_data),
+		.flags = 0,
+		.pt_id = vfio->ioas_id,
+	};
 
 	vfio_id = pci_get_device_vfio_id(bdf);
 	if (!vfio_id) {
@@ -102,28 +114,6 @@ static int __vfio_iommufd_get_dev_fd(const char *bdf)
 	}
 
 	devfd = open(path, O_RDWR);
-	if (devfd < 0)
-		log_debug("could not open %s\n", path);
-
-	return devfd;
-}
-
-int vfio_get_device_fd(struct vfio_container *vfio, const char *bdf)
-{
-	int devfd;
-	struct vfio_device_bind_iommufd bind = {
-		.argsz = sizeof(bind),
-		.flags = 0,
-		.iommufd = __iommufd,
-	};
-
-	struct vfio_device_attach_iommufd_pt attach_data = {
-		.argsz = sizeof(attach_data),
-		.flags = 0,
-		.pt_id = vfio->ioas_id,
-	};
-
-	devfd = __vfio_iommufd_get_dev_fd(bdf);
 	if (devfd < 0) {
 		log_debug("could not open the device cdev\n");
 		return -1;
