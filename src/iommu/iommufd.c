@@ -45,34 +45,30 @@
 
 struct vfio_container vfio_default_container = {};
 
-static int vfio_configure_iommu(struct vfio_container *vfio)
+static int iommu_ioas_update_iova_ranges(struct vfio_container *vfio)
 {
-	int ret;
 	struct iommu_ioas_iova_ranges iova_ranges = {
 		.size = sizeof(iova_ranges),
 		.ioas_id = vfio->ioas_id,
 		.num_iovas = 0,
 	};
 
-	if (vfio->map.nranges)
-		return 0;
+	if (ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges)) {
+		if (errno != EMSGSIZE) {
+			log_error("could not get ioas iova ranges\n");
+			return -1;
+		}
 
-	iova_map_init(&vfio->map);
-
-	ret = ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges);
-	if (ret && errno == EMSGSIZE) {
 		vfio->map.nranges = iova_ranges.num_iovas;
 		vfio->map.iova_ranges = reallocn(vfio->map.iova_ranges, iova_ranges.num_iovas,
 						 sizeof(struct iommu_iova_range));
 
 		iova_ranges.allowed_iovas = (uintptr_t)&vfio->map.iova_ranges->start;
 
-		if (ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges))
-			goto ioas_ranges_error;
-	} else {
-ioas_ranges_error:
-		log_error("could not get ioas iova ranges %d\n", errno);
-		return -1;
+		if (ioctl(vfio->fd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges)) {
+			log_error("could not get ioas iova ranges\n");
+			return -1;
+		}
 	}
 
 	if (logv(LOG_INFO)) {
@@ -84,6 +80,16 @@ ioas_ranges_error:
 	}
 
 	return 0;
+}
+
+static int vfio_configure_iommu(struct vfio_container *vfio)
+{
+	if (vfio->map.nranges)
+		return 0;
+
+	iova_map_init(&vfio->map);
+
+	return iommu_ioas_update_iova_ranges(vfio);
 }
 
 static int __vfio_iommufd_get_dev_fd(const char *bdf)
