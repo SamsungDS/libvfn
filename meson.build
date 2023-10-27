@@ -170,4 +170,5 @@ summary_info = {}
 summary_info += {'Debugging': get_option('debug')}
 summary_info += {'Documentation': build_docs}
 summary_info += {'Profiling': get_option('profiling')}
+summary_info += {'iommufd': config_host.get('HAVE_VFIO_DEVICE_BIND_IOMMUFD')}
 summary(summary_info, bool_yn: true, section: 'Features')
