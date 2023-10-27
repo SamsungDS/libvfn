@@ -66,13 +66,9 @@ struct vfio_container {
 };
 
 static struct vfio_container vfio_default_container = {
+	.fd = -1,
 	.name = "default",
 };
-
-struct iommu_ctx *get_default_iommu_ctx(void)
-{
-	return &vfio_default_container.ctx;
-}
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
@@ -392,7 +388,7 @@ static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, s
 	return 0;
 }
 
-struct iommu_ctx_ops vfio_ops = {
+static const struct iommu_ctx_ops vfio_ops = {
 	.get_device_fd = vfio_get_device_fd,
 
 	.dma_map = vfio_iommu_type1_do_dma_map,
@@ -422,7 +418,7 @@ static int vfio_init_container(struct vfio_container *vfio)
 	return 0;
 }
 
-struct iommu_ctx *get_iommu_context(const char *name)
+struct iommu_ctx *vfio_get_iommu_context(const char *name)
 {
 	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
 
@@ -436,8 +432,11 @@ struct iommu_ctx *get_iommu_context(const char *name)
 	return &vfio->ctx;
 }
 
-static void __attribute__((constructor)) open_default_container(void)
+struct iommu_ctx *vfio_get_default_iommu_context(void)
 {
-	if (vfio_init_container(&vfio_default_container))
-		log_debug("default container not initialized\n");
+	if (vfio_default_container.fd == -1)
+		log_fatal_if(vfio_init_container(&vfio_default_container),
+			     "init default container\n");
+
+	return &vfio_default_container.ctx;
 }

@@ -16,13 +16,13 @@
 #define __VFN_IOVA_MIN 0x10000
 
 /**
- * get_iommu_context - create a new iommu context
+ * iommu_get_context - create a new iommu context
  * @name: context identifier
  *
  * Create a new iommu context. The mechanism depends on the backend.
  *
  * Return: a new &struct iommu_ctx.
  */
-struct iommu_ctx *get_iommu_context(const char *name);
+struct iommu_ctx *iommu_get_context(const char *name);
 
 #endif /* LIBVFN_IOMMU_CONTEXT_H */

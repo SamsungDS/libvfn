@@ -30,4 +30,12 @@ struct iommu_ctx {
 	unsigned int flags;
 };
 
-struct iommu_ctx *get_default_iommu_ctx(void);
+struct iommu_ctx *iommu_get_default_context(void);
+
+struct iommu_ctx *vfio_get_default_iommu_context(void);
+struct iommu_ctx *vfio_get_iommu_context(const char *name);
+
+#ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
+struct iommu_ctx *iommufd_get_default_iommu_context(void);
+struct iommu_ctx *iommufd_get_iommu_context(const char *name);
+#endif
