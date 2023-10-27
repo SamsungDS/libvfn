@@ -79,8 +79,8 @@ extern __thread const char *__trace_event;
 
 #else
 # define trace_guard(name) if (false)
-# define trace_emit(fmt, ...)
-# define trace_emitrl(interval, subject, fmt, ...)
+# define trace_emit(fmt, ...) ((void)0)
+# define trace_emitrl(interval, subject, fmt, ...) ((void)0)
 #endif
 
 struct trace_ratelimit_state {
