@@ -145,7 +145,7 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 	pci->bdf = bdf;
 
 	if (!pci->dev.ctx)
-		pci->dev.ctx = get_default_iommu_ctx();
+		pci->dev.ctx = iommu_get_default_context();
 
 	pci->dev.fd = pci->dev.ctx->ops.get_device_fd(pci->dev.ctx, bdf);
 	if (pci->dev.fd < 0) {

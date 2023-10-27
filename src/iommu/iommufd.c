@@ -55,11 +55,6 @@ static struct iommu_ioas iommufd_default_ioas = {
 	.name = "default",
 };
 
-struct iommu_ctx *get_default_iommu_ctx(void)
-{
-	return &iommufd_default_ioas.ctx;
-}
-
 static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 {
 	struct iommu_ioas_iova_ranges iova_ranges = {
@@ -259,12 +254,38 @@ static int iommu_ioas_init(struct iommu_ioas *ioas)
 	return 0;
 }
 
-static void __attribute__((constructor)) init_iommufd(void)
+static int iommufd_open(void)
 {
 	__iommufd = open("/dev/iommu", O_RDWR);
 	if (__iommufd < 0)
-		log_fatal("could not open /dev/iommu\n");
+		return -1;
 
-	if (iommu_ioas_init(&iommufd_default_ioas))
-		log_fatal("could not initialize default ioas: %s\n", strerror(errno));
+	return 0;
+}
+
+struct iommu_ctx *iommufd_get_iommu_context(const char *name)
+{
+	struct iommu_ioas *ioas = znew_t(struct iommu_ioas, 1);
+
+	if (__iommufd == -1)
+		log_fatal_if(iommufd_open(), "could not open /dev/iommu\n");
+
+	if (iommu_ioas_init(ioas) < 0) {
+		free(ioas);
+		return NULL;
+	}
+
+	ioas->name = strdup(name);
+
+	return &ioas->ctx;
+}
+
+struct iommu_ctx *iommufd_get_default_iommu_context(void)
+{
+	if (__iommufd == -1) {
+		log_fatal_if(iommufd_open(), "could not open /dev/iommu\n");
+		log_fatal_if(iommu_ioas_init(&iommufd_default_ioas), "iommu_ioas_init\n");
+	}
+
+	return &iommufd_default_ioas.ctx;
 }
