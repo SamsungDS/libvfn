@@ -187,12 +187,24 @@ jobs:
 
     needs: [sanity]
 
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        machine:
+          - {os: "fedora", image: "38", kernel: "default"}
+          - {os: "fedora", image: "rawhide", kernel: "iommufd"}
+
     runs-on: [self-hosted, kvm]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'approved'))
+
     env:
       VMCTL_VMROOT: "/scratch/ghr/guests"
-      VMCONFIG: ".github/vmconfig/null.conf"
+      KERNEL_DIR: "/scratch/ghr/src/linux"
+      GUEST_BOOT: "img/fedora-${{ matrix.machine.image }}.qcow2"
+      VMCONFIG: ".github/vmconfig/nvme.conf"
       QEMU_SYSTEM_BINARY: "/usr/bin/qemu-system-x86_64"
+      NVME_PCI_DEV: "0000:00:03.0"
 
     steps:
       - name: checkout libvfn
@@ -206,11 +218,17 @@ jobs:
       - name: reset vm
         run: |
           vmctl -c "$VMCONFIG" kill || true
-          rm -f "${VMCTL_VMROOT}/img/null.qcow2"
 
       - name: launch vm
+        if: matrix.machine.kernel == 'default'
         run: |
           vmctl -c "$VMCONFIG" run --background
+          vmctl -c "$VMCONFIG" ssh -w -- echo vm is up
+
+      - name: launch vm (custom kernel)
+        if: matrix.machine.kernel == 'iommufd'
+        run: |
+          vmctl -c "$VMCONFIG" run -k "$KERNEL_DIR" --background
           vmctl -c "$VMCONFIG" ssh -w -- echo vm is up
 
       - name: copy source
@@ -233,14 +251,14 @@ jobs:
           vmctl -c "$VMCONFIG" ssh -- -T <<EOF
           modprobe vfio-pci
           cd libvfn
-          ./build/tools/vfntool/vfntool -v -d 0000:01:00.0
+          ./build/tools/vfntool/vfntool -v -d "$NVME_PCI_DEV"
           EOF
 
       - name: run tests
         run: |
           vmctl -c "$VMCONFIG" ssh -- -T <<EOF
           cd libvfn
-          meson test -C build libvfn: --suite device --test-args "-d 0000:01:00.0 -N 1"
+          meson test -C build libvfn: --suite device --test-args "-d \"${NVME_PCI_DEV}\" -N 1"
           EOF
 
       - name: shutdown vm
