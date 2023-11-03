@@ -419,7 +419,7 @@ int vfio_unmap_vaddr(struct vfio_container *vfio, void *vaddr, size_t *len)
 	m = iommu_find_mapping(&vfio->iommu, vaddr);
 	if (!m) {
 		errno = ENOENT;
-		return 0;
+		return -1;
 	}
 
 	if (len)
