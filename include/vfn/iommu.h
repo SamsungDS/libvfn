@@ -20,6 +20,8 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include <linux/types.h>
+
 #include <vfn/iommu/context.h>
 #include <vfn/iommu/dma.h>
 

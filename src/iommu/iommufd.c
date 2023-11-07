@@ -84,10 +84,9 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 
 	if (logv(LOG_INFO)) {
 		for (int i = 0; i < ioas->ctx.map.nranges; i++) {
-			struct iova_range *r = &ioas->ctx.map.iova_ranges[i];
+			struct iommu_iova_range *r = &ioas->ctx.map.iova_ranges[i];
 
-			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n",
-				 i, r->start, r->end);
+			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->last);
 		}
 	}
 

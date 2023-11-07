@@ -62,10 +62,12 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
  */
 int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len);
 
-struct iova_range {
-	uint64_t start;
-	uint64_t end;
+#ifndef IOMMU_IOAS_IOVA_RANGES
+struct iommu_iova_range {
+	__aligned_u64 start;
+	__aligned_u64 last;
 };
+#endif
 
 /**
  * iommu_get_iova_ranges - get iova ranges
@@ -76,6 +78,6 @@ struct iova_range {
  *
  * Return: the number of elements in the array pointed to.
  */
-int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iova_range **ranges);
+int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **ranges);
 
 #endif /* LIBVFN_IOMMU_DMA_H */

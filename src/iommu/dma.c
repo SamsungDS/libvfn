@@ -79,7 +79,7 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 	return 0;
 }
 
-int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iova_range **ranges)
+int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **ranges)
 {
 	*ranges = ctx->map.iova_ranges;
 
