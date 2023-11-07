@@ -178,7 +178,7 @@ static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
 	if (flags & IOMMU_MAP_NOREAD)
 		map.flags &= ~IOMMU_IOAS_MAP_READABLE;
 
-	trace_guard(IOMMU_MAP_DMA) {
+	trace_guard(IOMMUFD_IOAS_MAP_DMA) {
 		if (flags & IOMMU_MAP_FIXED_IOVA)
 			trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, *iova, len);
 		else
@@ -195,7 +195,7 @@ static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
 
 	*iova = map.iova;
 
-	trace_guard(IOMMU_MAP_DMA) {
+	trace_guard(IOMMUFD_IOAS_MAP_DMA) {
 		trace_emit("allocated iova 0x%" PRIx64 "\n", *iova);
 	}
 
@@ -213,7 +213,7 @@ static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, size_t 
 		.length = len
 	};
 
-	trace_guard(IOMMU_UNMAP_DMA) {
+	trace_guard(IOMMUFD_IOAS_UNMAP_DMA) {
 		trace_emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
 	}
 

@@ -350,7 +350,7 @@ static int vfio_iommu_type1_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_
 	if (flags & IOMMU_MAP_NOREAD)
 		dma_map.flags &= ~VFIO_DMA_MAP_FLAG_READ;
 
-	trace_guard(IOMMU_MAP_DMA) {
+	trace_guard(VFIO_IOMMU_TYPE1_MAP_DMA) {
 		trace_emit("vaddr %p iova 0x%" PRIx64 " len %zu\n", vaddr, *iova, len);
 	}
 
@@ -378,7 +378,7 @@ static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, s
 		.iova = iova,
 	};
 
-	trace_guard(IOMMU_UNMAP_DMA) {
+	trace_guard(VFIO_IOMMU_TYPE1_UNMAP_DMA) {
 		trace_emit("iova 0x%" PRIx64 " len %zu\n", iova, len);
 	}
 
