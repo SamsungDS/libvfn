@@ -17,6 +17,8 @@
 extern "C" {
 #endif
 
+#include <linux/types.h>
+
 #include <vfn/iommu/context.h>
 #include <vfn/iommu/dma.h>
 

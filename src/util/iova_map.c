@@ -215,9 +215,9 @@ void iova_map_init(struct iova_map *map)
 	map->nranges = 1;
 	map->next = __VFN_IOVA_MIN;
 
-	map->iova_ranges = znew_t(struct iova_range, 1);
+	map->iova_ranges = znew_t(struct iommu_iova_range, 1);
 	map->iova_ranges[0].start = __VFN_IOVA_MIN;
-	map->iova_ranges[0].end = IOVA_MAX_39BITS - 1;
+	map->iova_ranges[0].last = IOVA_MAX_39BITS - 1;
 }
 
 void iova_map_clear_with(struct iova_map *map, iova_map_iter_fn fn, void *opaque)
@@ -268,15 +268,15 @@ int iova_map_reserve(struct iova_map *map, size_t len, uint64_t *iova)
 	}
 
 	for (int i = 0; i < map->nranges; i++) {
-		struct iova_range *r = &map->iova_ranges[i];
+		struct iommu_iova_range *r = &map->iova_ranges[i];
 		uint64_t next = map->next;
 
-		if (r->end < next)
+		if (r->last < next)
 			continue;
 
 		next = max_t(uint64_t, next, r->start);
 
-		if (next > r->end || r->end - next + 1 < len)
+		if (next > r->last || r->last - next + 1 < len)
 			continue;
 
 		map->next = next + len;

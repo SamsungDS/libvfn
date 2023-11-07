@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
 	union nvme_cmd cmd = {};
 	struct nvme_id_ctrl *id_ctrl;
-	struct iova_range *iova_ranges;
+	struct iommu_iova_range *iova_ranges;
 	int num_iova_ranges;
 
 	opt_register_table(opts, NULL);
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 
 	/* choose a base address that is guaranteed not to be involved in dma */
 	num_iova_ranges = iommu_get_iova_ranges(__iommu_ctx(&ctrl), &iova_ranges);
-	cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].end + 1, 4096);
+	cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].last + 1, 4096);
 	printf("assigned cmb base address is 0x%lx\n", cba);
 
 	/* set the base address and enable the memory space */

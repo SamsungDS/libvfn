@@ -72,6 +72,8 @@ static struct vfio_container vfio_default_container = {
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
+__static_assert(sizeof(struct vfio_iova_range) == sizeof(struct iommu_iova_range));
+
 static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
 						 struct vfio_info_cap_header *cap)
 {
@@ -79,7 +81,7 @@ static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
 	size_t len;
 
 	cap_iova_range = (struct vfio_iommu_type1_info_cap_iova_range *)cap;
-	len = sizeof(struct iova_range) * cap_iova_range->nr_iovas;
+	len = sizeof(struct vfio_iova_range) * cap_iova_range->nr_iovas;
 
 	map->nranges = cap_iova_range->nr_iovas;
 	map->iova_ranges = realloc(map->iova_ranges, len);
@@ -87,9 +89,9 @@ static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
 
 	if (logv(LOG_INFO)) {
 		for (int i = 0; i < map->nranges; i++) {
-			struct iova_range *r = &map->iova_ranges[i];
+			struct iommu_iova_range *r = &map->iova_ranges[i];
 
-			log_info("iova range %d is [0x%" PRIx64 "; 0x%" PRIx64 "]\n", i, r->start, r->end);
+			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->last);
 		}
 	}
 }

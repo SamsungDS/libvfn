@@ -56,7 +56,7 @@ static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64
 	size_t len;
 	int bir;
 	void *cmb;
-	struct iova_range *iova_ranges;
+	struct iommu_iova_range *iova_ranges;
 	int num_iova_ranges;
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
@@ -99,7 +99,7 @@ static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64
 
 	/* choose a base address that is guaranteed not to be involved in dma */
 	num_iova_ranges = iommu_get_iova_ranges(__iommu_ctx(ctrl), &iova_ranges);
-	*cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].end + 1, 4096);
+	*cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].last + 1, 4096);
 	printf("assigned cmb base address is 0x%lx\n", *cba);
 
 	/* set the base address and enable the memory space */

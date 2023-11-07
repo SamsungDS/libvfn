@@ -35,7 +35,7 @@ struct iova_map_list {
 
 struct iova_map {
 	int nranges;
-	struct iova_range *iova_ranges;
+	struct iommu_iova_range *iova_ranges;
 
 	pthread_mutex_t lock;
 
