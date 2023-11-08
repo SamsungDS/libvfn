@@ -283,7 +283,7 @@ discard_cq:
 
 static int __admin(struct nvme_ctrl *ctrl, void *sqe)
 {
-	return nvme_sync(ctrl->adminq.sq, sqe, 0x0, 0, NULL);
+	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, NULL, 0, NULL);
 }
 
 int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)

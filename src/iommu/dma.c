@@ -38,7 +38,8 @@ static int iova_cmp(const void *vaddr, const struct skiplist_node *n)
 	return 0;
 }
 
-static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t iova)
+static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t iova,
+			unsigned long flags)
 {
 	__autolock(&map->lock);
 
@@ -60,6 +61,7 @@ static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t 
 	m->vaddr = vaddr;
 	m->len = len;
 	m->iova = iova;
+	m->flags = flags;
 
 	skiplist_link(&map->list, &m->list, update);
 
@@ -121,7 +123,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
-	} else if (ctx->ops.iova_reserve && ctx->ops.iova_reserve(ctx, len, &_iova)) {
+	} else if (ctx->ops.iova_reserve && ctx->ops.iova_reserve(ctx, len, &_iova, flags)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
@@ -131,7 +133,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 		return -1;
 	}
 
-	if (iova_map_add(&ctx->map, vaddr, len, _iova)) {
+	if (iova_map_add(&ctx->map, vaddr, len, _iova, flags)) {
 		log_debug("failed to add mapping\n");
 		return -1;
 	}
@@ -160,6 +162,9 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 		log_debug("failed to unmap dma\n");
 		return -1;
 	}
+
+	if (m->flags & IOMMU_MAP_EPHEMERAL && ctx->ops.iova_put_ephemeral)
+		ctx->ops.iova_put_ephemeral(ctx);
 
 	iova_map_remove(&ctx->map, m->vaddr);
 

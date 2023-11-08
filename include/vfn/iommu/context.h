@@ -13,8 +13,6 @@
 #ifndef LIBVFN_IOMMU_CONTEXT_H
 #define LIBVFN_IOMMU_CONTEXT_H
 
-#define __VFN_IOVA_MIN 0x10000
-
 /**
  * iommu_get_context - create a new iommu context
  * @name: context identifier

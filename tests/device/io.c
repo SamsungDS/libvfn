@@ -32,7 +32,6 @@
 static int test_io(void)
 {
 	void *vaddr;
-	uint64_t iova;
 	ssize_t len;
 	int ret;
 
@@ -47,14 +46,7 @@ static int test_io(void)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	ret = iommu_map_vaddr(__iommu_ctx(&ctrl), vaddr, len, &iova, 0x0);
-	if (ret)
-		err(1, "failed to map vaddr");
-
-	ret = nvme_sync(sq, &cmd, iova, len, NULL);
-
-	if (iommu_unmap_vaddr(__iommu_ctx(&ctrl), vaddr, NULL))
-		err(1, "failed to unmap vaddr");
+	ret = nvme_sync(&ctrl, sq, &cmd, vaddr, len, NULL);
 
 	pgunmap(vaddr, len);
 
