@@ -10,27 +10,16 @@
  * COPYING and LICENSE files for more information.
  */
 
-#include "ccan/list/list.h"
+#include "skiplist.h"
 
 #define IOVA_MAX_39BITS (1ULL << 39)
-
-#define SKIPLIST_LEVELS 8
 
 struct iova_mapping {
 	void *vaddr;
 	size_t len;
 	uint64_t iova;
 
-	struct list_node list[SKIPLIST_LEVELS];
-};
-
-struct iova_map_list {
-	pthread_mutex_t lock;
-
-	int height;
-
-	struct iova_mapping nil, sentinel;
-	struct list_head heads[SKIPLIST_LEVELS];
+	struct skiplist_node list;
 };
 
 struct iova_map {
@@ -41,10 +30,8 @@ struct iova_map {
 
 	uint64_t next;
 
-	struct iova_map_list list;
+	struct skiplist list;
 };
-
-typedef void (*iova_map_iter_fn)(void *opaque, struct iova_mapping *m);
 
 void iova_map_init(struct iova_map *map);
 void iova_map_destroy(struct iova_map *map);
@@ -57,4 +44,4 @@ bool iova_map_translate(struct iova_map *map, void *vaddr, uint64_t *iova);
 struct iova_mapping *iova_map_find(struct iova_map *map, void *vaddr);
 
 void iova_map_clear(struct iova_map *map);
-void iova_map_clear_with(struct iova_map *map, iova_map_iter_fn fn, void *opaque);
+void iova_map_clear_with(struct iova_map *map, skiplist_iter_fn fn, void *opaque);

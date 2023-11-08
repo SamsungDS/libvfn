@@ -1,12 +1,12 @@
 # tests
-iova_map_list_test = executable('iova_map_list_test',
-  [gen_sources, vfn_sources, 'iova_map_list_test.c'],
+skiplist_test = executable('skiplist_test', [ccan_config_h, support_sources, 'skiplist_test.c'],
   link_with: [ccan_lib],
-  include_directories: [ccan_inc, core_inc, vfn_inc],
+  include_directories: [ccan_inc, vfn_inc],
 )
 
-test('iova_map_list_test', iova_map_list_test)
+test('skiplist_test', skiplist_test)
 
 vfn_sources += files(
+  'skiplist.c',
   'iova_map.c',
 )
