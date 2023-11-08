@@ -34,9 +34,7 @@
 #include <vfn/nvme.h>
 
 #include "ccan/minmax/minmax.h"
-#include "ccan/list/list.h"
 
-#include "util/iova_map.h"
 #include "iommu/context.h"
 
 static int __rq_max_prps;

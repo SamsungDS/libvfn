@@ -43,7 +43,6 @@
 #include "ccan/str/str.h"
 #include "ccan/list/list.h"
 
-#include "util/iova_map.h"
 #include "iommu/context.h"
 
 static int pci_set_bus_master(struct vfio_pci_device *pci)

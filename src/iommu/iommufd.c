@@ -38,7 +38,6 @@
 
 #include "ccan/list/list.h"
 
-#include "util/iova_map.h"
 #include "context.h"
 #include "trace.h"
 

@@ -8,5 +8,4 @@ test('skiplist_test', skiplist_test)
 
 vfn_sources += files(
   'skiplist.c',
-  'iova_map.c',
 )

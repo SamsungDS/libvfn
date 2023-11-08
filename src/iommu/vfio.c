@@ -45,7 +45,6 @@
 #include "vfn/support/mem.h"
 #include "vfn/support/align.h"
 
-#include "util/iova_map.h"
 #include "context.h"
 
 struct vfio_group {

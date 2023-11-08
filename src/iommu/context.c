@@ -19,9 +19,11 @@
 #include <sys/stat.h>
 
 #include "vfn/support.h"
+#include "vfn/iommu.h"
 
-#include "util/iova_map.h"
 #include "context.h"
+
+#define IOVA_MAX_39BITS (1ULL << 39)
 
 #ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
 static bool __iommufd_broken;
@@ -62,4 +64,17 @@ struct iommu_ctx *iommu_get_context(const char *name)
 fallback:
 #endif
 	return vfio_get_iommu_context(name);
+}
+
+void iova_map_init(struct iova_map *map)
+{
+	skiplist_init(&map->list);
+	pthread_mutex_init(&map->lock, NULL);
+
+	map->nranges = 1;
+	map->next = __VFN_IOVA_MIN;
+
+	map->iova_ranges = znew_t(struct iommu_iova_range, 1);
+	map->iova_ranges[0].start = __VFN_IOVA_MIN;
+	map->iova_ranges[0].last = IOVA_MAX_39BITS - 1;
 }
