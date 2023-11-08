@@ -23,6 +23,7 @@
 
 #include "context.h"
 
+#define IOVA_MIN 0x10000
 #define IOVA_MAX_39BITS (1ULL << 39)
 
 #ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
@@ -75,7 +76,7 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	 * For vfio, if we end up not being able to get a list of allowed
 	 * iova ranges, be conservative.
 	 */
-	ctx->iova_ranges[0].start = __VFN_IOVA_MIN;
+	ctx->iova_ranges[0].start = IOVA_MIN;
 	ctx->iova_ranges[0].last = IOVA_MAX_39BITS - 1;
 
 	pthread_mutex_init(&ctx->lock, NULL);

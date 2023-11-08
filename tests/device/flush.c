@@ -37,7 +37,7 @@ static int test_flush(uint32_t nsid)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	return nvme_sync(sq, &cmd, 0x0, 0, NULL);
+	return nvme_sync(&ctrl, sq, &cmd, NULL, 0, NULL);
 }
 
 int main(int argc, char **argv)

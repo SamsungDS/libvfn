@@ -62,7 +62,8 @@ struct vfio_container {
 	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
 
 	pthread_mutex_t lock;
-	uint64_t next;
+	uint64_t next, next_ephemeral, nephemerals;
+	struct iommu_iova_range ephemerals;
 };
 
 static struct vfio_container vfio_default_container = {
@@ -210,7 +211,8 @@ static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, uint64_
 	return false;
 }
 
-static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, uint64_t *iova)
+static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, uint64_t *iova,
+					 unsigned long flags)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 
@@ -222,9 +224,19 @@ static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, uint
 		return -1;
 	}
 
+	if (flags & IOMMU_MAP_EPHEMERAL) {
+		if (!__iova_reserve(&vfio->ephemerals, 1, &vfio->next_ephemeral, len, iova))
+			goto enomem;
+
+		atomic_inc(&vfio->nephemerals);
+
+		return 0;
+	}
+
 	if (__iova_reserve(ctx->iova_ranges, ctx->nranges, &vfio->next, len, iova))
 		return 0;
 
+enomem:
 	errno = ENOMEM;
 	return -1;
 }
@@ -245,9 +257,21 @@ static int vfio_iommu_type1_init(struct vfio_container *vfio)
 	}
 #endif
 
-	if (vfio_iommu_type1_iova_reserve(&vfio->ctx, VFIO_IOMMU_TYPE1_IOVA_RESERVED, &iova)) {
+	if (vfio_iommu_type1_iova_reserve(&vfio->ctx, VFIO_IOMMU_TYPE1_IOVA_RESERVED, &iova, 0x0)) {
 		log_debug("could not reserve iova range\n");
 		return -1;
+	}
+
+	vfio->ephemerals.start = iova;
+	vfio->ephemerals.last = iova + VFIO_IOMMU_TYPE1_IOVA_RESERVED - 1;
+
+	if (logv(LOG_INFO)) {
+		__autofree char *str;
+
+		log_fatal_if(iommu_iova_range_to_string(&vfio->ephemerals, &str) < 0,
+			     "iommu_iova_range_to_string\n");
+
+		log_info("reserved 64k for ephemerals %s\n", str);
 	}
 
 	return 0;
@@ -440,6 +464,26 @@ static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, s
 	return 0;
 }
 
+static void vfio_iommu_type1_recycle_ephemeral_iovas(struct vfio_container *vfio)
+{
+	__autolock(&vfio->lock);
+
+	trace_guard(VFIO_IOMMU_TYPE1_RECYCLE_EPHEMERAL_IOVAS) {
+		trace_emit("recycling ephemeral range (0x%" PRIx64 " -> 0x%llx)\n",
+			   vfio->next_ephemeral, vfio->ephemerals.start);
+	}
+
+	vfio->next_ephemeral = vfio->ephemerals.start;
+}
+
+static void vfio_iommu_type1_iova_put_ephemeral(struct iommu_ctx *ctx)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
+	if (atomic_dec_fetch(&vfio->nephemerals) == 0)
+		vfio_iommu_type1_recycle_ephemeral_iovas(vfio);
+}
+
 #ifdef VFIO_UNMAP_ALL
 static int vfio_iommu_type1_do_dma_unmap_all(struct iommu_ctx *ctx)
 {
@@ -463,6 +507,7 @@ static const struct iommu_ctx_ops vfio_ops = {
 	.get_device_fd = vfio_get_device_fd,
 
 	.iova_reserve = vfio_iommu_type1_iova_reserve,
+	.iova_put_ephemeral = vfio_iommu_type1_iova_put_ephemeral,
 
 	.dma_map = vfio_iommu_type1_do_dma_map,
 	.dma_unmap = vfio_iommu_type1_do_dma_unmap,

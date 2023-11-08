@@ -75,17 +75,23 @@ int nvme_aer(struct nvme_ctrl *ctrl, void *opaque)
 	return 0;
 }
 
-int nvme_sync(struct nvme_sq *sq, void *sqe, uint64_t iova, size_t len, void *cqe_copy)
+int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len, void *cqe_copy)
 {
 	struct nvme_cqe cqe;
 	struct nvme_rq *rq;
+	uint64_t iova;
 	int ret = 0;
+
+	if (buf && iommu_map_vaddr(__iommu_ctx(ctrl), buf, len, &iova, IOMMU_MAP_EPHEMERAL)) {
+		log_debug("failed to map vaddr\n");
+		return -1;
+	}
 
 	rq = nvme_rq_acquire_atomic(sq);
 	if (!rq)
 		return -1;
 
-	if (len) {
+	if (buf) {
 		ret = nvme_rq_map_prp(rq, sqe, iova, len);
 		if (ret) {
 			goto release_rq;
@@ -113,28 +119,14 @@ int nvme_sync(struct nvme_sq *sq, void *sqe, uint64_t iova, size_t len, void *cq
 release_rq:
 	nvme_rq_release_atomic(rq);
 
+	if (buf)
+		log_fatal_if(iommu_unmap_vaddr(__iommu_ctx(ctrl), buf, NULL),
+			     "iommu_unmap_vaddr\n");
+
 	return ret;
 }
 
 int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe_copy)
 {
-	uint64_t iova = 0x0;
-	int ret;
-
-	if (len > __VFN_IOVA_MIN) {
-		errno = ENOMEM;
-		return -1;
-	} else if (len) {
-		if (iommu_map_vaddr(__iommu_ctx(ctrl), buf, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
-			log_debug("failed to map vaddr\n");
-			return -1;
-		}
-	}
-
-	ret = nvme_sync(ctrl->adminq.sq, sqe, iova, len, cqe_copy);
-
-	if (len && iommu_unmap_vaddr(__iommu_ctx(ctrl), buf, NULL))
-		log_debug("failed to unmap vaddr\n");
-
-	return ret;
+	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
 }
