@@ -10,6 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
+#include "util/skiplist.h"
+
 struct iommu_ctx;
 
 struct iommu_ctx_ops {
@@ -20,6 +22,26 @@ struct iommu_ctx_ops {
 
 	/* device ops */
 	int (*get_device_fd)(struct iommu_ctx *ctx, const char *bdf);
+};
+
+struct iova_mapping {
+	void *vaddr;
+	size_t len;
+	uint64_t iova;
+
+	unsigned long flags;
+
+	struct skiplist_node list;
+};
+
+struct iova_map {
+	pthread_mutex_t lock;
+	struct skiplist list;
+
+	uint64_t next;
+
+	int nranges;
+	struct iommu_iova_range *iova_ranges;
 };
 
 struct iommu_ctx {
@@ -39,3 +61,7 @@ struct iommu_ctx *vfio_get_iommu_context(const char *name);
 struct iommu_ctx *iommufd_get_default_iommu_context(void);
 struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 #endif
+
+void iova_map_init(struct iova_map *map);
+int iova_map_reserve(struct iova_map *map, size_t len, uint64_t *iova);
+void iova_map_destroy(struct iova_map *map);
