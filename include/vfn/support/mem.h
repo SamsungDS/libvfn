@@ -32,6 +32,14 @@ static inline bool would_overflow(unsigned int n, size_t sz)
 	return n > SIZE_MAX / sz;
 }
 
+static inline size_t __abort_on_overflow(unsigned int n, size_t sz)
+{
+	if (would_overflow(n, sz))
+		backtrace_abort();
+
+	return n * sz;
+}
+
 /**
  * xmalloc - version of malloc that cannot fail
  * @sz: number of bytes to allocate
