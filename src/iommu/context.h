@@ -16,6 +16,7 @@ struct iommu_ctx;
 
 struct iommu_ctx_ops {
 	/* container/ioas ops */
+	int (*iova_reserve)(struct iommu_ctx *ctx, size_t len, uint64_t *iova);
 	int (*dma_map)(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
 		       unsigned long flags);
 	int (*dma_unmap)(struct iommu_ctx *ctx, uint64_t iova, size_t len);
@@ -43,12 +44,7 @@ struct iommu_ctx {
 	struct iova_map map;
 	struct iommu_ctx_ops ops;
 
-#define IOMMU_F_REQUIRE_IOVA (1 << 0)
-	unsigned int flags;
-
 	pthread_mutex_t lock;
-	uint64_t next;
-
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
 };

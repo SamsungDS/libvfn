@@ -31,21 +31,19 @@
 
 #include "ccan/str/str.h"
 #include "ccan/compiler/compiler.h"
+#include "ccan/minmax/minmax.h"
 
 #include <linux/types.h>
 #include <linux/vfio.h>
 
+#include "vfn/support.h"
 #include "vfn/iommu.h"
 #include "vfn/trace.h"
 #include "vfn/pci/util.h"
 
-#include "vfn/support/atomic.h"
-#include "vfn/support/compiler.h"
-#include "vfn/support/log.h"
-#include "vfn/support/mem.h"
-#include "vfn/support/align.h"
-
 #include "context.h"
+
+#define VFIO_IOMMU_TYPE1_IOVA_RESERVED 0x10000
 
 struct vfio_group {
 	int fd;
@@ -62,6 +60,9 @@ struct vfio_container {
 
 #define VFN_MAX_VFIO_GROUPS 64
 	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
+
+	pthread_mutex_t lock;
+	uint64_t next;
 };
 
 static struct vfio_container vfio_default_container = {
@@ -184,9 +185,53 @@ static int vfio_iommu_type1_get_capabilities(struct vfio_container *vfio)
 }
 #endif /* VFIO_IOMMU_INFO_CAPS */
 
+static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, uint64_t *next,
+			   size_t len, uint64_t *iova)
+{
+	uint64_t _next = *next;
+
+	for (int i = 0; i < nranges; i++) {
+		struct iommu_iova_range *r = &ranges[i];
+
+		if (r->last < _next)
+			continue;
+
+		_next = max_t(uint64_t, _next, r->start);
+
+		if (_next > r->last || r->last - _next + 1 < len)
+			continue;
+
+		*iova = _next;
+		*next = _next + len;
+
+		return true;
+	}
+
+	return false;
+}
+
+static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, uint64_t *iova)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
+	__autolock(&vfio->lock);
+
+	if (!ALIGNED(len, __VFN_PAGESIZE)) {
+		log_debug("len is not page aligned\n");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (__iova_reserve(ctx->iova_ranges, ctx->nranges, &vfio->next, len, iova))
+		return 0;
+
+	errno = ENOMEM;
+	return -1;
+}
+
 static int vfio_iommu_type1_init(struct vfio_container *vfio)
 {
-	vfio->ctx.flags |= IOMMU_F_REQUIRE_IOVA;
+	uint64_t iova;
 
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
 		log_debug("failed to set vfio iommu type\n");
@@ -199,6 +244,11 @@ static int vfio_iommu_type1_init(struct vfio_container *vfio)
 		return -1;
 	}
 #endif
+
+	if (vfio_iommu_type1_iova_reserve(&vfio->ctx, VFIO_IOMMU_TYPE1_IOVA_RESERVED, &iova)) {
+		log_debug("could not reserve iova range\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -392,6 +442,8 @@ static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, s
 
 static const struct iommu_ctx_ops vfio_ops = {
 	.get_device_fd = vfio_get_device_fd,
+
+	.iova_reserve = vfio_iommu_type1_iova_reserve,
 
 	.dma_map = vfio_iommu_type1_do_dma_map,
 	.dma_unmap = vfio_iommu_type1_do_dma_unmap,

@@ -111,39 +111,6 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova)
 	return false;
 }
 
-static int iommu_iova_reserve(struct iommu_ctx *ctx, size_t len, uint64_t *iova)
-{
-	__autolock(&ctx->lock);
-
-	if (!ALIGNED(len, __VFN_PAGESIZE)) {
-		log_debug("len is not page aligned\n");
-		errno = EINVAL;
-		return -1;
-	}
-
-	for (int i = 0; i < ctx->nranges; i++) {
-		struct iommu_iova_range *r = &ctx->iova_ranges[i];
-		uint64_t next = ctx->next;
-
-		if (r->last < next)
-			continue;
-
-		next = max_t(uint64_t, next, r->start);
-
-		if (next > r->last || r->last - next + 1 < len)
-			continue;
-
-		ctx->next = next + len;
-
-		*iova = next;
-
-		return 0;
-	}
-
-	errno = ENOMEM;
-	return -1;
-}
-
 int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
 		    unsigned long flags)
 {
@@ -154,7 +121,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
-	} else if (ctx->flags & IOMMU_F_REQUIRE_IOVA && iommu_iova_reserve(ctx, len, &_iova)) {
+	} else if (ctx->ops.iova_reserve && ctx->ops.iova_reserve(ctx, len, &_iova)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
