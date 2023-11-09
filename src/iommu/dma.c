@@ -204,3 +204,8 @@ int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **range
 	*ranges = ctx->iova_ranges;
 	return ctx->nranges;
 }
+
+int iommu_iova_range_to_string(struct iommu_iova_range *r, char **str)
+{
+	return asprintf(str, "[0x%llx; 0x%llx]", r->start, r->last);
+}

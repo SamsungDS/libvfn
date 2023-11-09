@@ -83,8 +83,12 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 	if (logv(LOG_INFO)) {
 		for (int i = 0; i < ioas->ctx.nranges; i++) {
 			struct iommu_iova_range *r = &ioas->ctx.iova_ranges[i];
+			__autofree char *str = NULL;
 
-			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->last);
+			log_fatal_if(iommu_iova_range_to_string(r, &str) < 0,
+				     "iommu_iova_range_to_string\n");
+
+			log_info("iova range %d is %s\n", i, str);
 		}
 	}
 
