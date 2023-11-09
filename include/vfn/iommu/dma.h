@@ -62,6 +62,16 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
  */
 int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len);
 
+/**
+ * iommu_unmap_all - unmap all virtual memory address in the IOMMU
+ * @ctx: &struct iommu_ctx
+ *
+ * Remove all mappings.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
+ */
+int iommu_unmap_all(struct iommu_ctx *ctx);
+
 #ifndef IOMMU_IOAS_IOVA_RANGES
 struct iommu_iova_range {
 	__aligned_u64 start;

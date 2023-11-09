@@ -166,6 +166,35 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 	return 0;
 }
 
+static void __unmap_mapping(void *opaque, struct skiplist_node *n)
+{
+	struct iommu_ctx *ctx = opaque;
+	struct iova_mapping *m = container_of_var(n, m, list);
+
+	log_fatal_if(ctx->ops.dma_unmap(ctx, m->len, m->iova),
+		     "failed to unmap dma (iova 0x%" PRIx64 " len %zu)\n", m->iova, m->len);
+
+	free(m);
+}
+
+int iommu_unmap_all(struct iommu_ctx *ctx)
+{
+	if (ctx->ops.dma_unmap_all) {
+		if (ctx->ops.dma_unmap_all(ctx)) {
+			log_debug("failed to unmap dma\n");
+			return -1;
+		}
+
+		iova_map_clear(&ctx->map);
+
+		return 0;
+	}
+
+	iova_map_clear_with(&ctx->map, __unmap_mapping, ctx);
+
+	return 0;
+}
+
 int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **ranges)
 {
 	*ranges = ctx->iova_ranges;

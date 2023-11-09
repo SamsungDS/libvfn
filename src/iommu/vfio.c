@@ -440,6 +440,25 @@ static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, s
 	return 0;
 }
 
+#ifdef VFIO_UNMAP_ALL
+static int vfio_iommu_type1_do_dma_unmap_all(struct iommu_ctx *ctx)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
+	struct vfio_iommu_type1_dma_unmap dma_unmap = {
+		.argsz = sizeof(dma_unmap),
+		.flags = VFIO_DMA_UNMAP_FLAG_ALL,
+	};
+
+	if (ioctl(vfio->fd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap)) {
+		log_debug("failed to unmap dma\n");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 static const struct iommu_ctx_ops vfio_ops = {
 	.get_device_fd = vfio_get_device_fd,
 
@@ -447,6 +466,9 @@ static const struct iommu_ctx_ops vfio_ops = {
 
 	.dma_map = vfio_iommu_type1_do_dma_map,
 	.dma_unmap = vfio_iommu_type1_do_dma_unmap,
+#ifdef VFIO_UNMAP_ALL
+	.dma_unmap_all = vfio_iommu_type1_do_dma_unmap_all,
+#endif
 };
 
 static int vfio_init_container(struct vfio_container *vfio)

@@ -227,11 +227,17 @@ static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, size_t 
 	return 0;
 }
 
+static int iommu_ioas_do_dma_unmap_all(struct iommu_ctx *ctx)
+{
+	return iommu_ioas_do_dma_unmap(ctx, 0, UINT64_MAX);
+}
+
 static const struct iommu_ctx_ops iommufd_ops = {
 	.get_device_fd = iommufd_get_device_fd,
 
 	.dma_map = iommu_ioas_do_dma_map,
 	.dma_unmap = iommu_ioas_do_dma_unmap,
+	.dma_unmap_all = iommu_ioas_do_dma_unmap_all,
 };
 
 static int iommu_ioas_init(struct iommu_ioas *ioas)
