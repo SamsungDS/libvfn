@@ -20,6 +20,7 @@ struct iommu_ctx_ops {
 	int (*dma_map)(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
 		       unsigned long flags);
 	int (*dma_unmap)(struct iommu_ctx *ctx, uint64_t iova, size_t len);
+	int (*dma_unmap_all)(struct iommu_ctx *ctx);
 
 	/* device ops */
 	int (*get_device_fd)(struct iommu_ctx *ctx, const char *bdf);
