@@ -71,8 +71,6 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	ctx->nranges = 1;
 	ctx->iova_ranges = znew_t(struct iommu_iova_range, ctx->nranges);
 
-	ctx->next = __VFN_IOVA_MIN;
-
 	/*
 	 * For vfio, if we end up not being able to get a list of allowed
 	 * iova ranges, be conservative.
