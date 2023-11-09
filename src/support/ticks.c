@@ -7,6 +7,8 @@
  * From DPDK; modified by the libvfn Authors.
  */
 
+#define log_fmt(fmt) "support/ticks: " fmt
+
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>

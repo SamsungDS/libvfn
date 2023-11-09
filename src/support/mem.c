@@ -10,6 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
+#define log_fmt(fmt) "support/mem: " fmt
+
 #include <errno.h>
 #ifdef __GLIBC__
 #include <execinfo.h>
