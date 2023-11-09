@@ -30,7 +30,7 @@ static void __attribute__((constructor)) init_log_level(void)
 		goto set_default;
 
 	v = strtol(buf, &endptr, 0);
-	if (endptr == buf || v > LOG_DEBUG)
+	if (endptr == buf)
 		goto set_default;
 
 	__log_state.v = (int)v;

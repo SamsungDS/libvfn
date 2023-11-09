@@ -10,6 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
+#define log_fmt(fmt) "nvme/rq: " fmt
+
 #include <assert.h>
 #include <byteswap.h>
 #include <errno.h>
