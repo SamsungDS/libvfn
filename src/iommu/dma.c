@@ -99,9 +99,9 @@ static void UNUSED iova_map_clear(struct iova_map *map)
 	iova_map_clear_with(map, NULL, NULL);
 }
 
-static bool iova_map_translate(struct iova_map *map, void *vaddr, uint64_t *iova)
+bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova)
 {
-	struct iova_mapping *m = iova_map_find(map, vaddr);
+	struct iova_mapping *m = iova_map_find(&ctx->map, vaddr);
 
 	if (m) {
 		*iova = m->iova + (vaddr - m->vaddr);
@@ -149,7 +149,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 {
 	uint64_t _iova;
 
-	if (iova_map_translate(&ctx->map, vaddr, &_iova))
+	if (iommu_translate_vaddr(ctx, vaddr, &_iova))
 		goto out;
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
