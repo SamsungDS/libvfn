@@ -182,6 +182,13 @@ jobs:
       - name: unit tests
         run: meson test -C build "libvfn:"
 
+      - name: upload log
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: meson test log
+          path: build/meson-logs/testlog.txt
+
   device-test:
     name: "run emulated nvme device tests"
 
