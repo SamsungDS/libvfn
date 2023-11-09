@@ -68,12 +68,11 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 			return -1;
 		}
 
-		ioas->ctx.map.nranges = iova_ranges.num_iovas;
-		ioas->ctx.map.iova_ranges = reallocn(ioas->ctx.map.iova_ranges,
-						     iova_ranges.num_iovas,
-						     sizeof(struct iommu_iova_range));
+		ioas->ctx.nranges = iova_ranges.num_iovas;
+		ioas->ctx.iova_ranges = reallocn(ioas->ctx.iova_ranges, iova_ranges.num_iovas,
+						 sizeof(struct iommu_iova_range));
 
-		iova_ranges.allowed_iovas = (uintptr_t)ioas->ctx.map.iova_ranges;
+		iova_ranges.allowed_iovas = (uintptr_t)ioas->ctx.iova_ranges;
 
 		if (ioctl(__iommufd, IOMMU_IOAS_IOVA_RANGES, &iova_ranges)) {
 			log_debug("could not get ioas iova ranges\n");
@@ -82,8 +81,8 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 	}
 
 	if (logv(LOG_INFO)) {
-		for (int i = 0; i < ioas->ctx.map.nranges; i++) {
-			struct iommu_iova_range *r = &ioas->ctx.map.iova_ranges[i];
+		for (int i = 0; i < ioas->ctx.nranges; i++) {
+			struct iommu_iova_range *r = &ioas->ctx.iova_ranges[i];
 
 			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->last);
 		}
@@ -245,8 +244,6 @@ static int iommu_ioas_init(struct iommu_ioas *ioas)
 
 	ioas->id = alloc_data.out_ioas_id;
 
-	iova_map_init(&ioas->ctx.map);
-
 	memcpy(&ioas->ctx.ops, &iommufd_ops, sizeof(ioas->ctx.ops));
 
 	return 0;
@@ -265,6 +262,8 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 {
 	struct iommu_ioas *ioas = znew_t(struct iommu_ioas, 1);
 
+	iommu_ctx_init(&ioas->ctx);
+
 	if (__iommufd == -1)
 		log_fatal_if(iommufd_open(), "could not open /dev/iommu\n");
 
@@ -281,6 +280,8 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 struct iommu_ctx *iommufd_get_default_iommu_context(void)
 {
 	if (__iommufd == -1) {
+		iommu_ctx_init(&iommufd_default_ioas.ctx);
+
 		log_fatal_if(iommufd_open(), "could not open /dev/iommu\n");
 		log_fatal_if(iommu_ioas_init(&iommufd_default_ioas), "iommu_ioas_init\n");
 	}

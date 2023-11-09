@@ -66,15 +66,22 @@ fallback:
 	return vfio_get_iommu_context(name);
 }
 
-void iova_map_init(struct iova_map *map)
+void iommu_ctx_init(struct iommu_ctx *ctx)
 {
-	skiplist_init(&map->list);
-	pthread_mutex_init(&map->lock, NULL);
+	ctx->nranges = 1;
+	ctx->iova_ranges = znew_t(struct iommu_iova_range, ctx->nranges);
 
-	map->nranges = 1;
-	map->next = __VFN_IOVA_MIN;
+	ctx->next = __VFN_IOVA_MIN;
 
-	map->iova_ranges = znew_t(struct iommu_iova_range, 1);
-	map->iova_ranges[0].start = __VFN_IOVA_MIN;
-	map->iova_ranges[0].last = IOVA_MAX_39BITS - 1;
+	/*
+	 * For vfio, if we end up not being able to get a list of allowed
+	 * iova ranges, be conservative.
+	 */
+	ctx->iova_ranges[0].start = __VFN_IOVA_MIN;
+	ctx->iova_ranges[0].last = IOVA_MAX_39BITS - 1;
+
+	pthread_mutex_init(&ctx->lock, NULL);
+
+	skiplist_init(&ctx->map.list);
+	pthread_mutex_init(&ctx->map.lock, NULL);
 }
