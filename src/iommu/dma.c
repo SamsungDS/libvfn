@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <pthread.h>
 
+#include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
 
 #include "vfn/support.h"
@@ -93,18 +94,9 @@ static void iova_map_clear_with(struct iova_map *map, skiplist_iter_fn fn, void 
 	skiplist_clear_with(&map->list, fn, opaque);
 }
 
-static void iova_map_clear(struct iova_map *map)
+static void UNUSED iova_map_clear(struct iova_map *map)
 {
 	iova_map_clear_with(map, NULL, NULL);
-}
-
-void iova_map_destroy(struct iova_map *map)
-{
-       iova_map_clear(map);
-
-       free(map->iova_ranges);
-
-       memset(map, 0x0, sizeof(*map));
 }
 
 static bool iova_map_translate(struct iova_map *map, void *vaddr, uint64_t *iova)
@@ -119,9 +111,9 @@ static bool iova_map_translate(struct iova_map *map, void *vaddr, uint64_t *iova
 	return false;
 }
 
-int iova_map_reserve(struct iova_map *map, size_t len, uint64_t *iova)
+static int iommu_iova_reserve(struct iommu_ctx *ctx, size_t len, uint64_t *iova)
 {
-	__autolock(&map->lock);
+	__autolock(&ctx->lock);
 
 	if (!ALIGNED(len, __VFN_PAGESIZE)) {
 		log_debug("len is not page aligned\n");
@@ -129,9 +121,9 @@ int iova_map_reserve(struct iova_map *map, size_t len, uint64_t *iova)
 		return -1;
 	}
 
-	for (int i = 0; i < map->nranges; i++) {
-		struct iommu_iova_range *r = &map->iova_ranges[i];
-		uint64_t next = map->next;
+	for (int i = 0; i < ctx->nranges; i++) {
+		struct iommu_iova_range *r = &ctx->iova_ranges[i];
+		uint64_t next = ctx->next;
 
 		if (r->last < next)
 			continue;
@@ -141,7 +133,7 @@ int iova_map_reserve(struct iova_map *map, size_t len, uint64_t *iova)
 		if (next > r->last || r->last - next + 1 < len)
 			continue;
 
-		map->next = next + len;
+		ctx->next = next + len;
 
 		*iova = next;
 
@@ -162,7 +154,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
-	} else if (ctx->flags & IOMMU_F_REQUIRE_IOVA && iova_map_reserve(&ctx->map, len, &_iova)) {
+	} else if (ctx->flags & IOMMU_F_REQUIRE_IOVA && iommu_iova_reserve(ctx, len, &_iova)) {
 		log_debug("failed to allocate iova\n");
 		return -1;
 	}
@@ -209,7 +201,6 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 
 int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **ranges)
 {
-	*ranges = ctx->map.iova_ranges;
-
-	return ctx->map.nranges;
+	*ranges = ctx->iova_ranges;
+	return ctx->nranges;
 }

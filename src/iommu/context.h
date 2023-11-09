@@ -37,11 +37,6 @@ struct iova_mapping {
 struct iova_map {
 	pthread_mutex_t lock;
 	struct skiplist list;
-
-	uint64_t next;
-
-	int nranges;
-	struct iommu_iova_range *iova_ranges;
 };
 
 struct iommu_ctx {
@@ -50,6 +45,12 @@ struct iommu_ctx {
 
 #define IOMMU_F_REQUIRE_IOVA (1 << 0)
 	unsigned int flags;
+
+	pthread_mutex_t lock;
+	uint64_t next;
+
+	int nranges;
+	struct iommu_iova_range *iova_ranges;
 };
 
 struct iommu_ctx *iommu_get_default_context(void);
@@ -62,6 +63,4 @@ struct iommu_ctx *iommufd_get_default_iommu_context(void);
 struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 #endif
 
-void iova_map_init(struct iova_map *map);
-int iova_map_reserve(struct iova_map *map, size_t len, uint64_t *iova);
-void iova_map_destroy(struct iova_map *map);
+void iommu_ctx_init(struct iommu_ctx *ctx);

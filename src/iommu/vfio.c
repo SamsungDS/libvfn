@@ -73,22 +73,24 @@ static struct vfio_container vfio_default_container = {
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 __static_assert(sizeof(struct vfio_iova_range) == sizeof(struct iommu_iova_range));
 
-static void vfio_iommu_type1_get_cap_iova_ranges(struct iova_map *map,
+static void vfio_iommu_type1_get_cap_iova_ranges(struct iommu_ctx *ctx,
 						 struct vfio_info_cap_header *cap)
 {
 	struct vfio_iommu_type1_info_cap_iova_range *cap_iova_range;
 	size_t len;
 
 	cap_iova_range = (struct vfio_iommu_type1_info_cap_iova_range *)cap;
-	len = sizeof(struct vfio_iova_range) * cap_iova_range->nr_iovas;
 
-	map->nranges = cap_iova_range->nr_iovas;
-	map->iova_ranges = realloc(map->iova_ranges, len);
-	memcpy(map->iova_ranges, cap_iova_range->iova_ranges, len);
+	len = __abort_on_overflow(cap_iova_range->nr_iovas, sizeof(struct iommu_iova_range));
+
+	ctx->nranges = cap_iova_range->nr_iovas;
+	ctx->iova_ranges = realloc(ctx->iova_ranges, len);
+
+	memcpy(ctx->iova_ranges, cap_iova_range->iova_ranges, len);
 
 	if (logv(LOG_INFO)) {
-		for (int i = 0; i < map->nranges; i++) {
-			struct iommu_iova_range *r = &map->iova_ranges[i];
+		for (int i = 0; i < ctx->nranges; i++) {
+			struct iommu_iova_range *r = &ctx->iova_ranges[i];
 
 			log_info("iova range %d is [0x%llx; 0x%llx]\n", i, r->start, r->last);
 		}
@@ -156,7 +158,7 @@ static int vfio_iommu_type1_get_capabilities(struct vfio_container *vfio)
 		switch (cap->id) {
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
 		case VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE:
-			vfio_iommu_type1_get_cap_iova_ranges(&vfio->ctx.map, cap);
+			vfio_iommu_type1_get_cap_iova_ranges(&vfio->ctx, cap);
 			break;
 # endif
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_DMA_AVAIL
@@ -187,14 +189,9 @@ static int vfio_iommu_type1_init(struct vfio_container *vfio)
 		return -1;
 	}
 
-	iova_map_init(&vfio->ctx.map);
-
 #ifdef VFIO_IOMMU_INFO_CAPS
 	if (vfio_iommu_type1_get_capabilities(vfio)) {
 		log_debug("failed to get iommu capabilities\n");
-
-		iova_map_destroy(&vfio->ctx.map);
-
 		return -1;
 	}
 #endif
@@ -423,6 +420,8 @@ struct iommu_ctx *vfio_get_iommu_context(const char *name)
 {
 	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
 
+	iommu_ctx_init(&vfio->ctx);
+
 	if (vfio_init_container(vfio) < 0) {
 		free(vfio);
 		return NULL;
@@ -435,9 +434,12 @@ struct iommu_ctx *vfio_get_iommu_context(const char *name)
 
 struct iommu_ctx *vfio_get_default_iommu_context(void)
 {
-	if (vfio_default_container.fd == -1)
+	if (vfio_default_container.fd == -1) {
+		iommu_ctx_init(&vfio_default_container.ctx);
+
 		log_fatal_if(vfio_init_container(&vfio_default_container),
 			     "init default container\n");
+	}
 
 	return &vfio_default_container.ctx;
 }
