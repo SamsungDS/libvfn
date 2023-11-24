@@ -74,11 +74,6 @@ struct nvme_sq {
 	struct nvme_rq *rq_top;
 };
 
-struct nvme_qpair {
-	struct nvme_sq *sq;
-	struct nvme_cq *cq;
-};
-
 /**
  * nvme_sq_post - Add a submission queue entry to a submission queue
  * @sq: Submission queue

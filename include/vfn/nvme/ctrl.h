@@ -56,7 +56,10 @@ struct nvme_ctrl {
 	/**
 	 * @adminq: Admin queue pair
 	 */
-	struct nvme_qpair adminq;
+	struct {
+		struct nvme_sq *sq;
+		struct nvme_cq *cq;
+	} adminq;
 
 	/**
 	 * @doorbells: mapped doorbell registers
