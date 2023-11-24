@@ -18,6 +18,9 @@
 
 #define NVME_CID_AER (1 << 15)
 
+#define __mps_to_pageshift(mps) (12 + mps)
+#define __mps_to_pagesize(mps) (1ULL << __mps_to_pageshift(mps))
+
 /**
  * nvme_crc64 - calculate NVMe CRC64
  * @crc: starting value

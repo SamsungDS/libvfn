@@ -93,7 +93,7 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, 
 		return -1;
 
 	if (buf) {
-		ret = nvme_rq_map_prp(rq, sqe, iova, len);
+		ret = nvme_rq_map_prp(ctrl, rq, sqe, iova, len);
 		if (ret) {
 			goto release_rq;
 		}

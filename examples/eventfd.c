@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	nvme_rq_map_prp(rq, &cmd, iova, 0x1000);
+	nvme_rq_map_prp(&ctrl, rq, &cmd, iova, 0x1000);
 
 	nvme_rq_exec(rq, &cmd);
 

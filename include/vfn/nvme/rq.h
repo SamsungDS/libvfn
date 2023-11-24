@@ -204,6 +204,7 @@ static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
  * nvme_rq_map_prp - Set up the Physical Region Pages in the data pointer of the
  *                   command from a buffer that is contiguous in iova mapped
  *                   memory.
+ * @ctrl: &struct nvme_ctrl
  * @rq: Request tracker (&struct nvme_rq)
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iova: I/O Virtual Address
@@ -213,11 +214,13 @@ static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len);
+int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova,
+		    size_t len);
 
 /**
  * nvme_rq_mapv_prp - Set up the Physical Region Pages in the data pointer of
  *                    the command from an iovec.
+ * @ctrl: &struct nvme_ctrl
  * @rq: Request tracker (&struct nvme_rq)
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iov: array of iovecs
@@ -229,7 +232,8 @@ int nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov, int niov);
+int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+		     struct iovec *iov, int niov);
 
 /**
  * nvme_rq_spin - Spin for completion of the command associated with the request

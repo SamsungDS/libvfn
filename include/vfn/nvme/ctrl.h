@@ -85,6 +85,7 @@ struct nvme_ctrl {
 	struct {
 		int nsqa, ncqa;
 		int mqes;
+		int mps;
 	} config;
 
 	/* private: internal */

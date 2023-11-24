@@ -39,34 +39,29 @@
 
 #include "iommu/context.h"
 
-static int __rq_max_prps;
-
-static void __attribute__((constructor)) init_max_prps(void)
+static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
+			      int pageshift)
 {
-	__rq_max_prps = (int)(sysconf(_SC_PAGESIZE) / sizeof(uint64_t) + 1);
+	size_t pagesize = 1 << pageshift;
+	int max_prps = 1 << (pageshift - 3);
 
-	log_debug("max prps is %d\n", __rq_max_prps);
-}
-
-static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len)
-{
 	/* number of prps required to map the buffer */
 	int prpcount = 1;
 
 	*prp1 = cpu_to_le64(iova);
 
 	/* account for what is covered with the first prp */
-	len -= min_t(size_t, len, __VFN_PAGESIZE - (iova & (__VFN_PAGESIZE - 1)));
+	len -= min_t(size_t, len, pagesize - (iova & (pagesize - 1)));
 
 	/* any residual just adds more prps */
 	if (len)
-		prpcount += (int)ALIGN_UP(len, __VFN_PAGESIZE) >> __VFN_PAGESHIFT;
+		prpcount += (int)ALIGN_UP(len, pagesize) >> pageshift;
 
-	if (prpcount > 1 && !ALIGNED(iova, __VFN_PAGESIZE))
+	if (prpcount > 1 && !ALIGNED(iova, pagesize))
 		/* align down to simplify loop below */
-		iova = ALIGN_DOWN(iova, __VFN_PAGESIZE);
+		iova = ALIGN_DOWN(iova, pagesize);
 
-	if (prpcount > __rq_max_prps) {
+	if (prpcount > max_prps) {
 		errno = EINVAL;
 		return 0;
 	}
@@ -76,7 +71,7 @@ static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova
 	 * aligned from the above, which simplifies this.
 	 */
 	for (int i = 1; i < prpcount; i++)
-		prplist[i - 1] = cpu_to_le64(iova + (i << __VFN_PAGESHIFT));
+		prplist[i - 1] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
 
 	/*
 	 * prpcount may be zero if the buffer length was less than the page
@@ -85,26 +80,30 @@ static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova
 	return clamp_t(int, prpcount, 1, prpcount);
 }
 
-static inline int __map_aligned(leint64_t *prplist, int prpcount, uint64_t iova)
+static inline int __map_aligned(leint64_t *prplist, int prpcount, uint64_t iova, int pageshift)
 {
+	size_t pagesize = 1 << pageshift;
+
 	/*
 	 * __map_aligned is used exclusively for mapping into the prplist
 	 * entries where addresses must be page size aligned.
 	 */
-	assert(ALIGNED(iova, __VFN_PAGESIZE));
+	assert(ALIGNED(iova, pagesize));
 
 	for (int i = 0; i < prpcount; i++)
-		prplist[i] = cpu_to_le64(iova + (i << __VFN_PAGESHIFT));
+		prplist[i] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
 
 	return prpcount;
 }
 
-int nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size_t len)
+int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova,
+		    size_t len)
 {
 	int prpcount;
 	leint64_t *prplist = rq->page.vaddr;
 
-	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len);
+	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len,
+			       __mps_to_pageshift(ctrl->config.mps));
 	if (!prpcount) {
 		errno = EINVAL;
 		return -1;
@@ -120,15 +119,19 @@ int nvme_rq_map_prp(struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova, size
 	return 0;
 }
 
-int nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov, int niov)
+int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+		     struct iovec *iov, int niov)
 {
 	int prpcount, _prpcount;
 	leint64_t *prplist = rq->page.vaddr;
 	uint64_t iova = (uint64_t)iov->iov_base;
 	size_t len = iov->iov_len;
+	int pageshift = __mps_to_pageshift(ctrl->config.mps);
+	size_t pagesize = 1 << pageshift;
+	int max_prps = 1 << (pageshift - 3);
 
 	/* map the first segment */
-	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len);
+	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
 
 	/*
 	 * At this point, one of three conditions must hold:
@@ -140,7 +143,7 @@ int nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov,
 	 * If none holds, the buffer(s) within the iovec cannot be mapped given
 	 * the PRP alignment requirements.
 	 */
-	if (!(prpcount == 1 || niov == 1 || ALIGNED(iova + len, __VFN_PAGESIZE))) {
+	if (!(prpcount == 1 || niov == 1 || ALIGNED(iova + len, pagesize))) {
 		log_error("iov[0].iov_base/len invalid\n");
 
 		goto invalid;
@@ -151,29 +154,29 @@ int nvme_rq_mapv_prp(struct nvme_rq *rq, union nvme_cmd *cmd, struct iovec *iov,
 		iova = (uint64_t)iov[i].iov_base;
 		len = iov[i].iov_len;
 
-		_prpcount = max_t(int, 1, (int)len >> __VFN_PAGESHIFT);
+		_prpcount = max_t(int, 1, (int)len >> pageshift);
 
-		if (prpcount + _prpcount > __rq_max_prps) {
+		if (prpcount + _prpcount > max_prps) {
 			log_error("too many prps required\n");
 
 			goto invalid;
 		}
 
 
-		if (!ALIGNED(iova, __VFN_PAGESIZE)) {
+		if (!ALIGNED(iova, pagesize)) {
 			log_error("unaligned iov[%u].iov_base (0x%"PRIx64")\n", i, iova);
 
 			goto invalid;
 		}
 
 		/* all entries but the last must have a page size aligned len */
-		if (i < niov - 1 && !ALIGNED(len, __VFN_PAGESIZE)) {
+		if (i < niov - 1 && !ALIGNED(len, pagesize)) {
 			log_error("unaligned iov[%u].len (%zu)\n", i, len);
 
 			goto invalid;
 		}
 
-		prpcount += __map_aligned(&prplist[prpcount - 1], _prpcount, iova);
+		prpcount += __map_aligned(&prplist[prpcount - 1], _prpcount, iova, pageshift);
 	}
 
 	if (prpcount == 2)

@@ -111,9 +111,7 @@ static void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	if (!cq->vaddr)
 		return;
 
-	len = ALIGN_UP((size_t)cq->qsize << NVME_CQES, __VFN_PAGESIZE);
-
-	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), cq->vaddr, NULL))
+	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), cq->vaddr, &len))
 		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(cq->vaddr, len);
@@ -166,7 +164,11 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		sq->dbbuf.eventidx = sqtdbl(ctrl->dbbuf.eventidxs, qid, dstrd);
 	}
 
-	len = pgmapn(&sq->pages.vaddr, qsize, __VFN_PAGESIZE);
+	/*
+	 * Use ctrl->config.mps instead of host page size, as we have the
+	 * opportunity to pack the allocations.
+	 */
+	len = pgmapn(&sq->pages.vaddr, qsize, __mps_to_pagesize(ctrl->config.mps));
 
 	if (len < 0)
 		return -1;
@@ -185,8 +187,8 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		rq->sq = sq;
 		rq->cid = (uint16_t)i;
 
-		rq->page.vaddr = sq->pages.vaddr + (i << __VFN_PAGESHIFT);
-		rq->page.iova = sq->pages.iova + (i << __VFN_PAGESHIFT);
+		rq->page.vaddr = sq->pages.vaddr + ((uint64_t)i << (12 + ctrl->config.mps));
+		rq->page.iova = sq->pages.iova + ((uint64_t)i << (12 + ctrl->config.mps));
 
 		if (i > 0)
 			rq->rq_next = &sq->rqs[i - 1];
@@ -208,10 +210,10 @@ unmap_sq:
 free_sq_rqs:
 	free(sq->rqs);
 unmap_pages:
-	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, NULL))
+	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, (size_t *)&len))
 		log_debug("failed to unmap vaddr\n");
 
-	pgunmap(sq->pages.vaddr, (size_t)sq->qsize << __VFN_PAGESHIFT);
+	pgunmap(sq->pages.vaddr, len);
 
 	return -1;
 }
@@ -223,18 +225,14 @@ static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	if (!sq->vaddr)
 		return;
 
-	len = ALIGN_UP((size_t)sq->qsize << NVME_SQES, __VFN_PAGESIZE);
-
-	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->vaddr, NULL))
+	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->vaddr, &len))
 		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(sq->vaddr, len);
 
 	free(sq->rqs);
 
-	len = (size_t)sq->qsize << __VFN_PAGESHIFT;
-
-	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, NULL))
+	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, &len))
 		log_debug("failed to unmap vaddr\n");
 
 	pgunmap(sq->pages.vaddr, len);
@@ -432,12 +430,12 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	css = NVME_FIELD_GET(cap, CAP_CSS);
 
 	cc =
-		NVME_FIELD_SET(__VFN_PAGESHIFT - 12, CC_MPS) |
-		NVME_FIELD_SET(NVME_CC_AMS_RR,	     CC_AMS) |
-		NVME_FIELD_SET(NVME_CC_SHN_NONE,     CC_SHN) |
-		NVME_FIELD_SET(NVME_SQES,            CC_IOSQES) |
-		NVME_FIELD_SET(NVME_CQES,            CC_IOCQES) |
-		NVME_FIELD_SET(0x1,                  CC_EN);
+		NVME_FIELD_SET(ctrl->config.mps, CC_MPS) |
+		NVME_FIELD_SET(NVME_CC_AMS_RR,	 CC_AMS) |
+		NVME_FIELD_SET(NVME_CC_SHN_NONE, CC_SHN) |
+		NVME_FIELD_SET(NVME_SQES,        CC_IOSQES) |
+		NVME_FIELD_SET(NVME_CQES,        CC_IOCQES) |
+		NVME_FIELD_SET(0x1,              CC_EN);
 
 	if (css & NVME_CAP_CSS_CSI)
 		cc |= NVME_FIELD_SET(NVME_CC_CSS_CSI, CC_CSS);
@@ -508,7 +506,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 {
 	unsigned long long classcode;
 	uint64_t cap;
-	uint8_t mpsmin;
+	uint8_t mpsmin, mpsmax;
 	uint16_t oacs;
 	ssize_t len;
 	void *vaddr;
@@ -549,11 +547,17 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
+	mpsmax = NVME_FIELD_GET(cap, CAP_MPSMAX);
 
-	if ((12 + mpsmin) > __VFN_PAGESHIFT) {
-		log_debug("controller minimum page size too large\n");
+	ctrl->config.mps = clamp_t(int, __VFN_PAGESHIFT - 12, mpsmin, mpsmax);
+
+	if ((12 + ctrl->config.mps) > __VFN_PAGESHIFT) {
+		log_error("mpsmin too large\n");
 		errno = EINVAL;
 		return -1;
+	} else if ((12 + ctrl->config.mps) < __VFN_PAGESHIFT) {
+		log_info("host memory page size is larger than mpsmax; clamping mps to %d\n",
+			 ctrl->config.mps);
 	}
 
 	ctrl->config.mqes = NVME_FIELD_GET(cap, CAP_MQES);
