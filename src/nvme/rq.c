@@ -59,20 +59,20 @@ static void __attribute__((constructor)) init_max_prps(void)
 static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len)
 {
 	/* number of prps required to map the buffer */
-	int prpcount = (int)len >> __VFN_PAGESHIFT;
+	int prpcount = 1;
 
 	*prp1 = cpu_to_le64(iova);
 
-	/*
-	 * If prpcount is at least one and the iova is not aligned to the page
-	 * size, we need one more prp than what we calculated above.
-	 * Additionally, we align the iova down to a page size boundary,
-	 * simplifying the following loop.
-	 */
-	if (prpcount && !ALIGNED(iova, __VFN_PAGESIZE)) {
+	/* account for what is covered with the first prp */
+	len -= min_t(size_t, len, __VFN_PAGESIZE - (iova & (__VFN_PAGESIZE - 1)));
+
+	/* any residual just adds more prps */
+	if (len)
+		prpcount += (int)ALIGN_UP(len, __VFN_PAGESIZE) >> __VFN_PAGESHIFT;
+
+	if (prpcount > 1 && !ALIGNED(iova, __VFN_PAGESIZE))
+		/* align down to simplify loop below */
 		iova = ALIGN_DOWN(iova, __VFN_PAGESIZE);
-		prpcount++;
-	}
 
 	if (prpcount > __rq_max_prps) {
 		errno = EINVAL;

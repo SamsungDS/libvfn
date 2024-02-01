@@ -27,7 +27,7 @@ int main(void)
 	leint64_t *prplist;
 	struct iovec iov[8];
 
-	plan_tests(62);
+	plan_tests(89);
 
 	assert(pgmap((void **)&prplist, __VFN_PAGESIZE) > 0);
 
@@ -48,6 +48,13 @@ int main(void)
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
+	/* test 4k + 8 aligned */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1000000, 0x1008);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
+
 	/* test 8k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	nvme_rq_map_prp(&rq, &cmd, 0x1000000, 0x2000);
@@ -55,9 +62,27 @@ int main(void)
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
+	/* test 8k + 16 aligned */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1000000, 0x2010);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
+
 	/* test 12k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	nvme_rq_map_prp(&rq, &cmd, 0x1000000, 0x3000);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
+
+	/* test 12k + 24 aligned */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1000000, 0x3018);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -71,12 +96,35 @@ int main(void)
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
+	/* test 512 unaligned (nasty) */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1001000 - 4, 0x200);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
+
 	/* test 4k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	nvme_rq_map_prp(&rq, &cmd, 0x1000004, 0x1000);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
+
+	/* test 4k + 8 unaligned */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1000004, 0x1008);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
+
+	/* test 4k + 8 unaligned (nasty) */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1001000 - 4, 0x1008);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
 	/* test 4k - 4 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
@@ -94,6 +142,15 @@ int main(void)
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
+	/* test 8k + 16 unaligned */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1000004, 0x2010);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
+
 	/* test 8k - 4 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	nvme_rq_map_prp(&rq, &cmd, 0x1000004, 0x2000 - 4);
@@ -104,6 +161,16 @@ int main(void)
 	/* test 12k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	nvme_rq_map_prp(&rq, &cmd, 0x1000004, 0x3000);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
+	ok1(le64_to_cpu(prplist[2]) == 0x1003000);
+
+	/* test 12k + 24 unaligned */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	nvme_rq_map_prp(&rq, &cmd, 0x1000004, 0x3018);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
