@@ -33,7 +33,7 @@ thread_dep = dependency('threads')
 vfn_lib = library('vfn', _vfn_sources,
   dependencies: [thread_dep],
   link_with: [ccan_lib],
-  include_directories: [ccan_inc, core_inc, vfn_inc],
+  include_directories: [ccan_inc, core_inc, vfn_inc, linux_headers],
   version: meson.project_version(),
   install: true,
   c_args: [

@@ -12,3 +12,6 @@ option('docs', type: 'feature', value: 'auto',
 
 option('trace-events-file', type: 'string', value: 'config/trace-events-all',
   description: 'trace events file')
+
+option('linux-headers', type: 'string', value: '',
+  description: 'path to linux headers')
