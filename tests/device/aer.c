@@ -137,15 +137,15 @@ static int test_aer(void)
 	if (ret < 2 && errno == ETIME)
 		err(errno, "not enough completions in time");
 
-	__foreach(cqe, cqes) {
-		if (cqe->cid & NVME_CID_AER) {
+	__foreach(_cqe, cqes) {
+		if (_cqe->cid & NVME_CID_AER) {
 			/* clear the AER bit so nvme_rq_from_cqe() can find the rq */
-			cqe->cid &= ~NVME_CID_AER;
+			_cqe->cid &= ~NVME_CID_AER;
 
-			handle_aen(cqe);
+			handle_aen(_cqe);
 		}
 
-		nvme_rq_release(nvme_rq_from_cqe(&ctrl, cqe));
+		nvme_rq_release(nvme_rq_from_cqe(&ctrl, _cqe));
 	}
 
 	assert(aen_received);
