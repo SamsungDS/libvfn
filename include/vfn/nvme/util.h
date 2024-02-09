@@ -22,7 +22,7 @@
 #define __mps_to_pagesize(mps) (1ULL << __mps_to_pageshift(mps))
 
 /**
- * nvme_crc64 - calculate NVMe CRC64
+ * nvme_crc64 - Calculate NVMe CRC64
  * @crc: starting value
  * @buffer: buffer to calculate CRC for
  * @len: length of buffer

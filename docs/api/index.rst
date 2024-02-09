@@ -10,8 +10,8 @@ the library code.
 .. toctree::
    :maxdepth: 1
 
+   iommu/index
    nvme/index
    pci/index
-   iommu/index
-   vfio/index
    support/index
+   vfio/index

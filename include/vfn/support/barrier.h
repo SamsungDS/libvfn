@@ -13,6 +13,18 @@
 #ifndef LIBVFN_SUPPORT_BARRIER_H
 #define LIBVFN_SUPPORT_BARRIER_H
 
+/**
+ * DOC: Memory barrier helpers
+ *
+ * Defines the usual ``rmb()``, ``wmb()``, ``mb()`` and ``dma_rmb()``
+ * architecture specific memory barriers.
+ */
+
+/**
+ * barrier - Compiler barrier
+ *
+ * Inserts a compiler barrier.
+ */
 #define barrier() asm volatile("" ::: "memory")
 
 #if defined(__aarch64__)

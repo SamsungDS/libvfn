@@ -17,6 +17,12 @@
 #define US_PER_SEC 1000000
 #define MS_PER_SEC 1000
 
+/**
+ * __usleep - sleep through interrupts
+ * @usec: number of milliseconds to sleep
+ *
+ * If interrupted, continue.
+ */
 void __usleep(useconds_t usec);
 
 #endif /* LIBVFN_SUPPORT_TIMER_H */

@@ -13,6 +13,10 @@
 #ifndef LIBVFN_SUPPORT_TICKS_H
 #define LIBVFN_SUPPORT_TICKS_H
 
+/**
+ * DOC: Helpers for architecture specific timestamp counters
+ */
+
 #if defined(__x86_64__)
 # include <vfn/support/arch/x86_64/rdtsc.h>
 #elif defined(__aarch64__)
@@ -23,6 +27,11 @@
 
 extern uint64_t __vfn_ticks_freq;
 
+/**
+ * get_ticks - get ticks
+ *
+ * Return: value of architecture specific timestamp counter
+ */
 static inline uint64_t get_ticks(void)
 {
 	return get_ticks_arch();

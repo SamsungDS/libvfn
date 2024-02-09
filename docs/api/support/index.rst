@@ -10,11 +10,16 @@ the library code.
 .. toctree::
    :maxdepth: 1
 
+   align
    atomic
+   autoptr
+   barrier
    compiler
    endian
    io
    log
    mem
    mmio
-   trace
+   mutex
+   ticks
+   timer

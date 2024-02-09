@@ -14,12 +14,12 @@
 #define LIBVFN_IOMMU_CONTEXT_H
 
 /**
- * iommu_get_context - create a new iommu context
- * @name: context identifier
+ * iommu_get_context - Create a new iommu context
+ * @name: Context identifier
  *
  * Create a new iommu context. The mechanism depends on the backend.
  *
- * Return: a new &struct iommu_ctx.
+ * Return: A new &struct iommu_ctx.
  */
 struct iommu_ctx *iommu_get_context(const char *name);
 

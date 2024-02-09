@@ -139,10 +139,10 @@ static inline beint32_t cpu_to_be32(uint32_t native)
 }
 
 /**
- * cpu_to_be16 - convert a uint16_t value to big endian.
- * @native: value to convert
+ * cpu_to_be16 - Convert a uint16_t value to big endian.
+ * @native: Value to convert
  *
- * Return: big endian integer
+ * Return: Big endian integer
  */
 static inline beint16_t cpu_to_be16(uint16_t native)
 {
@@ -150,10 +150,10 @@ static inline beint16_t cpu_to_be16(uint16_t native)
 }
 
 /**
- * be64_to_cpu - convert a big-endian uint64_t value
- * @be_val: big-endian value to convert
+ * be64_to_cpu - Convert a big-endian uint64_t value
+ * @be_val: Big-endian value to convert
  *
- * Return: host endian integer
+ * Return: Host endian integer
  */
 static inline uint64_t be64_to_cpu(beint64_t be_val)
 {
@@ -161,10 +161,10 @@ static inline uint64_t be64_to_cpu(beint64_t be_val)
 }
 
 /**
- * be32_to_cpu - convert a big-endian uint32_t value
- * @be_val: big-endian value to convert
+ * be32_to_cpu - Convert a big-endian uint32_t value
+ * @be_val: Big-endian value to convert
  *
- * Return: host endian integer
+ * Return: Host endian integer
  */
 static inline uint32_t be32_to_cpu(beint32_t be_val)
 {
@@ -172,16 +172,25 @@ static inline uint32_t be32_to_cpu(beint32_t be_val)
 }
 
 /**
- * be16_to_cpu - convert a big-endian uint16_t value
- * @be_val: big-endian value to convert
+ * be16_to_cpu - Convert a big-endian uint16_t value
+ * @be_val: Big-endian value to convert
  *
- * Return: host endian integer
+ * Return: Host endian integer
  */
 static inline uint16_t be16_to_cpu(beint16_t be_val)
 {
 	return BE16_TO_CPU(be_val);
 }
 
+/**
+ * put_unaligned_be48 - Store 48 bits of v into p as big endian
+ * @v: Value
+ * @p: Pointer to memory
+ *
+ * Store the lower 48 bits of @v into @p, forming a big endian value.
+ *
+ * Note: @p MUST be at least 6 bytes.
+ */
 static inline void put_unaligned_be48(const uint64_t v, uint8_t *p)
 {
 	p[0] = (uint8_t)(v >> 40);
@@ -191,6 +200,17 @@ static inline void put_unaligned_be48(const uint64_t v, uint8_t *p)
 	p[4] = (uint8_t)(v >> 8);
 	p[5] = (uint8_t)(v);
 }
+
+/**
+ * get_unaligned_be48 - Get 48 bit big endian value from @p
+ * @p: Pointer to memory
+ *
+ * Load the 48 bits at @p, converting from big into host endian.
+ *
+ * Note: @p MUST be at least 6 bytes.
+ *
+ * Return: Host endian integer
+ */
 
 static inline uint64_t get_unaligned_be48(const uint8_t *p)
 {

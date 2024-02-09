@@ -14,7 +14,7 @@
 #define LIBVFN_IOMMU_DMA_H
 
 /**
- * enum iommu_map_flags - flags for DMA mapping
+ * enum iommu_map_flags - Flags for DMA mapping
  * @IOMMU_MAP_FIXED_IOVA: If cleared, an appropriate IOVA will be allocated
  * @IOMMU_MAP_EPHEMERAL: If set, the mapping is considered temporary
  * @IOMMU_MAP_NOWRITE: DMA is not allowed to write to this mapping
@@ -32,7 +32,7 @@ enum iommu_map_flags {
 };
 
 /**
- * iommu_map_vaddr - map a virtual memory address to an I/O virtual address
+ * iommu_map_vaddr - Map a virtual memory address to an I/O virtual address
  * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to map
  * @len: number of bytes to map
@@ -55,7 +55,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 		    unsigned long flags);
 
 /**
- * iommu_unmap_vaddr - unmap a virtual memory address in the IOMMU
+ * iommu_unmap_vaddr - Unmap a virtual memory address in the IOMMU
  * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to unmap
  * @len: output parameter for length of mapping
@@ -69,7 +69,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len);
 
 /**
- * iommu_unmap_all - unmap all virtual memory address in the IOMMU
+ * iommu_unmap_all - Unmap all virtual memory address in the IOMMU
  * @ctx: &struct iommu_ctx
  *
  * Remove all mappings.
@@ -86,7 +86,7 @@ struct iommu_iova_range {
 #endif
 
 /**
- * iommu_translate_vaddr - translate a virtual address into an iova
+ * iommu_translate_vaddr - Translate a virtual address into an iova
  * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to translate
  * @iova: output parameter
@@ -99,7 +99,7 @@ struct iommu_iova_range {
 bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova);
 
 /**
- * iommu_get_iova_ranges - get iova ranges
+ * iommu_get_iova_ranges - Get iova ranges
  * @ctx: &struct iommu_ctx
  * @ranges: output parameter
  *
