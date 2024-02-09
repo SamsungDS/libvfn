@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: checkout libnvme
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: linux-nvme/libnvme
           path: libnvme
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: install build dependencies
         run: sudo pip install meson ninja
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: install build dependencies
         run: sudo pip install meson ninja
@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: install build dependencies
         run: sudo pip install meson ninja
@@ -159,7 +159,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: install dependencies
         env:
@@ -215,7 +215,7 @@ jobs:
 
     steps:
       - name: checkout libvfn
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: create dist package
         run: |
