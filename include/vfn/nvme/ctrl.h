@@ -102,6 +102,8 @@ struct nvme_ctrl {
  * after a successful call to this.
  *
  * See &struct nvme_ctrl_opts for configurable options.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
 int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_opts *opts);
 

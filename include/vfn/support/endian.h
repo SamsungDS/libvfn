@@ -53,6 +53,8 @@ typedef uint16_t __bitwise beint16_t;
 /**
  * cpu_to_le64 - convert a uint64_t value to little-endian
  * @native: value to convert
+ *
+ * Return: little endian integer
  */
 static inline leint64_t cpu_to_le64(uint64_t native)
 {
@@ -62,6 +64,8 @@ static inline leint64_t cpu_to_le64(uint64_t native)
 /**
  * cpu_to_le32 - convert a uint32_t value to little-endian
  * @native: value to convert
+ *
+ * Return: little endian integer
  */
 static inline leint32_t cpu_to_le32(uint32_t native)
 {
@@ -71,6 +75,8 @@ static inline leint32_t cpu_to_le32(uint32_t native)
 /**
  * cpu_to_le16 - convert a uint16_t value to little-endian
  * @native: value to convert
+ *
+ * Return: little endian integer
  */
 static inline leint16_t cpu_to_le16(uint16_t native)
 {
@@ -80,6 +86,8 @@ static inline leint16_t cpu_to_le16(uint16_t native)
 /**
  * le64_to_cpu - convert a little-endian uint64_t value
  * @le_val: little-endian value to convert
+ *
+ * Return: host endian integer
  */
 static inline uint64_t le64_to_cpu(leint64_t le_val)
 {
@@ -89,6 +97,8 @@ static inline uint64_t le64_to_cpu(leint64_t le_val)
 /**
  * le32_to_cpu - convert a little-endian uint32_t value
  * @le_val: little-endian value to convert
+ *
+ * Return: host endian integer
  */
 static inline uint32_t le32_to_cpu(leint32_t le_val)
 {
@@ -98,6 +108,8 @@ static inline uint32_t le32_to_cpu(leint32_t le_val)
 /**
  * le16_to_cpu - convert a little-endian uint16_t value
  * @le_val: little-endian value to convert
+ *
+ * Return: host endian integer
  */
 static inline uint16_t le16_to_cpu(leint16_t le_val)
 {
@@ -107,6 +119,8 @@ static inline uint16_t le16_to_cpu(leint16_t le_val)
 /**
  * cpu_to_be64 - convert a uint64_t value to big endian.
  * @native: value to convert
+ *
+ * Return: big endian integer
  */
 static inline beint64_t cpu_to_be64(uint64_t native)
 {
@@ -116,6 +130,8 @@ static inline beint64_t cpu_to_be64(uint64_t native)
 /**
  * cpu_to_be32 - convert a uint32_t value to big endian.
  * @native: value to convert
+ *
+ * Return: big endian integer
  */
 static inline beint32_t cpu_to_be32(uint32_t native)
 {
@@ -125,6 +141,8 @@ static inline beint32_t cpu_to_be32(uint32_t native)
 /**
  * cpu_to_be16 - convert a uint16_t value to big endian.
  * @native: value to convert
+ *
+ * Return: big endian integer
  */
 static inline beint16_t cpu_to_be16(uint16_t native)
 {
@@ -134,6 +152,8 @@ static inline beint16_t cpu_to_be16(uint16_t native)
 /**
  * be64_to_cpu - convert a big-endian uint64_t value
  * @be_val: big-endian value to convert
+ *
+ * Return: host endian integer
  */
 static inline uint64_t be64_to_cpu(beint64_t be_val)
 {
@@ -143,6 +163,8 @@ static inline uint64_t be64_to_cpu(beint64_t be_val)
 /**
  * be32_to_cpu - convert a big-endian uint32_t value
  * @be_val: big-endian value to convert
+ *
+ * Return: host endian integer
  */
 static inline uint32_t be32_to_cpu(beint32_t be_val)
 {
@@ -152,6 +174,8 @@ static inline uint32_t be32_to_cpu(beint32_t be_val)
 /**
  * be16_to_cpu - convert a big-endian uint16_t value
  * @be_val: big-endian value to convert
+ *
+ * Return: host endian integer
  */
 static inline uint16_t be16_to_cpu(beint16_t be_val)
 {

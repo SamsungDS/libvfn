@@ -42,6 +42,8 @@ int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count);
  * @dev: &struct vfio_device
  *
  * Disable all IRQs.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
 int vfio_disable_irq(struct vfio_device *dev);
 

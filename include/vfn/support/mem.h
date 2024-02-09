@@ -45,6 +45,8 @@ static inline size_t __abort_on_overflow(unsigned int n, size_t sz)
  * @sz: number of bytes to allocate
  *
  * Call malloc, but only return NULL when @sz is zero. Otherwise, abort.
+ *
+ * Return: pointer to allocated memory
  */
 static inline void *xmalloc(size_t sz)
 {
