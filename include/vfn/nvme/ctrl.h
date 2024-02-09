@@ -21,7 +21,7 @@
  * @ncqr: number of completion queues to request
  * @quirks: quirks to apply
  *
- * Note; @nsqr and @ncqr are zeroes based values.
+ * Note: @nsqr and @ncqr are zeroes based values.
  */
 struct nvme_ctrl_opts {
 	int nsqr, ncqr;
