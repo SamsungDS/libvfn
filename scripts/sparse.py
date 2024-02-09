@@ -8,10 +8,11 @@
 # By Paolo Bonzini, imported from QEMU source tree.
 
 import json
-import subprocess
 import os
-import sys
+import re
 import shlex
+import subprocess
+import sys
 
 def cmdline_for_sparse(sparse, cmdline):
     # Do not include the C compiler executable
@@ -59,11 +60,19 @@ with open(ccjson_path, 'r') as fd:
 
 sparse = sys.argv[2:]
 sparse_env = os.environ.copy()
+found_warning = False
 for cmd in compile_commands:
     cmdline = shlex.split(cmd['command'])
     cmd = cmdline_for_sparse(sparse, cmdline)
     #print('REAL_CC=%s' % shlex.quote(cmdline[0]), ' '.join((shlex.quote(x) for x in cmd)))
     sparse_env['REAL_CC'] = cmdline[0]
-    r = subprocess.run(cmd, env=sparse_env, cwd=root_path)
+    r = subprocess.run(cmd, env=sparse_env, cwd=root_path, capture_output=True)
+    if r.stderr:
+        print(r.stderr.decode('utf-8'), end='')
+    if re.search(b': warning:', r.stderr):
+        found_warning = True
     if r.returncode != 0:
         sys.exit(r.returncode)
+
+if found_warning:
+    sys.exit(1)
