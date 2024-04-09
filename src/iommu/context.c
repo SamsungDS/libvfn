@@ -12,12 +12,6 @@
 
 #define log_fmt(fmt) "iommu/context: " fmt
 
-#include <stddef.h>
-#include <stdint.h>
-#include <pthread.h>
-
-#include <sys/stat.h>
-
 #include "vfn/iommu.h"
 #include "vfn/support.h"
 

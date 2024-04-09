@@ -7,6 +7,12 @@
  * From DPDK; modified by the libvfn Authors.
  */
 
+#if defined(__x86_64__)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -34,3 +40,9 @@ uint64_t get_ticks_freq_arch(void)
 {
 	return __x86_64_get_tsc_freq();
 }
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

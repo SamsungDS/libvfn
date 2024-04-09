@@ -10,18 +10,6 @@
  * COPYING and LICENSE files for more information.
  */
 
-#include <errno.h>
-#ifdef __GLIBC__
-#include <execinfo.h>
-#endif
-#include <fcntl.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-
 #include "vfn/support.h"
 
 ssize_t writeallfd(int fd, const void *buf, size_t count)

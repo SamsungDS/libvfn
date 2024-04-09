@@ -13,38 +13,20 @@
 #ifndef LIBVFN_NVME_H
 #define LIBVFN_NVME_H
 
-#ifdef __cplusplus
-extern "C" {
+#include <vfn/support.h>
+
+#ifndef __APPLE__
+#include <vfn/vfio.h>
+#else
+#include <vfn/driverkit.h>
 #endif
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-
-#include <linux/vfio.h>
-
-#include <vfn/support.h>
 #include <vfn/trace.h>
-#include <vfn/trace/events.h>
 #include <vfn/iommu.h>
-#include <vfn/vfio.h>
 #include <vfn/nvme/types.h>
 #include <vfn/nvme/queue.h>
 #include <vfn/nvme/ctrl.h>
 #include <vfn/nvme/util.h>
 #include <vfn/nvme/rq.h>
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_NVME_H */
