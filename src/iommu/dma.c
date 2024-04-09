@@ -36,30 +36,21 @@ static int iova_cmp(const void *vaddr, const struct skiplist_node *n)
 	return 0;
 }
 
-static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t iova,
-			unsigned long flags)
+static int iova_map_add(struct iova_map *map, struct iova_mapping *m)
 {
 	__autolock(&map->lock);
 
 	struct skiplist_node *update[SKIPLIST_LEVELS] = {};
-	struct iova_mapping *m;
 
-	if (!len) {
+	if (!m->len) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (skiplist_find(&map->list, vaddr, iova_cmp, update)) {
+	if (skiplist_find(&map->list, m->vaddr, iova_cmp, update)) {
 		errno = EEXIST;
 		return -1;
 	}
-
-	m = znew_t(struct iova_mapping, 1);
-
-	m->vaddr = vaddr;
-	m->len = len;
-	m->iova = iova;
-	m->flags = flags;
 
 	skiplist_link(&map->list, &m->list, update);
 
@@ -115,7 +106,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 		    unsigned long flags)
 {
 	uint64_t _iova;
-
+	struct iova_mapping *m;
 	if (iommu_translate_vaddr(ctx, vaddr, &_iova))
 		goto out;
 
@@ -126,16 +117,25 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 		return -1;
 	}
 
-	if (ctx->ops.dma_map(ctx, vaddr, len, &_iova, flags)) {
-		log_debug("failed to map dma\n");
+	m = znew_t(struct iova_mapping, 1);
+	m->vaddr = vaddr;
+	m->len = len;
+	m->iova = 0;
+	m->flags = flags;
+
+	if (ctx->ops.dma_map(ctx, m)) {
+		log_error("failed to map dma\n");
+		free(m);
 		return -1;
 	}
 
-	if (iova_map_add(&ctx->map, vaddr, len, _iova, flags)) {
-		log_debug("failed to add mapping\n");
+	if (iova_map_add(&ctx->map, m)) {
+		log_error("failed to add mapping\n");
+		free(m);
 		return -1;
 	}
 
+	_iova = m->iova;
 out:
 	if (iova)
 		*iova = _iova;
@@ -156,7 +156,7 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 	if (len)
 		*len = m->len;
 
-	if (ctx->ops.dma_unmap(ctx, m->iova, m->len)) {
+	if (ctx->ops.dma_unmap(ctx, m)) {
 		log_debug("failed to unmap dma\n");
 		return -1;
 	}
@@ -174,7 +174,7 @@ static void __unmap_mapping(void *opaque, struct skiplist_node *n)
 	struct iommu_ctx *ctx = (struct iommu_ctx *)opaque;
 	struct iova_mapping *m = container_of_var(n, m, list);
 
-	log_fatal_if(ctx->ops.dma_unmap(ctx, m->len, m->iova),
+	log_fatal_if(ctx->ops.dma_unmap(ctx, m),
 		     "failed to unmap dma (iova 0x%" PRIx64 " len %zu)\n", m->iova, m->len);
 
 	free(m);
