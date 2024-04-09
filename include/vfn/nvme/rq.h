@@ -217,6 +217,7 @@ static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
 int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova,
 		    size_t len);
 
+#ifndef __APPLE__
 /**
  * nvme_rq_mapv_prp - Set up the Physical Region Pages in the data pointer of
  *                    the command from an iovec.
@@ -234,6 +235,7 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
  */
 int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov);
+#endif
 
 /**
  * nvme_rq_spin - Spin for completion of the command associated with the request

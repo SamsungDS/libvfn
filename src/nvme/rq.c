@@ -12,32 +12,10 @@
 
 #define log_fmt(fmt) "nvme/rq: " fmt
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-#include <sys/uio.h>
-
-#include <linux/vfio.h>
-
-#include <vfn/support.h>
-#include <vfn/trace.h>
-#include <vfn/vfio.h>
+#include "common.h"
 #include <vfn/nvme.h>
-
 #include "ccan/minmax/minmax.h"
 
-#include "iommu/context.h"
 
 static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
 			      int pageshift)

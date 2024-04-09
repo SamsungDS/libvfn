@@ -12,11 +12,11 @@
 
 #define log_fmt(fmt) "iommu/dma: " fmt
 
-#include <errno.h>
-#include <inttypes.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <pthread.h>
+#include "common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
@@ -210,3 +210,7 @@ int iommu_iova_range_to_string(struct iommu_iova_range *r, char **str)
 {
 	return asprintf(str, "[0x%llx; 0x%llx]", r->start, r->last);
 }
+
+#ifdef __cplusplus
+}
+#endif

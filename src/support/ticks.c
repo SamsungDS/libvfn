@@ -9,20 +9,11 @@
 
 #define log_fmt(fmt) "support/ticks: " fmt
 
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <unistd.h>
+#include "../common.h"
 
-#include "vfn/support/align.h"
-#include "vfn/support/atomic.h"
-#include "vfn/support/log.h"
-#include "vfn/support/ticks.h"
-#include "vfn/support/timer.h"
+#include "vfn/support.h"
 
+#ifndef __APPLE__
 #include "ccan/time/time.h"
 
 #define TICKS_PER_10MHZ 10000000ULL

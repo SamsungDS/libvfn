@@ -12,29 +12,11 @@
 
 #define log_fmt(fmt) "iommu/vfio: " fmt
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <unistd.h>
-
-#include <sys/ioctl.h>
-#include <sys/mman.h>
+#include "common.h"
 
 #include "ccan/str/str.h"
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
-
-#include <linux/types.h>
-#include <linux/vfio.h>
 
 #include "vfn/support.h"
 #include "vfn/iommu.h"

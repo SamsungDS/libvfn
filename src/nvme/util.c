@@ -10,32 +10,10 @@
  * COPYING and LICENSE files for more information.
  */
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-#include <sys/uio.h>
-
-#include <linux/vfio.h>
-
-#include <vfn/support.h>
-#include <vfn/iommu.h>
-#include <vfn/vfio.h>
-#include <vfn/trace.h>
+#include "common.h"
 #include <vfn/nvme.h>
-
+#include "iommu/context.h"
 #include "types.h"
-
 #include "crc64table.h"
 
 uint64_t nvme_crc64(uint64_t crc, const unsigned char *buffer, size_t len)

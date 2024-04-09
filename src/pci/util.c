@@ -10,28 +10,13 @@
  * COPYING and LICENSE files for more information.
  */
 
-#include <byteswap.h>
-#include <dirent.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include "../common.h"
 
 #include <linux/limits.h>
 
-#include <vfn/support/atomic.h>
-#include <vfn/support/compiler.h>
-#include <vfn/support/log.h>
-#include <vfn/support/io.h>
-#include <vfn/support/mem.h>
+#include <vfn/support.h>
 #include <vfn/pci/util.h>
+
 
 int pci_unbind(const char *bdf)
 {
