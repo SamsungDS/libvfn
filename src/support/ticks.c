@@ -15,11 +15,13 @@
 
 #ifndef __APPLE__
 #include "ccan/time/time.h"
+#endif
 
 #define TICKS_PER_10MHZ 10000000ULL
 
 uint64_t __vfn_ticks_freq;
 
+#ifndef __APPLE__
 static uint64_t measure_ticks_freq(void)
 {
 	struct timemono t_start, t_end;
@@ -63,6 +65,7 @@ static uint64_t estimate_ticks_freq(void)
 
 	return ROUND(get_ticks() - start, TICKS_PER_10MHZ);
 }
+#endif
 
 static void __attribute__((constructor)) init_ticks_freq(void)
 {
@@ -70,11 +73,15 @@ static void __attribute__((constructor)) init_ticks_freq(void)
 
 	freq = get_ticks_freq_arch();
 	if (!freq)
+	#ifndef __APPLE__
 		freq = measure_ticks_freq();
 
 	if (!freq)
 		freq = estimate_ticks_freq();
 
+	#else
+		abort();
+	#endif
 	log_debug("tick frequency is ~%" PRIu64 " Hz\n", freq);
 
 	__vfn_ticks_freq = freq;
