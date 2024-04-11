@@ -10,6 +10,9 @@
  * COPYING and LICENSE files for more information.
  */
 
+#ifndef LIBVFN_SRC_IOMMU_CONTEXT_H
+#define LIBVFN_SRC_IOMMU_CONTEXT_H
+
 #include "util/skiplist.h"
 
 struct iommu_ctx;
@@ -64,3 +67,5 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 
 void iommu_ctx_init(struct iommu_ctx *ctx);
 int iommu_iova_range_to_string(struct iommu_iova_range *range, char **str);
+
+#endif /* LIBVFN_SRC_IOMMU_CONTEXT_H */
