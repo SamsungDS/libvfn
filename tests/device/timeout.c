@@ -39,7 +39,7 @@ static int test_timeout(void)
 		err(1, "could not enable aen");
 
 	ret = nvme_cq_wait_cqes(ctrl.adminq.cq, &cqe, 1, &timeout);
-	if (ret != 1 || errno != ETIME)
+	if (ret != 1 || errno != ETIMEDOUT)
 		return -1;
 
 	return 0;

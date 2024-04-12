@@ -79,7 +79,7 @@ int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct t
 	} while (n > 0 && get_ticks() < timeout);
 
 	if (n > 0)
-		errno = ETIME;
+		errno = ETIMEDOUT;
 
 	return n;
 }

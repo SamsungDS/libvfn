@@ -134,7 +134,7 @@ static int test_aer(void)
 	nvme_rq_exec(rq, &cmd);
 
 	ret = nvme_cq_wait_cqes(ctrl.adminq.cq, cqes, 2, &timeout);
-	if (ret < 2 && errno == ETIME)
+	if (ret < 2 && errno == ETIMEDOUT)
 		err(errno, "not enough completions in time");
 
 	__foreach(_cqe, cqes) {
