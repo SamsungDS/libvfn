@@ -82,7 +82,7 @@ struct nvme_sq {
  * Add a submission queue entry to a submission queue, updating the queue tail
  * pointer in the process.
  */
-static inline void nvme_sq_post(struct nvme_sq *sq, const void *sqe)
+static inline void nvme_sq_post(struct nvme_sq *sq, const union nvme_cmd *sqe)
 {
 	memcpy(sq->vaddr + (sq->tail << NVME_SQES), sqe, 1 << NVME_SQES);
 
@@ -160,7 +160,7 @@ static inline void nvme_sq_update_tail(struct nvme_sq *sq)
  *
  * Combine the effects of nvme_sq_post() and nvme_sq_update_tail().
  */
-static inline void nvme_sq_exec(struct nvme_sq *sq, const void *sqe)
+static inline void nvme_sq_exec(struct nvme_sq *sq, const union nvme_cmd *sqe)
 {
 	nvme_sq_post(sq, sqe);
 	nvme_sq_update_tail(sq);

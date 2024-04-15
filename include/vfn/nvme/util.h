@@ -77,7 +77,7 @@ int nvme_aer(struct nvme_ctrl *ctrl, void *opaque);
  * @sqe: Submission queue entry
  * @buf: Command payload
  * @len: Command payload length
- * @cqe: Completion queue entry to fill
+ * @cqe_copy: Completion queue entry to fill
  *
  * Submit a command and wait for completion in a synchronous manner. If a
  * spurious completion queue entry is posted (i.e., the command identifier is
@@ -91,8 +91,8 @@ int nvme_aer(struct nvme_ctrl *ctrl, void *opaque);
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
-int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
-	      void *cqe);
+int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, void *buf,
+	      size_t len, struct nvme_cqe *cqe_copy);
 
 /**
  * nvme_admin - Submit an Admin command and wait for completion
@@ -100,13 +100,14 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, 
  * @sqe: Submission queue entry
  * @buf: Command payload
  * @len: Command payload length
- * @cqe: Completion queue entry to fill
+ * @cqe_copy: Completion queue entry to fill
  *
  * Shortcut for nvme_sync(), submitting to the admin submission queue.
  *
  * Return: On success, returns ``0``. On error, returnes ``-1`` and sets
  * ``errno``.
  */
-int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe);
+int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t len,
+	       struct nvme_cqe *cqe_copy);
 
 #endif /* LIBVFN_NVME_UTIL_H */

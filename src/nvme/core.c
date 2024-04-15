@@ -279,7 +279,7 @@ discard_cq:
 	return -1;
 }
 
-static int __admin(struct nvme_ctrl *ctrl, void *sqe)
+static int __admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe)
 {
 	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, NULL, 0, NULL);
 }

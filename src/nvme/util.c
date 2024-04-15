@@ -75,8 +75,8 @@ int nvme_aer(struct nvme_ctrl *ctrl, void *opaque)
 	return 0;
 }
 
-int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, size_t len,
-	      void *cqe_copy)
+int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, void *buf,
+	      size_t len, struct nvme_cqe *cqe_copy)
 {
 	struct nvme_cqe cqe;
 	struct nvme_rq *rq;
@@ -136,7 +136,8 @@ release_rq:
 	return ret;
 }
 
-int nvme_admin(struct nvme_ctrl *ctrl, void *sqe, void *buf, size_t len, void *cqe_copy)
+int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t len,
+	       struct nvme_cqe *cqe_copy)
 {
 	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
 }
