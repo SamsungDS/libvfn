@@ -16,6 +16,8 @@
 #define __glue(x, y) x ## y
 #define glue(x, y) __glue(x, y)
 
+#define __packed __attribute__((packed))
+
 #define __LOAD(type, v) (*(const volatile type *)&(v))
 #define __LOAD_PTR(type, ptr) (*(const volatile type)(ptr))
 
