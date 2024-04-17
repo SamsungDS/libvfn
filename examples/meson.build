@@ -12,6 +12,7 @@ examples = {
   'eventfd': ['eventfd.c'],
   'identify': ['identify.c'],
   'io': ['io.c'],
+  'migrate': ['migrate.c'],
   'perf': ['perf.c'],
   'regs': ['regs.c'],
   'sriov': ['sriov.c'],
