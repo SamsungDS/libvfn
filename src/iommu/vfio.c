@@ -64,6 +64,8 @@ struct vfio_container {
 	pthread_mutex_t lock;
 	uint64_t next, next_ephemeral, nephemerals;
 	struct iommu_iova_range ephemerals;
+
+	bool iommu_set;
 };
 
 static struct vfio_container vfio_default_container = {
@@ -245,10 +247,15 @@ static int vfio_iommu_type1_init(struct vfio_container *vfio)
 {
 	uint64_t iova;
 
+	if (vfio->iommu_set)
+		return 0;
+
 	if (ioctl(vfio->fd, VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU)) {
 		log_debug("failed to set vfio iommu type\n");
 		return -1;
 	}
+
+	vfio->iommu_set = true;
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 	if (vfio_iommu_type1_get_capabilities(vfio)) {
