@@ -81,11 +81,20 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, 
 	struct nvme_cqe cqe;
 	struct nvme_rq *rq;
 	uint64_t iova;
+	bool do_unmap = false;
 	int ret = 0;
 
-	if (buf && iommu_map_vaddr(__iommu_ctx(ctrl), buf, len, &iova, IOMMU_MAP_EPHEMERAL)) {
-		log_debug("failed to map vaddr\n");
-		return -1;
+	if (buf) {
+		struct iommu_ctx *ctx = __iommu_ctx(ctrl);
+
+		if (!iommu_translate_vaddr(ctx, buf, &iova)) {
+			do_unmap = true;
+
+			if (iommu_map_vaddr(ctx, buf, len, &iova, IOMMU_MAP_EPHEMERAL)) {
+				log_debug("failed to map vaddr\n");
+				return -1;
+			}
+		}
 	}
 
 	rq = nvme_rq_acquire_atomic(sq);
@@ -120,7 +129,7 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, void *sqe, void *buf, 
 release_rq:
 	nvme_rq_release_atomic(rq);
 
-	if (buf)
+	if (buf && do_unmap)
 		log_fatal_if(iommu_unmap_vaddr(__iommu_ctx(ctrl), buf, NULL),
 			     "iommu_unmap_vaddr\n");
 
