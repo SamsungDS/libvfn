@@ -30,17 +30,6 @@ struct iommu_ctx_ops {
 	int (*get_device_fd)(struct iommu_ctx *ctx, const char *bdf);
 };
 
-struct iova_mapping {
-	void *vaddr;
-	size_t len;
-	uint64_t iova;
-	void *opaque;
-
-	unsigned long flags;
-
-	struct skiplist_node list;
-};
-
 struct iova_map {
 	pthread_mutex_t lock;
 	struct skiplist list;
