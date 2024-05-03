@@ -593,7 +593,6 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	cmd = (union nvme_cmd) {
 		.opcode = NVME_ADMIN_SET_FEATURES,
-		.cid = 0x1,
 	};
 
 	cmd.features.fid = NVME_FEAT_FID_NUM_QUEUES;
@@ -617,7 +616,6 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	cmd.identify = (struct nvme_cmd_identify) {
 		.opcode = NVME_ADMIN_IDENTIFY,
-		.cid = 0x1,
 		.cns = NVME_IDENTIFY_CNS_CTRL,
 	};
 
