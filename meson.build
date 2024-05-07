@@ -81,7 +81,7 @@ add_project_arguments([
 
 # libnvme
 libnvme = dependency('libnvme', version: '>=1.0',
-  required: false, disabler: true,
+  required: get_option('libnvme'), disabler: true,
 )
 
 
