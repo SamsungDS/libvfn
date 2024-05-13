@@ -59,13 +59,13 @@ static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64
 	struct iommu_iova_range *iova_ranges;
 	int num_iova_ranges;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
 
 	if (NVME_GET(cap, CAP_CMBS))
-		mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(0x1));
+		mmio_hl_write64(ctrl->regs, NVME_REG_CMBMSC, cpu_to_le64(0x1));
 
-	cmbsz = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBSZ));
-	cmbloc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBLOC));
+	cmbsz = le32_to_cpu(mmio_read32(ctrl->regs, NVME_REG_CMBSZ));
+	cmbloc = le32_to_cpu(mmio_read32(ctrl->regs, NVME_REG_CMBLOC));
 
 	szu = 1 << (12 + 4 * NVME_GET(cmbsz, CMBSZ_SZU));
 	len = szu * NVME_GET(cmbsz, CMBSZ_SZ);
@@ -103,7 +103,7 @@ static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64
 	printf("assigned cmb base address is 0x%lx\n", *cba);
 
 	/* set the base address and enable the memory space */
-	mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(*cba | 0x3));
+	mmio_hl_write64(ctrl->regs, NVME_REG_CMBMSC, cpu_to_le64(*cba | 0x3));
 
 	return cmb;
 }

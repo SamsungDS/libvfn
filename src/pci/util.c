@@ -10,29 +10,34 @@
  * COPYING and LICENSE files for more information.
  */
 
-#include <byteswap.h>
-#include <dirent.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include "../common.h"
 
-#include <sys/mman.h>
-#include <sys/stat.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+#ifndef __APPLE__
 #include <linux/limits.h>
+#endif
 
-#include <vfn/support/atomic.h>
-#include <vfn/support/compiler.h>
-#include <vfn/support/log.h>
-#include <vfn/support/io.h>
-#include <vfn/support/mem.h>
+#include <vfn/support.h>
 #include <vfn/pci/util.h>
 
+#include <string.h>
+
+
+#ifdef __APPLE__
+int pci_device_info_get_ull(const char *bdf, const char *prop, unsigned long long *v)
+{
+	if (!strcmp(prop, "class")) {
+		// TODO: Actually read this from device once it makes sense
+		*v = 0x010800;
+	} else {
+		return -1;
+	}
+	return 0;
+}
+#else
 int pci_unbind(const char *bdf)
 {
 	char *path = NULL;
@@ -40,7 +45,7 @@ int pci_unbind(const char *bdf)
 	ssize_t ret;
 
 	if (asprintf(&path, "/sys/bus/pci/devices/%s/driver/unbind", bdf) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		return -1;
 	}
 
@@ -62,7 +67,7 @@ int pci_bind(const char *bdf, const char *driver)
 	ssize_t ret;
 
 	if (asprintf(&path, "/sys/bus/pci/drivers/%s/bind", driver) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		return -1;
 	}
 
@@ -80,12 +85,12 @@ int pci_driver_new_id(const char *driver, uint16_t vid, uint16_t did)
 	ssize_t ret;
 
 	if (asprintf(&path, "/sys/bus/pci/drivers/%s/new_id", driver) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		return -1;
 	}
 
 	if (asprintf(&id, "%x %x", vid, did) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		free(path);
 		return -1;
 	}
@@ -105,12 +110,12 @@ int pci_driver_remove_id(const char *driver, uint16_t vid, uint16_t did)
 	ssize_t ret;
 
 	if (asprintf(&path, "/sys/bus/pci/drivers/%s/remove_id", driver) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		return -1;
 	}
 
 	if (asprintf(&id, "%x %x", vid, did) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		free(path);
 		return -1;
 	}
@@ -129,7 +134,7 @@ int pci_device_info_get_ull(const char *bdf, const char *prop, unsigned long lon
 	ssize_t ret;
 
 	if (asprintf(&path, "/sys/bus/pci/devices/%s/%s", bdf, prop) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		return -1;
 	}
 
@@ -157,7 +162,7 @@ char *pci_get_driver(const char *bdf)
 
 	if (asprintf(&link, "/sys/bus/pci/devices/%s/driver", bdf) < 0) {
 		link = NULL;
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		goto out;
 	}
 
@@ -168,7 +173,7 @@ char *pci_get_driver(const char *bdf)
 		if (errno == ENOENT)
 			goto out;
 
-		log_debug("failed to resolve driver link\n");
+		log_error("failed to resolve driver link\n");
 		goto out;
 	}
 
@@ -176,13 +181,13 @@ char *pci_get_driver(const char *bdf)
 
 	p = strrchr(driver, '/');
 	if (!p) {
-		log_debug("failed to determine driver name\n");
+		log_error("failed to determine driver name\n");
 		goto out;
 	}
 
 	if (asprintf(&name, "%s", p + 1) < 0) {
 		name = NULL;
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		goto out;
 	}
 
@@ -199,7 +204,7 @@ char *pci_get_iommu_group(const char *bdf)
 	ssize_t ret;
 
 	if (asprintf(&link, "/sys/bus/pci/devices/%s/iommu_group", bdf) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		goto out;
 	}
 
@@ -207,7 +212,7 @@ char *pci_get_iommu_group(const char *bdf)
 
 	ret = readlink(link, group, PATH_MAX - 1);
 	if (ret < 0) {
-		log_debug("failed to resolve iommu group link\n");
+		log_error("failed to resolve iommu group link\n");
 		goto out;
 	}
 
@@ -215,7 +220,7 @@ char *pci_get_iommu_group(const char *bdf)
 
 	p = strrchr(group, '/');
 	if (!p) {
-		log_debug("failed to find iommu group number\n");
+		log_error("failed to find iommu group number\n");
 		goto out;
 	}
 
@@ -239,13 +244,13 @@ char *pci_get_device_vfio_id(const char *bdf)
 	DIR *dp;
 
 	if (asprintf(&path, "/sys/bus/pci/devices/%s/vfio-dev", bdf) < 0) {
-		log_debug("asprintf failed\n");
+		log_error("asprintf failed\n");
 		return NULL;
 	}
 
 	dp = opendir(path);
 	if (!dp) {
-		log_debug("could not open directory; is %s bound to vfio-pci?\n", bdf);
+		log_error("could not open directory; is %s bound to vfio-pci?\n", bdf);
 		return NULL;
 	}
 
@@ -280,3 +285,8 @@ out:
 
 	return vfio_id;
 }
+#endif
+
+#ifdef __cplusplus
+}
+#endif

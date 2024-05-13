@@ -10,32 +10,10 @@
  * COPYING and LICENSE files for more information.
  */
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-#include <sys/uio.h>
-
-#include <linux/vfio.h>
-
-#include <vfn/support.h>
-#include <vfn/iommu.h>
-#include <vfn/vfio.h>
-#include <vfn/trace.h>
+#include "common.h"
 #include <vfn/nvme.h>
-
+#include "iommu/context.h"
 #include "types.h"
-
 #include "crc64table.h"
 
 uint64_t nvme_crc64(uint64_t crc, const unsigned char *buffer, size_t len)
@@ -84,14 +62,15 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, v
 	bool do_unmap = false;
 	int ret = 0;
 
+	void *opaque = NULL; // Could be null, as we're always mapped?
 	if (buf) {
 		struct iommu_ctx *ctx = __iommu_ctx(ctrl);
 
 		if (!iommu_translate_vaddr(ctx, buf, &iova)) {
 			do_unmap = true;
 
-			if (iommu_map_vaddr(ctx, buf, len, &iova, IOMMU_MAP_EPHEMERAL)) {
-				log_debug("failed to map vaddr\n");
+			if (_iommu_map_vaddr(ctx, buf, len, &iova, IOMMU_MAP_EPHEMERAL, opaque)) {
+				log_error("failed to map vaddr\n");
 				return -1;
 			}
 		}
@@ -113,7 +92,7 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, v
 	while (nvme_rq_spin(rq, &cqe) < 0) {
 		if (errno == EAGAIN) {
 			log_error("SPURIOUS CQE (cq %" PRIu16 " cid %" PRIu16 ")\n",
-				  rq->sq->cq->id, cqe.cid);
+				  (uint16_t)rq->sq->cq->id, cqe.cid);
 
 			continue;
 		}

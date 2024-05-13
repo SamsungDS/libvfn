@@ -12,25 +12,9 @@
 
 #define log_fmt(fmt) "vfio/device: " fmt
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <pthread.h>
-
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include "common.h"
 
 #include <linux/limits.h>
-#include <linux/vfio.h>
 #include <linux/pci_regs.h>
 
 #include "vfn/support.h"
@@ -48,7 +32,7 @@ int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
 
 	if (!(dev->irq_info.flags & VFIO_IRQ_INFO_EVENTFD)) {
 		errno = EINVAL;
-		log_debug("device irq does not support eventfd\n");
+		log_error("device irq does not support eventfd\n");
 		return -1;
 	}
 
@@ -69,7 +53,7 @@ int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
 	free(irq_set);
 
 	if (ret) {
-		log_debug("failed to set device irq\n");
+		log_error("failed to set device irq\n");
 		return -1;
 	}
 
@@ -90,7 +74,7 @@ int vfio_disable_irq(struct vfio_device *dev)
 	ret = ioctl(dev->fd, VFIO_DEVICE_SET_IRQS, &irq_set);
 
 	if (ret) {
-		log_debug("failed to disable device irq\n");
+		log_error("failed to disable device irq\n");
 		return -1;
 	}
 

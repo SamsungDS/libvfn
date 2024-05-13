@@ -11,27 +11,9 @@
  */
 
 #define log_fmt(fmt) "support/mem: " fmt
-
-#include <errno.h>
-#ifdef __GLIBC__
-#include <execinfo.h>
-#endif
-#include <fcntl.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-
-#include <vfn/support/align.h>
-#include <vfn/support/atomic.h>
-#include <vfn/support/compiler.h>
-#include <vfn/support/log.h>
-#include <vfn/support/mem.h>
+#include "../../../common.h"
+#include "ccan/compiler/compiler.h"
+#include <vfn/support.h>
 
 size_t __VFN_PAGESIZE;
 int __VFN_PAGESHIFT;
@@ -88,4 +70,24 @@ ssize_t pgmapn(void **mem, unsigned int n, size_t sz)
 	return pgmap(mem, n * sz);
 }
 
+ssize_t __pgmap(void **mem, size_t sz, void **opaque UNUSED)
+{
+	return pgmap(mem, sz);
+}
+
+ssize_t __pgmapn(void **mem, unsigned int n, size_t sz, void **opaque UNUSED)
+{
+	return pgmapn(mem, n, sz);
+}
+
+void __pgunmap(void *mem, size_t len, void *opaque UNUSED)
+{
+	return pgunmap(mem, len);
+}
+
+void pgunmap(void *mem, size_t len)
+{
+	if (munmap(mem, len))
+		backtrace_abort();
+}
 

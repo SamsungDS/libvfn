@@ -12,11 +12,11 @@
 
 #define log_fmt(fmt) "iommu/dma: " fmt
 
-#include <errno.h>
-#include <inttypes.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <pthread.h>
+#include "common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
@@ -32,36 +32,27 @@ static int iova_cmp(const void *vaddr, const struct skiplist_node *n)
 
 	if (vaddr < m->vaddr)
 		return -1;
-	else if (vaddr >= m->vaddr + m->len)
+	else if ((uintptr_t)vaddr >= ((uintptr_t)m->vaddr) + m->len)
 		return 1;
 
 	return 0;
 }
 
-static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t iova,
-			unsigned long flags)
+static int iova_map_add(struct iova_map *map, struct iova_mapping *m)
 {
 	__autolock(&map->lock);
 
 	struct skiplist_node *update[SKIPLIST_LEVELS] = {};
-	struct iova_mapping *m;
 
-	if (!len) {
+	if (!m->len) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (skiplist_find(&map->list, vaddr, iova_cmp, update)) {
+	if (skiplist_find(&map->list, m->vaddr, iova_cmp, update)) {
 		errno = EEXIST;
 		return -1;
 	}
-
-	m = znew_t(struct iova_mapping, 1);
-
-	m->vaddr = vaddr;
-	m->len = len;
-	m->iova = iova;
-	m->flags = flags;
 
 	skiplist_link(&map->list, &m->list, update);
 
@@ -106,44 +97,63 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova)
 	struct iova_mapping *m = iova_map_find(&ctx->map, vaddr);
 
 	if (m) {
-		*iova = m->iova + (vaddr - m->vaddr);
+		*iova = m->iova + ((uintptr_t)vaddr - (uintptr_t)m->vaddr);
 		return true;
 	}
 
 	return false;
 }
 
-int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
-		    unsigned long flags)
+int _iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
+		    unsigned long flags, void *opaque)
 {
 	uint64_t _iova;
-
+	struct iova_mapping *m;
 	if (iommu_translate_vaddr(ctx, vaddr, &_iova))
 		goto out;
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		_iova = *iova;
 	} else if (ctx->ops.iova_reserve && ctx->ops.iova_reserve(ctx, len, &_iova, flags)) {
-		log_debug("failed to allocate iova\n");
+		log_error("failed to allocate iova\n");
 		return -1;
 	}
 
-	if (ctx->ops.dma_map(ctx, vaddr, len, &_iova, flags)) {
-		log_debug("failed to map dma\n");
+	m = znew_t(struct iova_mapping, 1);
+	m->vaddr = vaddr;
+	m->len = len;
+	m->iova = 0; // Physical/IOMMU address
+	m->opaque[0] = NULL; // IODMACommand
+	m->opaque[1] = opaque; // IOMemoryDescriptor
+	m->flags = flags;
+
+	if (ctx->ops.dma_map(ctx, m)) {
+		log_error("failed to map dma\n");
+		free(m);
 		return -1;
 	}
 
-	if (iova_map_add(&ctx->map, vaddr, len, _iova, flags)) {
-		log_debug("failed to add mapping\n");
+	if (iova_map_add(&ctx->map, m)) {
+		log_error("failed to add mapping\n");
+		free(m);
 		return -1;
 	}
 
+	_iova = m->iova;
 out:
 	if (iova)
 		*iova = _iova;
 
 	return 0;
 }
+
+#ifndef __APPLE__
+int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
+		    unsigned long flags)
+{
+	return _iommu_map_vaddr(ctx, vaddr, len, iova, flags, NULL);
+}
+#endif
 
 int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 {
@@ -158,8 +168,8 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 	if (len)
 		*len = m->len;
 
-	if (ctx->ops.dma_unmap(ctx, m->iova, m->len)) {
-		log_debug("failed to unmap dma\n");
+	if (ctx->ops.dma_unmap(ctx, m)) {
+		log_error("failed to unmap dma\n");
 		return -1;
 	}
 
@@ -173,10 +183,10 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 
 static void __unmap_mapping(void *opaque, struct skiplist_node *n)
 {
-	struct iommu_ctx *ctx = opaque;
+	struct iommu_ctx *ctx = (struct iommu_ctx *)opaque;
 	struct iova_mapping *m = container_of_var(n, m, list);
 
-	log_fatal_if(ctx->ops.dma_unmap(ctx, m->len, m->iova),
+	log_fatal_if(ctx->ops.dma_unmap(ctx, m),
 		     "failed to unmap dma (iova 0x%" PRIx64 " len %zu)\n", m->iova, m->len);
 
 	free(m);
@@ -186,7 +196,7 @@ int iommu_unmap_all(struct iommu_ctx *ctx)
 {
 	if (ctx->ops.dma_unmap_all) {
 		if (ctx->ops.dma_unmap_all(ctx)) {
-			log_debug("failed to unmap dma\n");
+			log_error("failed to unmap dma\n");
 			return -1;
 		}
 
@@ -200,6 +210,7 @@ int iommu_unmap_all(struct iommu_ctx *ctx)
 	return 0;
 }
 
+#ifndef __APPLE__
 int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **ranges)
 {
 	*ranges = ctx->iova_ranges;
@@ -210,3 +221,8 @@ int iommu_iova_range_to_string(struct iommu_iova_range *r, char **str)
 {
 	return asprintf(str, "[0x%llx; 0x%llx]", r->start, r->last);
 }
+#endif
+
+#ifdef __cplusplus
+}
+#endif

@@ -3,4 +3,4 @@
 Logging
 =======
 
-.. kernel-doc:: include/vfn/support/log.h
+.. kernel-doc:: include/vfn/support/platform/linux/log.h

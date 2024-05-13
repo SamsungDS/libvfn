@@ -13,9 +13,11 @@
 #ifndef LIBVFN_TRACE_H
 #define LIBVFN_TRACE_H
 
+#ifndef __APPLE__
 #include <vfn/trace/events.h>
+#endif
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(__APPLE__)
 extern __thread const char *__trace_event;
 
 # define __trace_prefix(fmt) "T %s (%s:%d) " fmt

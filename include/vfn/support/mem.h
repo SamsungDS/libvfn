@@ -13,101 +13,9 @@
 #ifndef LIBVFN_SUPPORT_MEM_H
 #define LIBVFN_SUPPORT_MEM_H
 
-extern size_t __VFN_PAGESIZE;
-extern int __VFN_PAGESHIFT;
-
-void backtrace_abort(void);
-
-static inline void __do_autofree(void *mem)
-{
-	void **memp = (void **)mem;
-
-	free(*memp);
-}
-
-#define __autofree __attribute__((cleanup(__do_autofree)))
-
-static inline bool would_overflow(unsigned int n, size_t sz)
-{
-	return n > SIZE_MAX / sz;
-}
-
-static inline size_t __abort_on_overflow(unsigned int n, size_t sz)
-{
-	if (would_overflow(n, sz))
-		backtrace_abort();
-
-	return n * sz;
-}
-
-/**
- * xmalloc - version of malloc that cannot fail
- * @sz: number of bytes to allocate
- *
- * Call malloc, but only return NULL when @sz is zero. Otherwise, abort.
- *
- * Return: pointer to allocated memory
- */
-static inline void *xmalloc(size_t sz)
-{
-	void *mem;
-
-	if (unlikely(!sz))
-		return NULL;
-
-	mem = malloc(sz);
-	if (unlikely(!mem))
-		backtrace_abort();
-
-	return mem;
-}
-
-static inline void *zmalloc(size_t sz)
-{
-	void *mem;
-
-	if (unlikely(!sz))
-		return NULL;
-
-	mem = calloc(1, sz);
-	if (unlikely(!mem))
-		backtrace_abort();
-
-	return mem;
-}
-
-static inline void *mallocn(unsigned int n, size_t sz)
-{
-	if (would_overflow(n, sz)) {
-		fprintf(stderr, "allocation of %d * %zu bytes would overflow\n", n, sz);
-
-		backtrace_abort();
-	}
-
-	return xmalloc(n * sz);
-}
-
-static inline void *zmallocn(unsigned int n, size_t sz)
-{
-	if (would_overflow(n, sz)) {
-		fprintf(stderr, "allocation of %d * %zu bytes would overflow\n", n, sz);
-
-		backtrace_abort();
-	}
-
-	return zmalloc(n * sz);
-}
-
-static inline void *reallocn(void *mem, unsigned int n, size_t sz)
-{
-	if (would_overflow(n, sz)) {
-		fprintf(stderr, "allocation of %d * %zu bytes would overflow\n", n, sz);
-
-		backtrace_abort();
-	}
-
-	return realloc(mem, n * sz);
-}
+ssize_t __pgmap(void **mem, size_t sz, void **opaque);
+ssize_t __pgmapn(void **mem, unsigned int n, size_t sz, void **opaque);
+void __pgunmap(void *mem, size_t len, void *opaque);
 
 #define _new_t(t, n, f) \
 	((t *) f(n, sizeof(t)))
@@ -118,10 +26,12 @@ static inline void *reallocn(void *mem, unsigned int n, size_t sz)
 ssize_t pgmap(void **mem, size_t sz);
 ssize_t pgmapn(void **mem, unsigned int n, size_t sz);
 
-static inline void pgunmap(void *mem, size_t len)
-{
-	if (munmap(mem, len))
-		backtrace_abort();
-}
+void pgunmap(void *mem, size_t len);
+
+#ifdef __APPLE__
+#include <vfn/support/platform/macos/mem.h>
+#else
+#include <vfn/support/platform/linux/mem.h>
+#endif
 
 #endif /* LIBVFN_SUPPORT_MEM_H */

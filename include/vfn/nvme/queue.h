@@ -27,6 +27,7 @@ struct nvme_dbbuf {
  */
 struct nvme_cq {
 	/* private: */
+	void *vaddr_opaque;
 	void *vaddr;
 	uint64_t iova;
 
@@ -51,10 +52,12 @@ struct nvme_sq {
 	/* private: */
 	struct nvme_cq *cq;
 
+	void *vaddr_opaque;
 	void *vaddr;
 	uint64_t iova;
 
 	struct {
+		void *vaddr_opaque;
 		void *vaddr;
 		uint64_t iova;
 	} pages;
@@ -84,7 +87,7 @@ struct nvme_sq {
  */
 static inline void nvme_sq_post(struct nvme_sq *sq, const union nvme_cmd *sqe)
 {
-	memcpy(sq->vaddr + (sq->tail << NVME_SQES), sqe, 1 << NVME_SQES);
+	memcpy(((uint8_t *) sq->vaddr) + (sq->tail << NVME_SQES), sqe, 1 << NVME_SQES);
 
 	trace_guard(NVME_SQ_POST) {
 		trace_emit("sqid %d tail %d\n", sq->id, sq->tail);
@@ -147,7 +150,7 @@ static inline void nvme_sq_update_tail(struct nvme_sq *sq)
 		/* do not reorder queue entry store with doorbell store */
 		wmb();
 
-		mmio_write32(sq->doorbell, cpu_to_le32(sq->tail));
+		mmio_write32(sq->doorbell, 0, cpu_to_le32(sq->tail));
 	}
 
 	sq->ptail = sq->tail;
@@ -174,7 +177,7 @@ static inline void nvme_sq_exec(struct nvme_sq *sq, const union nvme_cmd *sqe)
  */
 static inline struct nvme_cqe *nvme_cq_head(struct nvme_cq *cq)
 {
-	return (struct nvme_cqe *)(cq->vaddr + (cq->head << NVME_CQES));
+	return (struct nvme_cqe *)(((uint8_t *) cq->vaddr) + (cq->head << NVME_CQES));
 }
 
 /**
@@ -190,7 +193,7 @@ static inline void nvme_cq_update_head(struct nvme_cq *cq)
 	}
 
 	if (nvme_try_dbbuf(cq->head, &cq->dbbuf))
-		mmio_write32(cq->doorbell, cpu_to_le32(cq->head));
+		mmio_write32(cq->doorbell, 0, cpu_to_le32(cq->head));
 }
 
 /**
@@ -279,7 +282,7 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n);
  * @cq: Completion queue
  * @cqes: Pointer to array of struct cqe to place cqes into
  * @n: Number of cqes to reap
- * @ts: Maximum time to wait for CQEs
+ * @timeout_ns: Maximum time to wait for CQEs in nanoseconds
  *
  * Continuously poll @cq and copy @n cqes into @cqes if not NULL.
  *
@@ -288,6 +291,6 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n);
  * Return: ``n`` on success. On timeout, returns the number of cqes reaped
  * (i.e., less than ``n``) and sets ``errno``.
  */
-int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct timespec *ts);
+int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, uint64_t timeout_ns);
 
 #endif /* LIBVFN_NVME_QUEUE_H */

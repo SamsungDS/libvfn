@@ -13,21 +13,15 @@
 #ifndef LIBVFN_IOMMU_H
 #define LIBVFN_IOMMU_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef __APPLE__
 #include <linux/types.h>
+#endif
 
 #include <vfn/iommu/context.h>
 #include <vfn/iommu/dma.h>
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LIBVFN_IOMMU_H */

@@ -12,42 +12,59 @@
 
 #define log_fmt(fmt) "nvme/core: " fmt
 
-#include <assert.h>
-#include <byteswap.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <string.h>
+#include "common.h"
 
-#include <sys/mman.h>
-#include <sys/uio.h>
-
-#include <linux/vfio.h>
-
-#include <vfn/support.h>
-#include <vfn/trace.h>
-#include <vfn/iommu.h>
-#include <vfn/vfio.h>
-#include <vfn/iommu.h>
-#include <vfn/pci.h>
 #include <vfn/nvme.h>
+#include <vfn/pci.h>
+#include <vfn/iommu/dma.h>
 
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
+#ifndef __APPLE__
 #include "ccan/time/time.h"
+#else
+#include <time.h>
+int errno;
+#endif
 
 #include "types.h"
 
+#ifdef __APPLE__
+inline void *cqhdbl(void *doorbells, int qid, int dstrd)
+{
+	struct macvfn_pci_map_bar *doorbell_mapping = (struct macvfn_pci_map_bar *) doorbells;
+	struct macvfn_pci_map_bar *new_mapping = (struct macvfn_pci_map_bar *) zmallocn(1,
+		sizeof(struct macvfn_pci_map_bar));
+
+	new_mapping->pci = doorbell_mapping->pci;
+	new_mapping->idx = doorbell_mapping->idx;
+	new_mapping->len = doorbell_mapping->len;
+	new_mapping->offset = doorbell_mapping->offset + (2 * qid + 1) * (4 << dstrd);
+
+	return new_mapping;
+}
+
+inline void *sqtdbl(void *doorbells, int qid, int dstrd)
+{
+	struct macvfn_pci_map_bar *doorbell_mapping = (struct macvfn_pci_map_bar *) doorbells;
+	struct macvfn_pci_map_bar *new_mapping = (struct macvfn_pci_map_bar *) zmallocn(1,
+		sizeof(struct macvfn_pci_map_bar));
+
+	new_mapping->pci = doorbell_mapping->pci;
+	new_mapping->idx = doorbell_mapping->idx;
+	new_mapping->len = doorbell_mapping->len;
+	new_mapping->offset = doorbell_mapping->offset + (2 * qid) * (4 << dstrd);
+
+	return new_mapping;
+}
+#else
 #define cqhdbl(doorbells, qid, dstrd) \
 	(doorbells + (2 * qid + 1) * (4 << dstrd))
 
 #define sqtdbl(doorbells, qid, dstrd) \
 	(doorbells + (2 * qid) * (4 << dstrd))
+#endif
+
 
 enum nvme_ctrl_feature_flags {
 	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
@@ -59,19 +76,20 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 	uint64_t cap;
 	uint8_t dstrd;
 	size_t len;
+	void *opaque;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid && qid > ctrl->config.ncqa + 1) {
-		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa + 1);
+		log_error("qid %d invalid; max qid is %d\n", qid, ctrl->config.ncqa + 1);
 
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (qsize < 2) {
-		log_debug("qsize must be at least 2\n");
+		log_error("qsize must be at least 2\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -92,12 +110,12 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 		cq->dbbuf.eventidx = cqhdbl(ctrl->dbbuf.eventidxs, qid, dstrd);
 	}
 
-	len = pgmapn(&cq->vaddr, qsize, 1 << NVME_CQES);
+	len = __pgmapn(&cq->vaddr, qsize, 1 << NVME_CQES, &opaque);
 
-	if (iommu_map_vaddr(__iommu_ctx(ctrl), cq->vaddr, len, &cq->iova, 0x0)) {
-		log_debug("failed to map vaddr\n");
+	if (_iommu_map_vaddr(__iommu_ctx(ctrl), cq->vaddr, len, &cq->iova, 0x0, opaque)) {
+		log_error("failed to map vaddr\n");
 
-		pgunmap(cq->vaddr, len);
+		__pgunmap(cq->vaddr, len, opaque);
 		return -1;
 	}
 
@@ -112,9 +130,9 @@ static void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 		return;
 
 	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), cq->vaddr, &len))
-		log_debug("failed to unmap vaddr\n");
+		log_error("failed to unmap vaddr\n");
 
-	pgunmap(cq->vaddr, len);
+	__pgunmap(cq->vaddr, len, cq->vaddr_opaque);
 
 	if (ctrl->dbbuf.doorbells) {
 		__STORE_PTR(uint32_t *, cq->dbbuf.doorbell, 0);
@@ -132,18 +150,18 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	uint8_t dstrd;
 	ssize_t len;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid && qid > ctrl->config.nsqa + 1) {
-		log_debug("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa + 1);
+		log_error("qid %d invalid; max qid is %d\n", qid, ctrl->config.nsqa + 1);
 
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (qsize < 2) {
-		log_debug("qsize must be at least 2\n");
+		log_error("qsize must be at least 2\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -168,13 +186,15 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	 * Use ctrl->config.mps instead of host page size, as we have the
 	 * opportunity to pack the allocations.
 	 */
-	len = pgmapn(&sq->pages.vaddr, qsize, __mps_to_pagesize(ctrl->config.mps));
+	len = __pgmapn(&sq->pages.vaddr, qsize, __mps_to_pagesize(ctrl->config.mps),
+		&sq->pages.vaddr_opaque);
 
 	if (len < 0)
 		return -1;
 
-	if (iommu_map_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, len, &sq->pages.iova, 0x0)) {
-		log_debug("failed to map vaddr\n");
+	if (_iommu_map_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, len, &sq->pages.iova, 0x0,
+		sq->pages.vaddr_opaque)) {
+		log_error("failed to map vaddr\n");
 		goto unmap_pages;
 	}
 
@@ -187,33 +207,35 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		rq->sq = sq;
 		rq->cid = (uint16_t)i;
 
-		rq->page.vaddr = sq->pages.vaddr + (i << __mps_to_pageshift(ctrl->config.mps));
-		rq->page.iova = sq->pages.iova + (i << __mps_to_pageshift(ctrl->config.mps));
+		rq->page.vaddr = (void *)((uintptr_t)sq->pages.vaddr +
+			((uint64_t)i << __mps_to_pageshift(ctrl->config.mps)));
+		rq->page.iova = sq->pages.iova +
+			((uint64_t)i << __mps_to_pageshift(ctrl->config.mps));
 
 		if (i > 0)
 			rq->rq_next = &sq->rqs[i - 1];
 	}
 
-	len = pgmapn(&sq->vaddr, qsize, 1 << NVME_SQES);
+	len = __pgmapn(&sq->vaddr, qsize, 1 << NVME_SQES, &sq->vaddr_opaque);
 	if (len < 0)
 		goto free_sq_rqs;
 
-	if (iommu_map_vaddr(__iommu_ctx(ctrl), sq->vaddr, len, &sq->iova, 0x0)) {
-		log_debug("failed to map vaddr\n");
+	if (_iommu_map_vaddr(__iommu_ctx(ctrl), sq->vaddr, len, &sq->iova, 0x0, sq->vaddr_opaque)) {
+		log_error("failed to map vaddr\n");
 		goto unmap_sq;
 	}
 
 	return 0;
 
 unmap_sq:
-	pgunmap(sq->vaddr, len);
+	__pgunmap(sq->vaddr, len, sq->vaddr_opaque);
 free_sq_rqs:
 	free(sq->rqs);
 unmap_pages:
 	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, (size_t *)&len))
-		log_debug("failed to unmap vaddr\n");
+		log_error("failed to unmap vaddr\n");
 
-	pgunmap(sq->pages.vaddr, len);
+	__pgunmap(sq->pages.vaddr, len, sq->pages.vaddr_opaque);
 
 	return -1;
 }
@@ -228,14 +250,14 @@ static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->vaddr, &len))
 		log_debug("failed to unmap vaddr\n");
 
-	pgunmap(sq->vaddr, len);
+	__pgunmap(sq->vaddr, len, sq->vaddr_opaque);
 
 	free(sq->rqs);
 
 	if (iommu_unmap_vaddr(__iommu_ctx(ctrl), sq->pages.vaddr, &len))
 		log_debug("failed to unmap vaddr\n");
 
-	pgunmap(sq->pages.vaddr, len);
+	__pgunmap(sq->pages.vaddr, len, sq->pages.vaddr_opaque);
 
 	if (ctrl->dbbuf.doorbells) {
 		__STORE_PTR(uint32_t *, sq->dbbuf.doorbell, 0);
@@ -253,12 +275,12 @@ static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 	struct nvme_sq *sq = &ctrl->sq[NVME_AQ];
 
 	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE, 0)) {
-		log_debug("failed to configure admin completion queue\n");
+		log_error("failed to configure admin completion queue\n");
 		return -1;
 	}
 
 	if (nvme_configure_sq(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags)) {
-		log_debug("failed to configure admin submission queue\n");
+		log_error("failed to configure admin submission queue\n");
 		goto discard_cq;
 	}
 
@@ -268,9 +290,9 @@ static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 	aqa = NVME_AQ_QSIZE - 1;
 	aqa |= aqa << 16;
 
-	mmio_write32(ctrl->regs + NVME_REG_AQA, cpu_to_le32(aqa));
-	mmio_hl_write64(ctrl->regs + NVME_REG_ASQ, cpu_to_le64(sq->iova));
-	mmio_hl_write64(ctrl->regs + NVME_REG_ACQ, cpu_to_le64(cq->iova));
+	mmio_write32(ctrl->regs, NVME_REG_AQA, cpu_to_le32(aqa));
+	mmio_hl_write64(ctrl->regs, NVME_REG_ASQ, cpu_to_le64(sq->iova));
+	mmio_hl_write64(ctrl->regs, NVME_REG_ACQ, cpu_to_le64(cq->iova));
 
 	return 0;
 
@@ -293,7 +315,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 	uint16_t iv = 0;
 
 	if (nvme_configure_cq(ctrl, qid, qsize, vector)) {
-		log_debug("could not configure io completion queue\n");
+		log_error("could not configure io completion queue\n");
 		return -1;
 	}
 
@@ -335,7 +357,7 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize, struct nvme_cq 
 	union nvme_cmd cmd;
 
 	if (nvme_configure_sq(ctrl, qid, qsize, cq, flags)) {
-		log_debug("could not configure io submission queue\n");
+		log_error("could not configure io submission queue\n");
 		return -1;
 	}
 
@@ -368,12 +390,12 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, int qid)
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector, unsigned long flags)
 {
 	if (nvme_create_iocq(ctrl, qid, qsize, vector)) {
-		log_debug("could not create io completion queue\n");
+		log_error("could not create io completion queue\n");
 		return -1;
 	}
 
 	if (nvme_create_iosq(ctrl, qid, qsize, &ctrl->cq[qid], flags)) {
-		log_debug("could not create io submission queue\n");
+		log_error("could not create io submission queue\n");
 		return -1;
 	}
 
@@ -383,38 +405,44 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector, 
 int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, int qid)
 {
 	if (nvme_delete_iosq(ctrl, qid)) {
-		log_debug("could not delete io submission queue\n");
+		log_error("could not delete io submission queue\n");
 		return -1;
 	}
 
 	if (nvme_delete_iocq(ctrl, qid)) {
-		log_debug("could not delete io completion queue\n");
+		log_error("could not delete io completion queue\n");
 		return -1;
 	}
 
 	return 0;
 }
 
+#ifndef __APPLE__
+#define _time_ns time_now().ts.tv_nsec
+#else
+#define _time_ns clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)
+#endif
+
 static int nvme_wait_rdy(struct nvme_ctrl *ctrl, unsigned short rdy)
 {
 	uint64_t cap;
+	uint64_t timeout_ns;
+	uint64_t deadline_ns;
 	uint32_t csts;
-	unsigned long timeout_ms;
-	struct timeabs deadline;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
-	timeout_ms = 500 * (NVME_FIELD_GET(cap, CAP_TO) + 1);
-	deadline = timeabs_add(time_now(), time_from_msec(timeout_ms));
+	cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
+	timeout_ns = 500 * (NVME_FIELD_GET(cap, CAP_TO) + 1) * 1000000;
+	deadline_ns = _time_ns + timeout_ns;
 
 	do {
-		if (time_after(time_now(), deadline)) {
-			log_debug("timed out\n");
+		if ((uint64_t)_time_ns > deadline_ns) {
+			log_error("timed out\n");
 
 			errno = ETIMEDOUT;
 			return -1;
 		}
 
-		csts = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CSTS));
+		csts = le32_to_cpu(mmio_read32(ctrl->regs, NVME_REG_CSTS));
 	} while (NVME_FIELD_GET(csts, CSTS_RDY) != rdy);
 
 	return 0;
@@ -426,7 +454,7 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	uint32_t cc;
 	uint64_t cap;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
 	css = NVME_FIELD_GET(cap, CAP_CSS);
 
 	cc =
@@ -444,7 +472,7 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	else
 		cc |= NVME_FIELD_SET(NVME_CC_CSS_NVM, CC_CSS);
 
-	mmio_write32(ctrl->regs + NVME_REG_CC, cpu_to_le32(cc));
+	mmio_write32(ctrl->regs, NVME_REG_CC, cpu_to_le32(cc));
 
 	return nvme_wait_rdy(ctrl, 1);
 }
@@ -453,8 +481,8 @@ int nvme_reset(struct nvme_ctrl *ctrl)
 {
 	uint32_t cc;
 
-	cc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CC));
-	mmio_write32(ctrl->regs + NVME_REG_CC, cpu_to_le32(cc & 0xfe));
+	cc = le32_to_cpu(mmio_read32(ctrl->regs, NVME_REG_CC));
+	mmio_write32(ctrl->regs, NVME_REG_CC, cpu_to_le32(cc & 0xfe));
 
 	return nvme_wait_rdy(ctrl, 0);
 }
@@ -463,17 +491,20 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 {
 	uint64_t prp1, prp2;
 	union nvme_cmd cmd;
+	void *opaque;
 
-	if (pgmap((void **)&ctrl->dbbuf.doorbells, __VFN_PAGESIZE) < 0)
+	if (__pgmap((void **)&ctrl->dbbuf.doorbells, __VFN_PAGESIZE, &opaque) < 0)
 		return -1;
 
-	if (iommu_map_vaddr(__iommu_ctx(ctrl), ctrl->dbbuf.doorbells, __VFN_PAGESIZE, &prp1, 0x0))
+	if (_iommu_map_vaddr(__iommu_ctx(ctrl), ctrl->dbbuf.doorbells, __VFN_PAGESIZE, &prp1, 0x0,
+		opaque))
 		return -1;
 
-	if (pgmap((void **)&ctrl->dbbuf.eventidxs, __VFN_PAGESIZE) < 0)
+	if (__pgmap((void **)&ctrl->dbbuf.eventidxs, __VFN_PAGESIZE, &opaque) < 0)
 		return -1;
 
-	if (iommu_map_vaddr(__iommu_ctx(ctrl), ctrl->dbbuf.eventidxs, __VFN_PAGESIZE, &prp2, 0x0))
+	if (_iommu_map_vaddr(__iommu_ctx(ctrl), ctrl->dbbuf.eventidxs, __VFN_PAGESIZE, &prp2, 0x0,
+		opaque))
 		return -1;
 
 	cmd = (union nvme_cmd) {
@@ -489,7 +520,7 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 		uint64_t cap;
 		uint8_t dstrd;
 
-		cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+		cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
 		dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 		ctrl->adminq.cq->dbbuf.doorbell = cqhdbl(ctrl->dbbuf.doorbells, NVME_AQ, dstrd);
@@ -509,6 +540,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	uint8_t mpsmin, mpsmax;
 	uint16_t oacs;
 	ssize_t len;
+	void *opaque;
 	void *vaddr;
 	int ret;
 
@@ -521,14 +553,14 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		memcpy(&ctrl->opts, &nvme_ctrl_opts_default, sizeof(*opts));
 
 	if (pci_device_info_get_ull(bdf, "class", &classcode)) {
-		log_debug("could not get device class code\n");
+		log_error("could not get device class code\n");
 		return -1;
 	}
 
 	log_info("pci class code is 0x%06llx\n", classcode);
 
 	if ((classcode & 0xffff00) != 0x010800) {
-		log_debug("%s is not an NVMe device\n", bdf);
+		log_error("%s is not an NVMe device\n", bdf);
 		errno = EINVAL;
 		return -1;
 	}
@@ -541,11 +573,11 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	ctrl->regs = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0, PROT_READ | PROT_WRITE);
 	if (!ctrl->regs) {
-		log_debug("could not map controller registersn\n");
+		log_error("could not map controller registersn\n");
 		return -1;
 	}
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(mmio_read64(ctrl->regs, NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
 	mpsmax = NVME_FIELD_GET(cap, CAP_MPSMAX);
 
@@ -563,14 +595,14 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	ctrl->config.mqes = NVME_FIELD_GET(cap, CAP_MQES);
 
 	if (nvme_reset(ctrl)) {
-		log_debug("could not reset controller\n");
+		log_error("could not reset controller\n");
 		return -1;
 	}
 
 	/* map admin queue doorbells */
 	ctrl->doorbells = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0x1000, PROT_WRITE);
 	if (!ctrl->doorbells) {
-		log_debug("could not map doorbells\n");
+		log_error("could not map doorbells\n");
 		return -1;
 	}
 
@@ -579,12 +611,12 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	ctrl->cq = znew_t(struct nvme_cq, ctrl->opts.ncqr + 2);
 
 	if (nvme_configure_adminq(ctrl, 0x0)) {
-		log_debug("could not configure admin queue\n");
+		log_error("could not configure admin queue\n");
 		return -1;
 	}
 
 	if (nvme_enable(ctrl)) {
-		log_debug("could not enable controller\n");
+		log_error("could not enable controller\n");
 		return -1;
 	}
 
@@ -601,7 +633,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 		NVME_FIELD_SET(ctrl->opts.ncqr, FEAT_NRQS_NCQR));
 
 	if (nvme_admin(ctrl, &cmd, NULL, 0, &cqe)) {
-		log_debug("could not set number of queues\n");
+		log_error("could not set number of queues\n");
 		return -1;
 	}
 
@@ -610,9 +642,14 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	ctrl->config.ncqa = min_t(int, ctrl->opts.ncqr,
 				  NVME_FIELD_GET(le32_to_cpu(cqe.dw0), FEAT_NRQS_NCQR));
 
-	len = pgmap(&vaddr, NVME_IDENTIFY_DATA_SIZE);
+	len = __pgmap(&vaddr, NVME_IDENTIFY_DATA_SIZE, &opaque);
 	if (len < 0)
 		return -1;
+
+	if (_iommu_map_vaddr(__iommu_ctx(ctrl), vaddr, len, NULL, IOMMU_MAP_EPHEMERAL, opaque)) {
+		log_error("failed to map vaddr\n");
+		return -1;
+	}
 
 	cmd.identify = (struct nvme_cmd_identify) {
 		.opcode = NVME_ADMIN_IDENTIFY,
@@ -621,17 +658,20 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	ret = nvme_admin(ctrl, &cmd, vaddr, len, NULL);
 	if (ret) {
-		log_debug("could not identify\n");
+		log_error("could not identify\n");
 		goto out;
 	}
 
-	oacs = le16_to_cpu(*(leint16_t *)(vaddr + NVME_IDENTIFY_CTRL_OACS));
+	memcpy(ctrl->serial, ((char *) vaddr) +
+		NVME_IDENTIFY_CTRL_SERIAL_NUMBER, sizeof(ctrl->serial));
+	oacs = le16_to_cpu(*(leint16_t *)(((uintptr_t) vaddr) + NVME_IDENTIFY_CTRL_OACS));
 
 	if (oacs & NVME_IDENTIFY_CTRL_OACS_DBCONFIG)
 		ret = nvme_init_dbconfig(ctrl);
 
 out:
-	pgunmap(vaddr, len);
+	log_fatal_if(iommu_unmap_vaddr(__iommu_ctx(ctrl), vaddr, NULL), "iommu_unmap_vaddr\n");
+	__pgunmap(vaddr, len, opaque);
 
 	return ret;
 }

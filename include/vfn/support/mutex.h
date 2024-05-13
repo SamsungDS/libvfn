@@ -10,40 +10,8 @@
  * COPYING and LICENSE files for more information.
  */
 
-#ifndef LIBVFN_SUPPORT_MUTEX_H
-#define LIBVFN_SUPPORT_MUTEX_H
-
-/*
- * DOC: Autolockable mutex
- *
- * Define a __autolock() macro that will lock the given mutex as well as ensure
- * that it is unlocked when going out of scope. This is inspired by the
- * polymorphic locking functions in QEMU (include/qemu/lockable.h), but this
- * version only supports the pthread_mutex_t.
- */
-
-static inline pthread_mutex_t *__mutex_auto_lock(pthread_mutex_t *mutex)
-{
-	pthread_mutex_lock(mutex);
-	return mutex;
-}
-
-static inline void __mutex_auto_unlock(pthread_mutex_t *mutex)
-{
-	if (mutex)
-		pthread_mutex_unlock(mutex);
-}
-
-DEFINE_AUTOPTR(pthread_mutex_t, __mutex_auto_unlock)
-
-/**
- * __autolock - autolock mutex
- * @x: pointer to pthread mutex
- *
- * Lock the mutex and unlock it automatically when going out of scope.
- */
-#define __autolock(x) \
-	__autoptr(pthread_mutex_t) \
-	glue(autolock, __COUNTER__) __attribute__((__unused__)) = __mutex_auto_lock(x)
-
-#endif /* LIBVFN_SUPPORT_MUTEX_H */
+#ifdef __APPLE__
+#include <vfn/support/platform/macos/mutex.h>
+#else
+#include <vfn/support/platform/linux/mutex.h>
+#endif

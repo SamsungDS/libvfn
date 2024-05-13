@@ -12,11 +12,7 @@
 
 #define log_fmt(fmt) "iommu/context: " fmt
 
-#include <stddef.h>
-#include <stdint.h>
-#include <pthread.h>
-
-#include <sys/stat.h>
+#include "common.h"
 
 #include "vfn/iommu.h"
 #include "vfn/support.h"
@@ -51,11 +47,16 @@ struct iommu_ctx *iommu_get_default_context(void)
 
 fallback:
 #endif
+#ifdef __APPLE__
+	return driverkit_get_default_iommu_context();
+#else
 	return vfio_get_default_iommu_context();
+#endif
 }
 
 struct iommu_ctx *iommu_get_context(const char *name)
 {
+#ifndef __APPLE__
 #ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
 	if (__iommufd_broken)
 		goto fallback;
@@ -65,8 +66,12 @@ struct iommu_ctx *iommu_get_context(const char *name)
 fallback:
 #endif
 	return vfio_get_iommu_context(name);
+#else
+	return driverkit_get_iommu_context(name);
+#endif
 }
 
+#ifndef __APPLE__
 void iommu_ctx_init(struct iommu_ctx *ctx)
 {
 	ctx->nranges = 1;
@@ -84,3 +89,4 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	skiplist_init(&ctx->map.list);
 	pthread_mutex_init(&ctx->map.lock, NULL);
 }
+#endif

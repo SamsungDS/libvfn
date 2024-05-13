@@ -12,32 +12,10 @@
 
 #define log_fmt(fmt) "nvme/rq: " fmt
 
-#include <assert.h>
-#include <byteswap.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/mman.h>
-#include <sys/uio.h>
-
-#include <linux/vfio.h>
-
-#include <vfn/support.h>
-#include <vfn/trace.h>
-#include <vfn/vfio.h>
+#include "common.h"
 #include <vfn/nvme.h>
-
 #include "ccan/minmax/minmax.h"
 
-#include "iommu/context.h"
 
 static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
 			      int pageshift)
@@ -100,7 +78,7 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
 		    size_t len)
 {
 	int prpcount;
-	leint64_t *prplist = rq->page.vaddr;
+	leint64_t *prplist = (leint64_t *)rq->page.vaddr;
 
 	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len,
 			       __mps_to_pageshift(ctrl->config.mps));
@@ -119,11 +97,12 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
 	return 0;
 }
 
+#ifndef __APPLE__
 int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov)
 {
 	int prpcount, _prpcount;
-	leint64_t *prplist = rq->page.vaddr;
+	leint64_t *prplist = (leint64_t *)rq->page.vaddr;
 	uint64_t iova = (uint64_t)iov->iov_base;
 	size_t len = iov->iov_len;
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
@@ -164,7 +143,7 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 
 
 		if (!ALIGNED(iova, pagesize)) {
-			log_error("unaligned iov[%u].iov_base (0x%"PRIx64")\n", i, iova);
+			log_error("unaligned iov[%u].iov_base (0x%" PRIx64 ")\n", i, iova);
 
 			goto invalid;
 		}
@@ -192,6 +171,7 @@ invalid:
 	errno = EINVAL;
 	return -1;
 }
+#endif
 
 int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
 {
@@ -210,10 +190,14 @@ int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
 	}
 
 	if (!nvme_cqe_ok(&cqe)) {
+		#ifdef __APPLE__
+		if (false) {
+		#else
 		if (logv(LOG_DEBUG)) {
+		#endif
 			uint16_t status = le16_to_cpu(cqe.sfp) >> 1;
 
-			log_debug("cqe status 0x%" PRIx16 "\n", status & 0x7ff);
+			log_debug("cqe status 0x%" PRIx16 "\n", (uint16_t)(status & 0x7ff));
 		}
 
 		return nvme_set_errno_from_cqe(&cqe);
