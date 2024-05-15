@@ -250,4 +250,17 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
  */
 int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy);
 
+/**
+ * nvme_rq_wait - Wait for completion of the command associated with the request
+ *                tracker
+ * @rq: Request tracker (&struct nvme_rq)
+ * @cqe_copy: Output parameter to copy completion queue entry into
+ * @ts: Maximum time to wait for completion
+ *
+ * Like nvme_rq_spin(), but do not spin for more than @ts.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_rq_wait(struct nvme_rq *rq, struct nvme_cqe *cqe_copy, struct timespec *ts);
+
 #endif /* LIBVFN_NVME_RQ_H */

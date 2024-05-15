@@ -193,12 +193,14 @@ invalid:
 	return -1;
 }
 
-int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
+int nvme_rq_wait(struct nvme_rq *rq, struct nvme_cqe *cqe_copy, struct timespec *ts)
 {
 	struct nvme_cq *cq = rq->sq->cq;
 	struct nvme_cqe cqe;
 
-	nvme_cq_get_cqes(cq, &cqe, 1);
+	if (nvme_cq_wait_cqes(cq, &cqe, 1, ts) != 1)
+		return -1;
+
 	nvme_cq_update_head(cq);
 
 	if (cqe_copy)
@@ -220,4 +222,9 @@ int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
 	}
 
 	return 0;
+}
+
+int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
+{
+	return nvme_rq_wait(rq, cqe_copy, NULL);
 }
