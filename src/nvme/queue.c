@@ -56,14 +56,16 @@ void nvme_cq_get_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n)
 int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct timespec *ts)
 {
 	struct nvme_cqe *cqe;
-	struct timerel rel = {.ts = *ts};
+	struct timerel rel;
 	uint64_t timeout;
 
 	if (!ts) {
 		nvme_cq_get_cqes(cq, cqes, n);
 
-		return 0;
+		return n;
 	}
+
+	rel.ts = *ts;
 
 	timeout = get_ticks() + time_to_usec(rel) * (__vfn_ticks_freq / 1000000ULL);
 
