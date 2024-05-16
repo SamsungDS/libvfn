@@ -168,6 +168,8 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 
 	iova_map_remove(&ctx->map, m->vaddr);
 
+	free(m);
+
 	return 0;
 }
 
