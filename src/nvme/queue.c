@@ -58,6 +58,7 @@ int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct t
 	struct nvme_cqe *cqe;
 	struct timerel rel;
 	uint64_t timeout;
+	int m = n;
 
 	if (!ts) {
 		nvme_cq_get_cqes(cq, cqes, n);
@@ -74,14 +75,14 @@ int nvme_cq_wait_cqes(struct nvme_cq *cq, struct nvme_cqe *cqes, int n, struct t
 		if (!cqe)
 			continue;
 
-		n--;
+		m--;
 
 		if (cqes)
 			memcpy(cqes++, cqe, sizeof(*cqe));
-	} while (n > 0 && get_ticks() < timeout);
+	} while (m > 0 && get_ticks() < timeout);
 
-	if (n > 0)
+	if (m > 0)
 		errno = ETIMEDOUT;
 
-	return n;
+	return n - m;
 }
