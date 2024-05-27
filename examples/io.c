@@ -45,6 +45,36 @@ static struct opt_table opts[] = {
 	OPT_ENDTABLE,
 };
 
+unsigned int get_lb_bytes(struct nvme_ctrl *ctrl, unsigned long nsid)
+{
+	void *vaddr;
+	ssize_t len;
+	union nvme_cmd cmd;
+	struct nvme_id_ns *id_ns;
+	struct nvme_lbaf *lbaf;
+	unsigned int lb_bytes;
+
+	len = pgmap(&vaddr, NVME_IDENTIFY_DATA_SIZE);
+	if (len < 0)
+		err(1, "could not allocate aligned memory");
+
+	cmd.identify = (struct nvme_cmd_identify) {
+		.opcode = nvme_admin_identify,
+		.cns = NVME_IDENTIFY_CNS_NS,
+		.nsid = cpu_to_le32(nsid),
+	};
+
+	if (nvme_admin(ctrl, &cmd, vaddr, len, NULL))
+		err(1, "nvme_admin");
+
+	id_ns = vaddr;
+	lbaf = &id_ns->lbaf[id_ns->flbas];
+	lb_bytes = 1ULL << lbaf->ds;
+
+	pgunmap(vaddr, len);
+	return lb_bytes;
+}
+
 int main(int argc, char **argv)
 {
 	void *vaddr;
@@ -77,6 +107,8 @@ int main(int argc, char **argv)
 	if (nvme_init(&ctrl, bdf, &ctrl_opts))
 		err(1, "failed to init nvme controller");
 
+	unsigned int lb_nbytes = get_lb_bytes(&ctrl, nsid);
+
 	if (nvme_create_ioqpair(&ctrl, 1, 64, -1, 0x0))
 		err(1, "could not create io queue pair");
 
@@ -100,6 +132,7 @@ int main(int argc, char **argv)
 	cmd.rw = (struct nvme_cmd_rw) {
 		.opcode = op_write ? nvme_cmd_write : nvme_cmd_read,
 		.nsid = cpu_to_le32(nsid),
+		.nlb = (ROUND_UP(op_len, lb_nbytes)/lb_nbytes) - 1,
 	};
 
 	ret = nvme_rq_map_prp(&ctrl, rq, &cmd, iova, op_len);
