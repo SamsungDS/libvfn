@@ -17,4 +17,4 @@ ticks_test = executable('ticks_test', [support_sources, 'ticks_test.c'],
   include_directories: [ccan_inc, core_inc, vfn_inc],
 )
 
-test('ticks_test', ticks_test)
+test('ticks_test', ticks_test, protocol: 'tap')

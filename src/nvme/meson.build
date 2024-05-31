@@ -25,4 +25,4 @@ nvme_sources += files(
 
 vfn_sources += nvme_sources
 
-test('rq_test', rq_test)
+test('rq_test', rq_test, protocol: 'tap')

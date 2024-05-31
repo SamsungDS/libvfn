@@ -4,7 +4,7 @@ skiplist_test = executable('skiplist_test', [ccan_config_h, support_sources, 'sk
   include_directories: [ccan_inc, vfn_inc],
 )
 
-test('skiplist_test', skiplist_test)
+test('skiplist_test', skiplist_test, protocol: 'tap')
 
 vfn_sources += files(
   'skiplist.c',

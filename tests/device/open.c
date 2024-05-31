@@ -19,13 +19,17 @@
 #include <stdbool.h>
 
 #include "ccan/opt/opt.h"
+#include "ccan/tap/tap.h"
 
 #include "common.h"
 
 int main(int argc, char **argv)
 {
 	setup(argc, argv);
+	plan_tests(1);
 	teardown();
+
+	pass("ok");
 
 	return 0;
 }

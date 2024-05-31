@@ -22,6 +22,6 @@ foreach device_test, sources : device_tests
     include_directories: [ccan_inc, vfn_inc],
   )
 
-  test(device_test, exe, suite: ['device'], is_parallel: false)
+  test(device_test, exe, suite: ['device'], is_parallel: false, protocol: 'tap')
 
 endforeach

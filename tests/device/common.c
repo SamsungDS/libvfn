@@ -57,7 +57,7 @@ void setup(int argc, char *argv[])
 
 	if (!bdf) {
 		plan_skip_all("no test device");
-		exit(EXIT_SKIPPED);
+		exit(exit_status());
 	}
 
 	if (nvme_init(&ctrl, bdf, NULL))
