@@ -22,6 +22,24 @@
 
 #define __max_prps 513
 
+bool iommu_translate_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr, uint64_t *iova)
+{
+	*iova = (uint64_t)vaddr;
+
+	return true;
+}
+
+int iommu_map_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr UNUSED, size_t len UNUSED,
+		    uint64_t *iova UNUSED, unsigned long flags UNUSED)
+{
+	return 0;
+}
+
+int iommu_unmap_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr UNUSED, size_t *len UNUSED)
+{
+	return 0;
+}
+
 int main(void)
 {
 	struct nvme_ctrl ctrl = {

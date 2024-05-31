@@ -14,7 +14,7 @@ nvme_sources = files(
 )
 
 # tests
-rq_test = executable('rq_test', [gen_sources, vfn_sources, nvme_sources, 'rq_test.c'],
+rq_test = executable('rq_test', [gen_sources, support_sources, trace_sources, 'queue.c', 'util.c', 'rq_test.c'],
   link_with: [ccan_lib],
   include_directories: [ccan_inc, core_inc, vfn_inc],
 )
