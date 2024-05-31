@@ -39,7 +39,7 @@
 
 #include "iommu/context.h"
 
-static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
+static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
 			      int pageshift)
 {
 	size_t pagesize = 1 << pageshift;
@@ -80,15 +80,25 @@ static inline int __map_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova
 	return clamp_t(int, prpcount, 1, prpcount);
 }
 
-static inline int __map_aligned(leint64_t *prplist, int prpcount, uint64_t iova, int pageshift)
+static inline int __map_prp_append(leint64_t *prplist, uint64_t iova, size_t len, int max_prps,
+				   int pageshift)
 {
+	int prpcount = max_t(int, 1, (int)len >> pageshift);
 	size_t pagesize = 1 << pageshift;
 
-	/*
-	 * __map_aligned is used exclusively for mapping into the prplist
-	 * entries where addresses must be page size aligned.
-	 */
-	assert(ALIGNED(iova, pagesize));
+	if (prpcount > max_prps) {
+		log_error("too many prps required\n");
+
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!ALIGNED(iova, pagesize)) {
+		log_error("unaligned iova 0x%" PRIx64 "\n", iova);
+
+		errno = EINVAL;
+		return -1;
+	}
 
 	for (int i = 0; i < prpcount; i++)
 		prplist[i] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
@@ -96,25 +106,30 @@ static inline int __map_aligned(leint64_t *prplist, int prpcount, uint64_t iova,
 	return prpcount;
 }
 
+static inline void __set_prp2(leint64_t *prp2, leint64_t prplist, leint64_t prplist0, int prpcount)
+{
+	if (prpcount == 2)
+		*prp2 = prplist0;
+	else if (prpcount > 2)
+		*prp2 = prplist;
+	else
+		*prp2 = 0x0;
+}
+
 int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova,
 		    size_t len)
 {
 	int prpcount;
 	leint64_t *prplist = rq->page.vaddr;
+	int pageshift = __mps_to_pageshift(ctrl->config.mps);
 
-	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len,
-			       __mps_to_pageshift(ctrl->config.mps));
+	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
 	if (!prpcount) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (prpcount == 2)
-		cmd->dptr.prp2 = prplist[0];
-	else if (prpcount > 2)
-		cmd->dptr.prp2 = cpu_to_le64(rq->page.iova);
-	else
-		cmd->dptr.prp2 = 0x0;
+	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(rq->page.iova), prplist[0], prpcount);
 
 	return 0;
 }
@@ -122,16 +137,23 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
 int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov)
 {
-	int prpcount, _prpcount;
+	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
+
 	leint64_t *prplist = rq->page.vaddr;
-	uint64_t iova = (uint64_t)iov->iov_base;
 	size_t len = iov->iov_len;
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
+	int prpcount;
+	uint64_t iova;
+
+	if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
+		errno = EFAULT;
+		return -1;
+	}
 
 	/* map the first segment */
-	prpcount = __map_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
+	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
 
 	/*
 	 * At this point, one of three conditions must hold:
@@ -151,23 +173,12 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 
 	/* map remaining iovec entries; these must be page size aligned */
 	for (int i = 1; i < niov; i++) {
-		iova = (uint64_t)iov[i].iov_base;
+		if (!iommu_translate_vaddr(ctx, iov[i].iov_base, &iova)) {
+			errno = EFAULT;
+			return -1;
+		}
+
 		len = iov[i].iov_len;
-
-		_prpcount = max_t(int, 1, (int)len >> pageshift);
-
-		if (prpcount + _prpcount > max_prps) {
-			log_error("too many prps required\n");
-
-			goto invalid;
-		}
-
-
-		if (!ALIGNED(iova, pagesize)) {
-			log_error("unaligned iov[%u].iov_base (0x%"PRIx64")\n", i, iova);
-
-			goto invalid;
-		}
 
 		/* all entries but the last must have a page size aligned len */
 		if (i < niov - 1 && !ALIGNED(len, pagesize)) {
@@ -176,21 +187,89 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 			goto invalid;
 		}
 
-		prpcount += __map_aligned(&prplist[prpcount - 1], _prpcount, iova, pageshift);
+		prpcount += __map_prp_append(&prplist[prpcount - 1], iova, len, max_prps - prpcount,
+					     pageshift);
 	}
 
-	if (prpcount == 2)
-		cmd->dptr.prp2 = prplist[0];
-	else if (prpcount > 2)
-		cmd->dptr.prp2 = cpu_to_le64(rq->page.iova);
-	else
-		cmd->dptr.prp2 = 0x0;
-
-	return 0;
+	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(rq->page.iova), prplist[0], prpcount);
 
 invalid:
 	errno = EINVAL;
 	return -1;
+}
+
+static inline void __sgl_data(struct nvme_sgld *sgld, uint64_t iova, size_t len)
+{
+	sgld->addr = cpu_to_le64(iova);
+	sgld->len = cpu_to_le32((uint32_t)len);
+
+	sgld->type = NVME_SGLD_TYPE_DATA_BLOCK << 4;
+}
+
+static inline void __sgl_segment(struct nvme_sgld *sgld, uint64_t iova, int n)
+{
+	sgld->addr = cpu_to_le64(iova);
+	sgld->len = cpu_to_le32(n << 4);
+
+	sgld->type = NVME_SGLD_TYPE_LAST_SEGMENT << 4;
+}
+
+int nvme_rq_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+		     struct iovec *iov, int niov)
+{
+	struct nvme_sgld *seg = rq->page.vaddr;
+	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
+
+	int pageshift = __mps_to_pageshift(ctrl->config.mps);
+	int max_sglds = 1 << (pageshift - 4);
+	int dword_align = ctrl->flags & NVME_CTRL_F_SGLS_DWORD_ALIGNMENT;
+
+	uint64_t iova;
+
+	if (niov == 1) {
+		if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
+			errno = EFAULT;
+			return -1;
+		}
+
+		__sgl_data(&cmd->dptr.sgl, iova, iov->iov_len);
+
+		return 0;
+	}
+
+	if (niov > max_sglds) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	__sgl_segment(&cmd->dptr.sgl, rq->page.iova, niov);
+
+	for (int i = 0; i < niov; i++) {
+		if (!iommu_translate_vaddr(ctx, iov[i].iov_base, &iova)) {
+			errno = EFAULT;
+			return -1;
+		}
+
+		if (dword_align && (iova & 0x3)) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		__sgl_data(&seg[i], iova, iov[i].iov_len);
+	}
+
+	return 0;
+}
+
+int nvme_rq_mapv(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+		 struct iovec *iov, int niov)
+{
+	struct nvme_sq *sq = rq->sq;
+
+	if ((ctrl->flags & NVME_CTRL_F_SGLS_SUPPORTED) == 0 || sq->id == 0)
+		return nvme_rq_mapv_prp(ctrl, rq, cmd, iov, niov);
+
+	return nvme_rq_mapv_sgl(ctrl, rq, cmd, iov, niov);
 }
 
 int nvme_rq_wait(struct nvme_rq *rq, struct nvme_cqe *cqe_copy, struct timespec *ts)

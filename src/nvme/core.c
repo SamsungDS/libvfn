@@ -504,6 +504,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	uint64_t cap;
 	uint8_t mpsmin, mpsmax;
 	uint16_t oacs;
+	uint32_t sgls;
 	ssize_t len;
 	void *vaddr;
 	int ret;
@@ -622,9 +623,18 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	}
 
 	oacs = le16_to_cpu(*(leint16_t *)(vaddr + NVME_IDENTIFY_CTRL_OACS));
-
 	if (oacs & NVME_IDENTIFY_CTRL_OACS_DBCONFIG)
 		ret = nvme_init_dbconfig(ctrl);
+
+	sgls = le32_to_cpu(*(leint32_t *)(vaddr + NVME_IDENTIFY_CTRL_SGLS));
+	if (sgls) {
+		uint32_t alignment = NVME_FIELD_GET(sgls, IDENTIFY_CTRL_SGLS_ALIGNMENT);
+
+		ctrl->flags |= NVME_CTRL_F_SGLS_SUPPORTED;
+
+		if (alignment == NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_DWORD)
+			ctrl->flags |= NVME_CTRL_F_SGLS_DWORD_ALIGNMENT;
+	}
 
 out:
 	pgunmap(vaddr, len);

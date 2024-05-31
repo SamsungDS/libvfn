@@ -49,14 +49,16 @@ int main(void)
 	struct nvme_rq rq;
 	union nvme_cmd cmd;
 	leint64_t *prplist;
+	struct nvme_sgld *sglds;
 	struct iovec iov[8];
 
-	plan_tests(89);
+	plan_tests(96);
 
-	assert(pgmap((void **)&prplist, __VFN_PAGESIZE) > 0);
+	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
-	rq.page.vaddr = prplist;
 	rq.page.iova = 0x8000000;
+	prplist = rq.page.vaddr;
+	sglds = rq.page.vaddr;
 
 	/* test 512b aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
@@ -324,13 +326,31 @@ int main(void)
 
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x1000};
-	iov[0] = (struct iovec) {.iov_base = (void *)0x1001004, .iov_len = 0x1000};
+	iov[1] = (struct iovec) {.iov_base = (void *)0x1001004, .iov_len = 0x1000};
 	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2) == -1);
 
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = __max_prps * 0x1000};
 	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2) == -1);
+
+	/*
+	 * SGLs
+	 */
+
+	memset((void *)sglds, 0x0, __VFN_PAGESIZE);
+	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
+	ok1(nvme_rq_mapv_sgl(&ctrl, &rq, &cmd, iov, 1) == 0);
+	ok1(le64_to_cpu(cmd.dptr.sgl.addr) == 0x1000000);
+	ok1(le32_to_cpu(cmd.dptr.sgl.len) == 0x1000);
+	ok1(cmd.dptr.sgl.type == NVME_SGLD_TYPE_DATA_BLOCK);
+
+	memset((void *)sglds, 0x0, __VFN_PAGESIZE);
+	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
+	iov[1] = (struct iovec) {.iov_base = (void *)0x1002000, .iov_len = 0x1000};
+	ok1(nvme_rq_mapv_sgl(&ctrl, &rq, &cmd, iov, 2) == 0);
+	ok1(le64_to_cpu(sglds[0].addr) == 0x1000000);
+	ok1(le64_to_cpu(sglds[1].addr) == 0x1002000);
 
 	return exit_status();
 }

@@ -226,7 +226,7 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
  * @iov: array of iovecs
  * @niov: number of iovec in @iovec
  *
- * Map the IOVAs contained in @iov into the request PRPs. The first entry is
+ * Map the memory contained in @iov into the request PRPs. The first entry is
  * allowed to be unaligned, but the entry MUST end on a page boundary. All
  * subsequent entries MUST be page aligned.
  *
@@ -234,6 +234,37 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
  */
 int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov);
+
+/**
+ * nvme_rq_mapv_sgl - Set up a Scatter/Gather List in the data pointer of the
+ *                    command from an iovec.
+ * @ctrl: &struct nvme_ctrl
+ * @rq: Request tracker (&struct nvme_rq)
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iovecs
+ * @niov: number of iovec in @iovec
+ *
+ * Map the memory contained in @iov into the request SGL.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_rq_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+		     struct iovec *iov, int niov);
+
+/**
+ * nvme_rq_mapv - Set up data pointer in the command from an iovec.
+ * @ctrl: &struct nvme_ctrl
+ * @rq: Request tracker (&struct nvme_rq)
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iovecs
+ * @niov: number of iovec in @iovec
+ *
+ * Map the memory contained in @iov into the request SGL (if supported) or PRPs.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_rq_mapv(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+		 struct iovec *iov, int niov);
 
 /**
  * nvme_rq_spin - Spin for completion of the command associated with the request
