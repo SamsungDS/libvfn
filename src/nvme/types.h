@@ -102,9 +102,18 @@ enum nvme_identify_cns {
 };
 
 enum nvme_identify_ctrl_offset {
-	NVME_IDENTIFY_CTRL_OACS		= 0x100,
+	NVME_IDENTIFY_CTRL_OACS		= 256,
+	NVME_IDENTIFY_CTRL_SGLS		= 536,
 };
 
 enum nvme_identify_ctrl_oacs {
 	NVME_IDENTIFY_CTRL_OACS_DBCONFIG = 1 << 8,
+};
+
+enum nvme_identify_ctrl_sgls {
+	NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_SHIFT	= 0,
+	NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_MASK	= 0x3,
+
+	NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_NONE	= 0x1,
+	NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_DWORD	= 0x2,
 };

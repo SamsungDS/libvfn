@@ -37,9 +37,13 @@ static const struct nvme_ctrl_opts nvme_ctrl_opts_default = {
 /*
  * enum nvme_ctrl_feature_flags - NVMe controller feature flags
  * @NVME_CTRL_F_ADMINISTRATIVE: controller type is admin
+ * @NVME_CTRL_F_SGLS_SUPPORTED: SGLs are supported
+ * @NVME_CTRL_F_SGLS_DWORD_ALIGNMENT: SGL data blocks require dword alignment
  */
 enum nvme_ctrl_feature_flags {
-	NVME_CTRL_F_ADMINISTRATIVE              = 1 << 0,
+	NVME_CTRL_F_ADMINISTRATIVE		= 1 << 0,
+	NVME_CTRL_F_SGLS_SUPPORTED		= 1 << 1,
+	NVME_CTRL_F_SGLS_DWORD_ALIGNMENT	= 1 << 2,
 };
 
 /**
