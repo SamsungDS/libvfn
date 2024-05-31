@@ -49,10 +49,6 @@
 #define sqtdbl(doorbells, qid, dstrd) \
 	(doorbells + (2 * qid) * (4 << dstrd))
 
-enum nvme_ctrl_feature_flags {
-	NVME_CTRL_F_ADMINISTRATIVE = 1 << 0,
-};
-
 static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];

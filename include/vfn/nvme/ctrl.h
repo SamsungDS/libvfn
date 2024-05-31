@@ -34,6 +34,14 @@ static const struct nvme_ctrl_opts nvme_ctrl_opts_default = {
 	.quirks = 0x0,
 };
 
+/*
+ * enum nvme_ctrl_feature_flags - NVMe controller feature flags
+ * @NVME_CTRL_F_ADMINISTRATIVE: controller type is admin
+ */
+enum nvme_ctrl_feature_flags {
+	NVME_CTRL_F_ADMINISTRATIVE              = 1 << 0,
+};
+
 /**
  * struct nvme_ctrl - NVMe Controller
  * @sq: submission queues
@@ -88,7 +96,11 @@ struct nvme_ctrl {
 		int mps;
 	} config;
 
-	/* private: internal */
+	/**
+	 * @flags: controller feature flags
+	 *
+	 * See &enum nvme_ctrl_feature_flags.
+	 */
 	unsigned long flags;
 };
 
