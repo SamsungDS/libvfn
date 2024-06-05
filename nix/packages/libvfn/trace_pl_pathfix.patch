@@ -1,0 +1,39 @@
+diff --git a/include/vfn/trace/meson.build b/include/vfn/trace/meson.build
+index 738a099..614383c 100644
+--- a/include/vfn/trace/meson.build
++++ b/include/vfn/trace/meson.build
+@@ -2,7 +2,7 @@ trace_events_h = custom_target('trace events header',
+   input: meson.project_source_root() / get_option('trace-events-file'),
+   output: 'events.h',
+   capture: true,
+-  command: [trace_pl, '--mode', 'header', '@INPUT@'],
++  command: [perl, trace_pl, '--mode', 'header', '@INPUT@'],
+   install: true,
+   install_dir: get_option('includedir') / 'vfn/trace',
+ )
+diff --git a/meson.build b/meson.build
+index 7ead082..a622253 100644
+--- a/meson.build
++++ b/meson.build
+@@ -34,7 +34,7 @@ endif
+ ##
+ 
+ perl = find_program('perl')
+-trace_pl = find_program('scripts/trace.pl')
++trace_pl = meson.current_source_dir() / 'scripts' / 'trace.pl'
+ 
+ ##
+ ##  Compiler Configuration
+diff --git a/src/trace/meson.build b/src/trace/meson.build
+index 3569cf8..7c3f093 100644
+--- a/src/trace/meson.build
++++ b/src/trace/meson.build
+@@ -2,7 +2,7 @@ trace_events_c = custom_target('trace events source',
+   input: meson.project_source_root() / get_option('trace-events-file'),
+   output: 'events.c',
+   capture: true,
+-  command: [trace_pl, '--mode', 'source', '@INPUT@'],
++  command: [perl, trace_pl, '--mode', 'source', '@INPUT@'],
+ )
+ 
+ trace_sources += trace_events_c
