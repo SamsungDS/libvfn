@@ -7,6 +7,7 @@
 
   outputs = { self, nixpkgs }:
     let
+      libvfnVersion = "4.0.1";
       # lists supported systems
       allSystems = [ "x86_64-linux" "aarch64-linux" ];
 
@@ -19,7 +20,7 @@
       packages = forAllSystems ({ pkgs }: rec {
         libvfn = pkgs.stdenv.mkDerivation {
           pname = "libvfn";
-          version = "4.0.1";
+          version = libvfnVersion;
           src = ./.;
           mesonFlags = [
             "-Ddocs=disabled"
