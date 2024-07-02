@@ -50,6 +50,7 @@ struct vfio_group {
 	struct vfio_container *container;
 
 	char *path;
+	int nr_devs;
 };
 
 struct vfio_container {
@@ -363,8 +364,8 @@ free_group_path:
  * Returns an existing vfio_group instance, or an empty one with group->path
  * filled out, otherwise return NULL in case no more group available.
  */
-static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
-		const char *bdf)
+static struct vfio_group *__vfio_get_group(struct vfio_container *vfio,
+		const char *bdf, bool alloc)
 {
 	__autofree char *path = NULL;
 	struct vfio_group *group;
@@ -383,6 +384,9 @@ static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
 			return group;
 	}
 
+	if (!alloc)
+		return NULL;
+
 	/*
 	 * If existing group is not found, provide an empty one for the
 	 * correspnoding 'bdf' device.
@@ -391,11 +395,24 @@ static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
 		group = &vfio->groups[i];
 		if (!group->path) {
 			group->path = strdup(path);
+			group->nr_devs = 0;
 			return group;
 		}
 	}
 
 	return NULL;
+}
+
+static struct vfio_group *vfio_get_or_create_group(struct vfio_container *vfio,
+						   const char *bdf)
+{
+	return __vfio_get_group(vfio, bdf, true);
+}
+
+static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
+					 const char *bdf)
+{
+	return __vfio_get_group(vfio, bdf, false);
 }
 
 static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
@@ -404,7 +421,7 @@ static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 	struct vfio_group *group;
 	int gfd, ret_fd;
 
-	group = vfio_get_group(vfio, bdf);
+	group = vfio_get_or_create_group(vfio, bdf);
 	if (!group) {
 		log_debug("could not determine iommu group for device %s\n", bdf);
 		errno = EMFILE;
@@ -422,7 +439,26 @@ static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		return -1;
 	}
 
+	atomic_inc(&group->nr_devs);
 	return ret_fd;
+}
+
+static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+	struct vfio_group *group;
+
+	group = vfio_get_group(vfio, bdf);
+	if (!group) {
+		log_debug("could not find iommu group for device %s\n", bdf);
+		errno = ENODEV;
+		return -1;
+	}
+
+	if (atomic_dec_fetch(&group->nr_devs) == 0)
+		close(group->fd);
+
+	return 0;
 }
 
 static int vfio_iommu_type1_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
@@ -525,6 +561,7 @@ static int vfio_iommu_type1_do_dma_unmap_all(struct iommu_ctx *ctx)
 
 static const struct iommu_ctx_ops vfio_ops = {
 	.get_device_fd = vfio_get_device_fd,
+	.put_device_fd = vfio_put_device_fd,
 
 	.iova_reserve = vfio_iommu_type1_iova_reserve,
 	.iova_put_ephemeral = vfio_iommu_type1_iova_put_ephemeral,

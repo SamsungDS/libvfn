@@ -26,6 +26,7 @@ struct iommu_ctx_ops {
 
 	/* device ops */
 	int (*get_device_fd)(struct iommu_ctx *ctx, const char *bdf);
+	int (*put_device_fd)(struct iommu_ctx *ctx, const char *bdf);
 };
 
 struct iova_mapping {
