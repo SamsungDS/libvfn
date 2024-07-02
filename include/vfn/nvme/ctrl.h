@@ -121,6 +121,20 @@ struct nvme_ctrl {
 int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf);
 
 /**
+ * nvme_ctrl_init - Initialize NVMe controller instance along with PCI instance
+ * @ctrl: Controller whose pci device is to initialize
+ * @bdf: PCI device identifier ("bus:device:function")
+ * @opts: Controller configuration options
+ *
+ * Initialize NVMe controller instance configuration values and sq/cq instance
+ * array.  It won't create any queue resources, no commands at all.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
+ */
+int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
+		   const struct nvme_ctrl_opts *opts);
+
+/**
  * nvme_init - Initialize controller
  * @ctrl: Controller to initialize
  * @bdf: PCI device identifier ("bus:device:function")

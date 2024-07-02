@@ -539,26 +539,19 @@ int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 	return 0;
 }
 
-int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_opts *opts)
+int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
+		   const struct nvme_ctrl_opts *opts)
 {
-	uint64_t cap;
 	uint8_t mpsmin, mpsmax;
-	uint16_t oacs;
-	uint32_t sgls;
-	ssize_t len;
-	void *vaddr;
-	int ret;
+	uint64_t cap;
 
-	union nvme_cmd cmd = {};
-	struct nvme_cqe cqe;
+	if (nvme_pci_init(ctrl, bdf))
+		return -1;
 
 	if (opts)
 		memcpy(&ctrl->opts, opts, sizeof(*opts));
 	else
 		memcpy(&ctrl->opts, &nvme_ctrl_opts_default, sizeof(*opts));
-
-	if (nvme_pci_init(ctrl, bdf))
-		return -1;
 
 	if ((ctrl->pci.classcode & 0xff) == 0x03)
 		ctrl->flags = NVME_CTRL_F_ADMINISTRATIVE;
@@ -580,14 +573,31 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	ctrl->config.mqes = NVME_FIELD_GET(cap, CAP_MQES);
 
+	/* +2 because nsqr/ncqr are zero-based values and do not account for the admin queue */
+	ctrl->sq = znew_t(struct nvme_sq, ctrl->opts.nsqr + 2);
+	ctrl->cq = znew_t(struct nvme_cq, ctrl->opts.ncqr + 2);
+
+	return 0;
+}
+
+int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_opts *opts)
+{
+	uint16_t oacs;
+	uint32_t sgls;
+	ssize_t len;
+	void *vaddr;
+	int ret;
+
+	union nvme_cmd cmd = {};
+	struct nvme_cqe cqe;
+
+	if (nvme_ctrl_init(ctrl, bdf, opts))
+		return -1;
+
 	if (nvme_reset(ctrl)) {
 		log_debug("could not reset controller\n");
 		return -1;
 	}
-
-	/* +2 because nsqr/ncqr are zero-based values and do not account for the admin queue */
-	ctrl->sq = znew_t(struct nvme_sq, ctrl->opts.nsqr + 2);
-	ctrl->cq = znew_t(struct nvme_cq, ctrl->opts.ncqr + 2);
 
 	if (nvme_configure_adminq(ctrl, 0x0)) {
 		log_debug("could not configure admin queue\n");

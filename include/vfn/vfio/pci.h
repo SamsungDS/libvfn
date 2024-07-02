@@ -20,6 +20,7 @@
 /**
  * struct vfio_pci_device - vfio pci device state
  * @dev: &struct vfio_device
+ * @classcode: pci class code
  * @bdf: pci device identifier ("bus:device:function")
  * @config_region_info: pci configuration space region information
  * @bar_region_info: pci BAR region information
