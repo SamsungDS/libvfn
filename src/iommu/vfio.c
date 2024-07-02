@@ -337,34 +337,9 @@ close_fd:
 	return -1;
 }
 
-static int vfio_get_group_fd(struct vfio_container *vfio, const char *path)
+static int vfio_get_group_fd(struct vfio_container *vfio,
+		struct vfio_group *group)
 {
-	struct vfio_group *group;
-	int i;
-
-	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
-		group = &vfio->groups[i];
-
-		if (group->path && streq(group->path, path))
-			return group->fd;
-	}
-
-	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
-		group = &vfio->groups[i];
-
-		if (!group->path)
-			break;
-	}
-
-	if (i == VFN_MAX_VFIO_GROUPS) {
-		errno = EMFILE;
-		return -1;
-	}
-
-	group->path = strdup(path);
-	if (!group->path)
-		return -1;
-
 	group->fd = vfio_group_open(group->path);
 	if (group->fd < 0) {
 		log_debug("failed to open vfio group\n");
@@ -384,20 +359,58 @@ free_group_path:
 	return -1;
 }
 
+/*
+ * Returns an existing vfio_group instance, or an empty one with group->path
+ * filled out, otherwise return NULL in case no more group available.
+ */
+static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
+		const char *bdf)
+{
+	__autofree char *path = NULL;
+	struct vfio_group *group;
+	int i;
+
+	path = pci_get_iommu_group(bdf);
+	if (!path)
+		return NULL;
+
+	/*
+	 * Try to find out an existing one.
+	 */
+	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
+		group = &vfio->groups[i];
+		if (group->path && streq(group->path, path))
+			return group;
+	}
+
+	/*
+	 * If existing group is not found, provide an empty one for the
+	 * correspnoding 'bdf' device.
+	 */
+	for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
+		group = &vfio->groups[i];
+		if (!group->path) {
+			group->path = strdup(path);
+			return group;
+		}
+	}
+
+	return NULL;
+}
+
 static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
-
-	__autofree char *group = NULL;
+	struct vfio_group *group;
 	int gfd, ret_fd;
 
-	group = pci_get_iommu_group(bdf);
+	group = vfio_get_group(vfio, bdf);
 	if (!group) {
 		log_debug("could not determine iommu group for device %s\n", bdf);
-		errno = EINVAL;
+		errno = EMFILE;
 		return -1;
 	}
-	log_info("vfio iommu group is %s\n", group);
+	log_info("vfio iommu group is %s\n", group->path);
 
 	gfd = vfio_get_group_fd(vfio, group);
 	if (gfd < 0)
