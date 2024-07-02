@@ -498,9 +498,49 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 	return 0;
 }
 
-int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_opts *opts)
+int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 {
 	unsigned long long classcode;
+
+	if (pci_device_info_get_ull(bdf, "class", &classcode)) {
+		log_debug("could not get device class code\n");
+		return -1;
+	}
+
+	log_info("pci class code is 0x%06llx\n", classcode);
+
+	if ((classcode & 0xffff00) != 0x010800) {
+		log_debug("%s is not an NVMe device\n", bdf);
+		errno = EINVAL;
+		return -1;
+	}
+
+	ctrl->pci.classcode = classcode;
+	ctrl->pci.bdf = bdf;
+
+	if (vfio_pci_open(&ctrl->pci, bdf))
+		return -1;
+
+	/* map controller registers */
+	ctrl->regs = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0,
+			PROT_READ | PROT_WRITE);
+	if (!ctrl->regs) {
+		log_debug("could not map controller registers\n");
+		return -1;
+	}
+
+	/* map queue doorbells */
+	ctrl->doorbells = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0x1000, PROT_WRITE);
+	if (!ctrl->doorbells) {
+		log_debug("could not map doorbells\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_opts *opts)
+{
 	uint64_t cap;
 	uint8_t mpsmin, mpsmax;
 	uint16_t oacs;
@@ -517,30 +557,11 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	else
 		memcpy(&ctrl->opts, &nvme_ctrl_opts_default, sizeof(*opts));
 
-	if (pci_device_info_get_ull(bdf, "class", &classcode)) {
-		log_debug("could not get device class code\n");
+	if (nvme_pci_init(ctrl, bdf))
 		return -1;
-	}
 
-	log_info("pci class code is 0x%06llx\n", classcode);
-
-	if ((classcode & 0xffff00) != 0x010800) {
-		log_debug("%s is not an NVMe device\n", bdf);
-		errno = EINVAL;
-		return -1;
-	}
-
-	if ((classcode & 0xff) == 0x03)
+	if ((ctrl->pci.classcode & 0xff) == 0x03)
 		ctrl->flags = NVME_CTRL_F_ADMINISTRATIVE;
-
-	if (vfio_pci_open(&ctrl->pci, bdf))
-		return -1;
-
-	ctrl->regs = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0, PROT_READ | PROT_WRITE);
-	if (!ctrl->regs) {
-		log_debug("could not map controller registersn\n");
-		return -1;
-	}
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
@@ -561,13 +582,6 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 
 	if (nvme_reset(ctrl)) {
 		log_debug("could not reset controller\n");
-		return -1;
-	}
-
-	/* map admin queue doorbells */
-	ctrl->doorbells = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0x1000, PROT_WRITE);
-	if (!ctrl->doorbells) {
-		log_debug("could not map doorbells\n");
 		return -1;
 	}
 

@@ -109,6 +109,18 @@ struct nvme_ctrl {
 };
 
 /**
+ * nvme_pci_init - Initialize PCI instance of nvme controller
+ * @ctrl: Controller whose pci device is to initialize
+ * @bdf: PCI device identifier ("bus:device:function")
+ *
+ * Initialize PCI device based on vfio-pci without NVMe controller
+ * initialization.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
+ */
+int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf);
+
+/**
  * nvme_init - Initialize controller
  * @ctrl: Controller to initialize
  * @bdf: PCI device identifier ("bus:device:function")
