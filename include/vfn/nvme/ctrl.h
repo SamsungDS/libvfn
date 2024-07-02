@@ -168,6 +168,18 @@ void nvme_close(struct nvme_ctrl *ctrl);
  */
 int nvme_reset(struct nvme_ctrl *ctrl);
 
+
+/**
+ * nvme_configure_adminq - Configure admin sq/cq pair
+ * @ctrl: Controller to setup adminq
+ * @sq_flags: SQ flags to configure (XXX: yet to implement)
+ *
+ * Configure admin sq/cq address and size to controller registers
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags);
+
 /**
  * nvme_enable - Enable controller
  * @ctrl: Controller to enable

@@ -241,7 +241,7 @@ static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	memset(sq, 0x0, sizeof(*sq));
 }
 
-static int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
+int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 {
 	int aqa;
 
