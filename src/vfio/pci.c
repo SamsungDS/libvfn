@@ -188,3 +188,12 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 
 	return 0;
 }
+
+int vfio_pci_close(struct vfio_pci_device *pci)
+{
+	struct iommu_ctx *ctx = pci->dev.ctx;
+
+	close(pci->dev.fd);
+
+	return ctx->ops.put_device_fd(ctx, pci->bdf);
+}

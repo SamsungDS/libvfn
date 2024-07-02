@@ -681,5 +681,5 @@ void nvme_close(struct nvme_ctrl *ctrl)
 	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->regs, 0x1000, 0);
 	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->doorbells, 0x1000, 0x1000);
 
-	//vfio_close(ctrl->pci.vfio);
+	vfio_pci_close(&ctrl->pci);
 }

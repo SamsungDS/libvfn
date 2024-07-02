@@ -48,6 +48,17 @@ struct vfio_pci_device {
 int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf);
 
 /**
+ * vfio_pci_close - close vfio device file descriptor
+ * @pci: &struct vfio_pci_device whose fd is to close
+ *
+ * Close vfio group file descriptor
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int vfio_pci_close(struct vfio_pci_device *pci);
+
+/**
  * vfio_pci_map_bar - map a vfio device region into virtual memory
  * @pci: &struct vfio_pci_device
  * @idx: the vfio region index to map
