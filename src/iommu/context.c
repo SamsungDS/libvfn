@@ -27,24 +27,23 @@
 #define IOVA_MAX_39BITS (1ULL << 39)
 
 #ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
-static bool __iommufd_broken;
-
-static void __attribute__((constructor)) __check_iommufd_broken(void)
+static inline bool __iommufd_is_broken(void)
 {
 	struct stat sb;
 
 	if (stat("/dev/vfio/devices", &sb) || !S_ISDIR(sb.st_mode)) {
 		log_info("iommufd broken; probably missing CONFIG_VFIO_DEVICE_CDEV=y\n");
 
-		__iommufd_broken = true;
+		return true;
 	}
+	return false;
 }
 #endif
 
 struct iommu_ctx *iommu_get_default_context(void)
 {
 #ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
-	if (__iommufd_broken)
+	if (__iommufd_is_broken())
 		goto fallback;
 
 	return iommufd_get_default_iommu_context();
@@ -57,7 +56,7 @@ fallback:
 struct iommu_ctx *iommu_get_context(const char *name)
 {
 #ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
-	if (__iommufd_broken)
+	if (__iommufd_is_broken())
 		goto fallback;
 
 	return iommufd_get_iommu_context(name);
