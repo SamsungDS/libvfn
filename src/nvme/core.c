@@ -100,7 +100,7 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 	return 0;
 }
 
-static void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
+void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 {
 	size_t len;
 
@@ -214,7 +214,7 @@ unmap_pages:
 	return -1;
 }
 
-static void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
+void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 {
 	size_t len;
 

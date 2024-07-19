@@ -288,4 +288,19 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector,
  */
 int nvme_delete_ioqpair(struct nvme_ctrl *ctrl, int qid);
 
+
+/**
+ * nvme_discard_cq - Free resources related to the corresponding CQ
+ * @ctrl: See &struct nvme_ctrl
+ * @cq: Associated I/O Completion Queue
+ */
+void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq);
+
+/**
+ * nvme_discard_sq - Free resources related to the corresponding SQ
+ * @ctrl: See &struct nvme_ctrl
+ * @sq: Associated I/O Submission Queue
+ */
+void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq);
+
 #endif /* LIBVFN_NVME_CTRL_H */
