@@ -16,10 +16,14 @@ examples = {
   'regs': ['regs.c'],
 }
 
+if config_host.get('HAVE_IOMMU_FAULT_QUEUE_ALLOC', false)
+  examples += {'iopf': ['iopf.c']}
+endif
+
 foreach example, sources : examples
   executable(example, [example_sources, sources],
     dependencies: [libnvme],
     link_with: [ccan_lib, vfn_lib],
-    include_directories: [ccan_inc, vfn_inc],
+    include_directories: [ccan_inc, vfn_inc, linux_headers],
   )
 endforeach
