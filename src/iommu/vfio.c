@@ -61,6 +61,7 @@ struct vfio_container {
 
 #define VFN_MAX_VFIO_GROUPS 64
 	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
+	int nr_groups;
 
 	pthread_mutex_t lock;
 	uint64_t next, next_ephemeral, nephemerals;
@@ -72,6 +73,7 @@ struct vfio_container {
 static struct vfio_container vfio_default_container = {
 	.fd = -1,
 	.name = "default",
+	.nr_groups = 0,
 };
 
 #ifdef VFIO_IOMMU_INFO_CAPS
@@ -352,6 +354,7 @@ static int vfio_get_group_fd(struct vfio_container *vfio,
 		goto free_group_path;
 	}
 
+	atomic_inc(&vfio->nr_groups);
 	return group->fd;
 
 free_group_path:
@@ -455,8 +458,23 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		return -1;
 	}
 
-	if (atomic_dec_fetch(&group->nr_devs) == 0)
+	if (atomic_dec_fetch(&group->nr_devs) == 0) {
 		close(group->fd);
+
+		/*
+		 * Kernel vfio driver will remove IOMMU driver and data from
+		 * the container if the current detached group is the last one
+		 * of the container.  We should reset the container instance
+		 * for cases re-opening vfio container only if it's
+		 * `vfio_default_container`.
+		 */
+		if (atomic_dec_fetch(&vfio->nr_groups) == 0) {
+			close(vfio->fd);
+
+			vfio->fd = -1;
+			vfio->iommu_set = false;
+		}
+	}
 
 	return 0;
 }
