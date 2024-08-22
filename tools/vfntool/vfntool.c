@@ -23,22 +23,23 @@
 #include "ccan/opt/opt.h"
 #include "ccan/str/str.h"
 
-static char *bdf = "";
-static bool show_usage, verbose, reset;
+static char *bdf = "", *target = "vfio-pci";
+static bool show_usage, verbose;
 
 static struct opt_table opts[] = {
 	OPT_WITHOUT_ARG("-h|--help", opt_set_bool, &show_usage, "show usage"),
 	OPT_WITHOUT_ARG("-v|--verbose", opt_set_bool, &verbose, "verbose"),
 
 	OPT_WITH_ARG("-d|--device BDF", opt_set_charp, opt_show_charp, &bdf, "pci device"),
-	OPT_WITHOUT_ARG("-x|--reset", opt_set_bool, &reset, "reset"),
+	OPT_WITH_ARG("-t|--target DRIVER", opt_set_charp, opt_show_charp, &target,
+		     "bind to DRIVER"),
 
 	OPT_ENDTABLE,
 };
 
-static int do_bind(const char *target)
+static int do_bind(void)
 {
-	unsigned long long vid, did, classcode;
+	unsigned long long vid, did;
 	__autofree char *driver = NULL;
 
 	if (pci_device_info_get_ull(bdf, "vendor", &vid))
@@ -47,11 +48,15 @@ static int do_bind(const char *target)
 	if (pci_device_info_get_ull(bdf, "device", &did))
 		err(1, "could not get device id");
 
-	if (pci_device_info_get_ull(bdf, "class", &classcode))
-		err(1, "could not get device class code");
+	if (strcmp("nvme", target) == 0) {
+		unsigned long long classcode;
 
-	if ((classcode & 0xffff00) != 0x010800)
-		errx(1, "%s is not an NVMe device", bdf);
+		if (pci_device_info_get_ull(bdf, "class", &classcode))
+			err(1, "could not get device class code");
+
+		if ((classcode & 0xffff00) != 0x010800)
+			errx(1, "%s is not an NVMe device", bdf);
+	}
 
 	driver = pci_get_driver(bdf);
 	if (driver) {
@@ -102,8 +107,5 @@ int main(int argc, char **argv)
 	if (streq(bdf, ""))
 		opt_usage_exit_fail("missing --device parameter");
 
-	if (reset)
-		return do_bind("nvme");
-
-	return do_bind("vfio-pci");
+	return do_bind();
 }
