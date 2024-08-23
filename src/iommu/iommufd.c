@@ -49,7 +49,6 @@ struct iommu_ioas {
 
 	char *name;
 	uint32_t id;
-	int devfd;
 };
 
 static struct iommu_ioas iommufd_default_ioas = {
@@ -149,26 +148,12 @@ static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		goto close_dev;
 	}
 
-	ioas->devfd = devfd;
 	return devfd;
 
 close_dev:
 	/* closing devfd will automatically unbind it from iommufd */
 	log_fatal_if(close(devfd), "close: %s\n", strerror(errno));
 
-	return -1;
-}
-
-static int iommufd_put_device_fd(struct iommu_ctx *ctx, const char *bdf UNUSED)
-{
-	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
-
-	if (ioas->devfd) {
-		close(ioas->devfd);
-		return 0;
-	}
-
-	errno = ENODEV;
 	return -1;
 }
 
@@ -250,7 +235,6 @@ static int iommu_ioas_do_dma_unmap_all(struct iommu_ctx *ctx)
 
 static const struct iommu_ctx_ops iommufd_ops = {
 	.get_device_fd = iommufd_get_device_fd,
-	.put_device_fd = iommufd_put_device_fd,
 
 	.dma_map = iommu_ioas_do_dma_map,
 	.dma_unmap = iommu_ioas_do_dma_unmap,
