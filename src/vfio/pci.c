@@ -195,5 +195,8 @@ int vfio_pci_close(struct vfio_pci_device *pci)
 
 	close(pci->dev.fd);
 
-	return ctx->ops.put_device_fd(ctx, pci->bdf);
+	if (ctx->ops.put_device_fd)
+		return ctx->ops.put_device_fd(ctx, pci->bdf);
+
+	return 0;
 }
