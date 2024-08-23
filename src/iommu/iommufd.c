@@ -35,6 +35,7 @@
 #include "vfn/support.h"
 #include "vfn/pci.h"
 #include "vfn/iommu.h"
+#include "vfn/iommu/iommufd.h"
 
 #include "ccan/list/list.h"
 #include "ccan/compiler/compiler.h"
@@ -49,6 +50,7 @@ struct iommufd_device_info {
 
 	int dev_fd;
 	int dev_id;
+	int hwpt_id;
 
 	struct list_node list;
 };
@@ -105,6 +107,20 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 	}
 
 	return 0;
+}
+
+static UNNEEDED struct iommufd_device_info *iommufd_get_device_info(int fd)
+{
+	struct iommufd_device_info *info;
+
+	list_for_each(&iommufd_devices, info, list) {
+		if (info->dev_fd == fd)
+			return info;
+	}
+
+	errno = ENOENT;
+
+	return NULL;
 }
 
 static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
@@ -166,6 +182,7 @@ static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		.bdf = strdup(bdf),
 		.dev_fd = devfd,
 		.dev_id = bind.out_devid,
+		.hwpt_id = -1,
 	};
 
 	list_add(&iommufd_devices, &info->list);
@@ -311,6 +328,66 @@ static int iommufd_open(void)
 
 	return 0;
 }
+
+#ifdef HAVE_IOMMU_FAULT_QUEUE_ALLOC
+int iommufd_alloc_fault_queue(struct iommufd_fault_queue *fq)
+{
+	struct iommu_fault_alloc fault_alloc_cmd = {
+		.size = sizeof(fault_alloc_cmd),
+	};
+
+	if (ioctl(__iommufd, IOMMU_FAULT_QUEUE_ALLOC, &fault_alloc_cmd)) {
+		log_debug("could not allocate fault queue\n");
+		return -1;
+	}
+
+	*fq = (struct iommufd_fault_queue) {
+		.fault_id = fault_alloc_cmd.out_fault_id,
+		.fault_fd = fault_alloc_cmd.out_fault_fd,
+	};
+
+	return 0;
+}
+
+int iommufd_set_fault_queue(struct iommu_ctx *ctx, struct iommufd_fault_queue *fq, int devfd)
+{
+	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
+	struct iommufd_device_info *info;
+
+	struct iommu_hwpt_alloc hwpt_alloc_cmd = {
+		.size = sizeof(hwpt_alloc_cmd),
+		.flags = IOMMU_HWPT_FAULT_ID_VALID,
+		.pt_id = ioas->id,
+		.fault_id = fq->fault_id,
+	};
+
+	struct vfio_device_attach_iommufd_pt attach_cmd = {
+		.argsz = sizeof(attach_cmd),
+	};
+
+	info = iommufd_get_device_info(devfd);
+	if (!info)
+		return -1;
+
+	hwpt_alloc_cmd.dev_id = info->dev_id;
+
+	if (ioctl(__iommufd, IOMMU_HWPT_ALLOC, &hwpt_alloc_cmd)) {
+		log_debug("could not allocate hardware page table\n");
+		return -1;
+	}
+
+	info->hwpt_id = hwpt_alloc_cmd.out_hwpt_id;
+
+	attach_cmd.pt_id = hwpt_alloc_cmd.out_hwpt_id;
+
+	if (ioctl(devfd, VFIO_DEVICE_ATTACH_IOMMUFD_PT, &attach_cmd)) {
+		log_debug("could not re-attach (replace) page table\n");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
 
 struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 {
