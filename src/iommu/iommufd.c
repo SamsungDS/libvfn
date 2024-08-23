@@ -44,6 +44,17 @@
 
 static int __iommufd = -1;
 
+struct iommufd_device_info {
+	char *bdf;
+
+	int dev_fd;
+	int dev_id;
+
+	struct list_node list;
+};
+
+static LIST_HEAD(iommufd_devices);
+
 struct iommu_ioas {
 	struct iommu_ctx ctx;
 
@@ -99,6 +110,7 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
+	struct iommufd_device_info *info;
 
 	__autofree char *vfio_id = NULL;
 	__autofree char *path = NULL;
@@ -148,11 +160,41 @@ static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		goto close_dev;
 	}
 
+	info = znew_t(struct iommufd_device_info, 1);
+
+	*info = (struct iommufd_device_info) {
+		.bdf = strdup(bdf),
+		.dev_fd = devfd,
+		.dev_id = bind.out_devid,
+	};
+
+	list_add(&iommufd_devices, &info->list);
+
 	return devfd;
 
 close_dev:
 	/* closing devfd will automatically unbind it from iommufd */
 	log_fatal_if(close(devfd), "close: %s\n", strerror(errno));
+
+	return -1;
+}
+
+static int iommufd_put_device_fd(struct iommu_ctx *ctx UNUSED, const char *bdf)
+{
+	struct iommufd_device_info *info, *next;
+
+	list_for_each_safe(&iommufd_devices, info, next, list) {
+		if (info->bdf == bdf) {
+			list_del(&info->list);
+
+			free(info->bdf);
+			free(info);
+
+			return 0;
+		}
+	}
+
+	errno = ENOENT;
 
 	return -1;
 }
@@ -235,6 +277,7 @@ static int iommu_ioas_do_dma_unmap_all(struct iommu_ctx *ctx)
 
 static const struct iommu_ctx_ops iommufd_ops = {
 	.get_device_fd = iommufd_get_device_fd,
+	.put_device_fd = iommufd_put_device_fd,
 
 	.dma_map = iommu_ioas_do_dma_map,
 	.dma_unmap = iommu_ioas_do_dma_unmap,
