@@ -40,6 +40,7 @@
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
 #include "ccan/time/time.h"
+#include "ccan/list/list.h"
 
 #include "types.h"
 
@@ -48,6 +49,66 @@
 
 #define sqtdbl(doorbells, qid, dstrd) \
 	(doorbells + (2 * qid) * (4 << dstrd))
+
+struct nvme_ctrl_handle {
+	struct nvme_ctrl *ctrl;
+	struct list_node list;
+};
+
+static LIST_HEAD(nvme_ctrl_handles);
+
+static struct nvme_ctrl_handle *nvme_get_ctrl_handle(const char *bdf)
+{
+	struct nvme_ctrl_handle *handle;
+
+	list_for_each(&nvme_ctrl_handles, handle, list) {
+		if (streq(handle->ctrl->pci.bdf, bdf))
+			return handle;
+	}
+
+	return NULL;
+}
+
+
+struct nvme_ctrl *nvme_get_ctrl(const char *bdf)
+{
+	struct nvme_ctrl_handle *handle = nvme_get_ctrl_handle(bdf);
+
+	if (!handle)
+		return NULL;
+
+	return handle->ctrl;
+}
+
+int nvme_add_ctrl(struct nvme_ctrl *ctrl)
+{
+	struct nvme_ctrl_handle *handle;
+
+	if (nvme_get_ctrl(ctrl->pci.bdf)) {
+		errno = EEXIST;
+		return -1;
+	}
+
+	handle = znew_t(struct nvme_ctrl_handle, 1);
+	handle->ctrl = ctrl;
+	list_add_tail(&nvme_ctrl_handles, &handle->list);
+	return 0;
+}
+
+int nvme_del_ctrl(struct nvme_ctrl *ctrl)
+{
+	struct nvme_ctrl_handle *handle;
+
+	handle = nvme_get_ctrl_handle(ctrl->pci.bdf);
+	if (!handle) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	list_del(&handle->list);
+	free(handle);
+	return 0;
+}
 
 static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 {
