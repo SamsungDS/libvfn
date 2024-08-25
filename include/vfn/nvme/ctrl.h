@@ -159,6 +159,38 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 void nvme_close(struct nvme_ctrl *ctrl);
 
 /**
+ * nvme_get_ctrl - Get nvme_ctrl instance initialized
+ * @bdf: PCI device identifier ("bus:device:function")
+ *
+ * Return nvme_ctrl instance initialized by the application.
+ *
+ * Return: nvme_ctrl instance pointer on success, ``NULL`` on error.
+ */
+struct nvme_ctrl *nvme_get_ctrl(const char *bdf);
+
+/**
+ * nvme_add_ctrl - Add nvme_ctrl instance to library
+ * @ctrl: Controller to keep in the library
+ *
+ * Add initialized nvme_ctrl instance to library for application can
+ * ask to retrieve the controller instance back.  If application keeps the
+ * instance list, it's not required to call this function.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_add_ctrl(struct nvme_ctrl *ctrl);
+
+/**
+ * nvme_del_ctrl - Delete nvme_ctrl instance from library
+ * @ctrl: Controller to delete from the library
+ *
+ * Delete added nvme_ctrl instance from library.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_del_ctrl(struct nvme_ctrl *ctrl);
+
+/**
  * nvme_reset - Reset controller
  * @ctrl: Controller to reset
  *
