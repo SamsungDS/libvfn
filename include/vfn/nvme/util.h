@@ -55,7 +55,12 @@ static inline bool nvme_cqe_ok(struct nvme_cqe *cqe)
  *
  * Return: ``0`` when no error in @cqe, otherwise ``-1`` and set ``errno``.
  */
-int nvme_set_errno_from_cqe(struct nvme_cqe *cqe);
+static inline int nvme_set_errno_from_cqe(struct nvme_cqe *cqe)
+{
+	errno = le16_to_cpu(cqe->sfp) >> 1 ? EIO : 0;
+
+	return errno ? -1 : 0;
+}
 
 /**
  * nvme_aer - Submit an Asynchronous Event Request command

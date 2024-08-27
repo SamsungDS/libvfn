@@ -48,13 +48,6 @@ uint64_t nvme_crc64(uint64_t crc, const unsigned char *buffer, size_t len)
 	return crc ^ (uint64_t)~0;
 }
 
-int nvme_set_errno_from_cqe(struct nvme_cqe *cqe)
-{
-	errno = le16_to_cpu(cqe->sfp) >> 1 ? EIO : 0;
-
-	return errno ? -1 : 0;
-}
-
 int nvme_aer(struct nvme_ctrl *ctrl, void *opaque)
 {
 	struct nvme_rq *rq;
