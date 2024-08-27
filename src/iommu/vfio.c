@@ -422,6 +422,8 @@ static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 	struct vfio_group *group;
+	__autofree char *buf = NULL;
+	char *vf_token;
 	int gfd, ret_fd;
 
 	group = vfio_get_or_create_group(vfio, bdf);
@@ -435,6 +437,16 @@ static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 	gfd = vfio_get_group_fd(vfio, group);
 	if (gfd < 0)
 		return -1;
+
+	vf_token = getenv("VFTOKEN");
+	if (vf_token) {
+		log_info("using vf_token\n");
+
+		if (asprintf(&buf, "%s vf_token=%s", bdf, vf_token) < 0)
+			return -1;
+
+		bdf = buf;
+	}
 
 	ret_fd = ioctl(gfd, VFIO_GROUP_GET_DEVICE_FD, bdf);
 	if (ret_fd < 0) {
