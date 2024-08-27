@@ -42,6 +42,11 @@ struct vfio_pci_device {
  *
  * Open the pci device identified by @bdf and initialize @pci.
  *
+ * **Note**: When enabling SR-IOV on a vfio-pci owned PF, the VFs are not fully
+ * isolated from the PF (e.g., the PF may reset itself). VFIO requires the use
+ * of a "VF Token" to enable this configuration. This token may be passed as an
+ * environment variable ``VFTOKEN``.
+ *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
  */
