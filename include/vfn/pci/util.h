@@ -108,4 +108,53 @@ char *pci_get_iommu_group(const char *bdf);
  */
 char *pci_get_device_vfio_id(const char *bdf);
 
+/**
+ * pci_get_vf_bdf - Get pci bdf address of a virtual function
+ * @pf_bdf: physical device bdf
+ * @vfnum: the virtual function number
+ *
+ * Determine the PCI address ("bus:device:function") of a virtual function,
+ * given the associated physical function address and the virtual function
+ * number.
+ *
+ * Return: The virtual function bdf.
+ */
+char *pci_get_vf_bdf(const char *pf_bdf, int vfnum);
+
+/**
+ * pci_is_vf - Determine if a device is a virtual function
+ * @bdf: device address
+ *
+ * Determine if the given device is a virtual function.
+ *
+ * Return: ``true`` if the device is a virtual function; ``false`` otherwise.
+ */
+bool pci_is_vf(const char *bdf);
+
+/**
+ * pci_vf_get_pf_bdf - Determine the physical function bdf given the bdf of a
+ *                     virtual function
+ * @bdf: virtual function device address
+ *
+ * Determine the bdf of the physical function corresponding to the given virtual
+ * function.
+ *
+ * Return: The physical function bdf.
+ */
+char *pci_vf_get_pf_bdf(const char *bdf);
+
+/**
+ * pci_vf_get_vfnum - Get the Virtual Function Number of a VF
+ * @bdf: virtual function device address
+ *
+ * Determine the Virtual Function Number (VFN) of the given Virtual Function.
+ *
+ * **Note**: While, in sysfs where we look this up, Linux uses "virtfn0" for VF
+ * 1 and so on, this function returns the VFN as defined in PCI Express (i.e.,
+ * virtfn0 is 1 and so on).
+ *
+ * Return: The VFs Virtual Function Number.
+ */
+int pci_vf_get_vfnum(const char *bdf);
+
 #endif /* LIBVFN_PCI_UTIL_H */
