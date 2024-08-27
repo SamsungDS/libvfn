@@ -280,3 +280,169 @@ out:
 
 	return vfio_id;
 }
+
+bool pci_is_vf(const char *bdf)
+{
+	__autofree char *path = NULL;
+
+	if (asprintf(&path, "/sys/bus/pci/devices/%s/physfn", bdf) < 0) {
+		log_debug("asprintf failed\n");
+		return false;
+	}
+
+	return access(path, F_OK) == 0;
+}
+
+int pci_vf_get_vfnum(const char *bdf)
+{
+	__autofree char *path = NULL;
+	__autofree char *pf_bdf = NULL;
+	int vfnum = -1;
+	struct dirent *dentry;
+	DIR *dp;
+
+	pf_bdf = pci_vf_get_pf_bdf(bdf);
+	if (!pf_bdf)
+		return -1;
+
+	if (asprintf(&path, "/sys/bus/pci/devices/%s", pf_bdf) < 0) {
+		log_debug("asprintf failed\n");
+		return -1;
+	}
+
+	dp = opendir(path);
+	if (!dp) {
+		log_debug("could not open directory\n");
+		return -1;
+	}
+
+	do {
+		char rel[PATH_MAX], link[PATH_MAX];
+		char *p;
+		ssize_t ret;
+
+		/*
+		 * If readdir() reaches the end of the directory stream, errno
+		 * is NOT changed. errno may have been left at some non-zero
+		 * value, so reset it.
+		 */
+		errno = 0;
+
+		dentry = readdir(dp);
+		if (!dentry) {
+			if (!errno)
+				errno = EINVAL;
+
+			goto out;
+		}
+
+		if (strncmp("virtfn", dentry->d_name, 6) != 0)
+			continue;
+
+		if (sprintf(link, "%s/%s", path, dentry->d_name) < 0)
+			goto out;
+
+		ret = readlink(link, rel, PATH_MAX - 1);
+		if (ret < 0) {
+			log_debug("failed to resolve %s link\n", dentry->d_name);
+			goto out;
+		}
+
+		rel[ret] = '\0';
+
+		p = strrchr(rel, '/');
+		if (!p) {
+			errno = EINVAL;
+			goto out;
+		}
+
+		if (strcmp(p + 1, bdf) == 0)
+			break;
+	} while (dentry != NULL);
+
+	if (dentry == NULL) {
+		errno = EINVAL;
+		goto out;
+	}
+
+	/* linux uses "virtfn0" for VF 1 and so on, so increment by one */
+	vfnum = atoi(&dentry->d_name[6]) + 1;
+out:
+	log_fatal_if(closedir(dp), "closedir");
+
+	return vfnum;
+}
+
+char *pci_vf_get_pf_bdf(const char *bdf)
+{
+	__autofree char *link = NULL;
+	char *pf_bdf, *p, rel[PATH_MAX];
+	ssize_t ret;
+
+	if (asprintf(&link, "/sys/bus/pci/devices/%s/physfn", bdf) < 0) {
+		log_debug("asprintf failed\n");
+		return NULL;
+	}
+
+	ret = readlink(link, rel, PATH_MAX - 1);
+	if (ret < 0) {
+		log_debug("failed to resolve physfn link\n");
+		return NULL;
+	}
+
+	rel[ret] = '\0';
+
+	p = strrchr(rel, '/');
+	if (!p) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (asprintf(&pf_bdf, "%s", p + 1) < 0) {
+		log_debug("asprintf failed\n");
+		return NULL;
+	}
+
+	return pf_bdf;
+}
+
+char *pci_get_vf_bdf(const char *pf_bdf, int vfnum)
+{
+	__autofree char *link = NULL;
+	char *vf_bdf, *p, rel[PATH_MAX];
+	ssize_t ret;
+
+	if (vfnum < 1) {
+		log_debug("vfnum must be non-zero\n");
+
+		errno = EINVAL;
+		return NULL;
+	}
+
+	/* linux uses "virtfn0" for VF 1 and so on, so decrement by one */
+	if (asprintf(&link, "/sys/bus/pci/devices/%s/virtfn%d", pf_bdf, vfnum - 1) < 0) {
+		log_debug("asprintf failed\n");
+		return NULL;
+	}
+
+	ret = readlink(link, rel, PATH_MAX - 1);
+	if (ret < 0) {
+		log_debug("failed to resolve virtfn link\n");
+		return NULL;
+	}
+
+	rel[ret] = '\0';
+
+	p = strrchr(rel, '/');
+	if (!p) {
+		log_debug("failed to locate vf bdf\n");
+		return NULL;
+	}
+
+	if (asprintf(&vf_bdf, "%s", p + 1) < 0) {
+		log_debug("asprintf failed\n");
+		return NULL;
+	}
+
+	return vf_bdf;
+}
