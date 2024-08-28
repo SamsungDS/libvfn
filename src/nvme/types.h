@@ -135,11 +135,14 @@ enum nvme_admin_opcode {
 	NVME_ADMIN_IDENTIFY		= 0x06,
 	NVME_ADMIN_SET_FEATURES         = 0x09,
 	NVME_ADMIN_ASYNC_EVENT          = 0x0c,
+	NVME_ADMIN_VIRT_MGMT		= 0x1c,
 	NVME_ADMIN_DBCONFIG		= 0x7c,
 };
 
 enum nvme_identify_cns {
-	NVME_IDENTIFY_CNS_CTRL		= 0x01,
+	NVME_IDENTIFY_CNS_CTRL			= 0x01,
+	NVME_IDENTIFY_CNS_PRIMARY_CTRL_CAP	= 0x14,
+	NVME_IDENTIFY_CNS_SECONDARY_CTRL_LIST	= 0x15,
 };
 
 enum nvme_identify_ctrl_offset {
@@ -157,4 +160,56 @@ enum nvme_identify_ctrl_sgls {
 
 	NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_NONE	= 0x1,
 	NVME_IDENTIFY_CTRL_SGLS_ALIGNMENT_DWORD	= 0x2,
+};
+
+struct nvme_primary_ctrl_cap {
+	leint16_t cntlid;
+	leint16_t portid;
+	uint8_t   crt;
+	uint8_t   rsvd5[27];
+	leint32_t vqfrt;
+	leint32_t vqrfa;
+	leint16_t vqrfap;
+	leint16_t vqprt;
+	leint16_t vqfrsm;
+	leint16_t vqgran;
+	uint8_t   rsvd48[16];
+	leint32_t vifrt;
+	leint32_t virfa;
+	leint16_t virfap;
+	leint16_t viprt;
+	leint16_t vifrsm;
+	leint16_t vigran;
+	uint8_t   rsvd80[4016];
+};
+
+struct nvme_secondary_ctrl {
+	leint16_t scid;
+	leint16_t pcid;
+	uint8_t   scs;
+	uint8_t   rsvd5[3];
+	leint16_t vfn;
+	leint16_t nvq;
+	leint16_t nvi;
+	uint8_t   rsvd14[18];
+};
+
+#define NVME_ID_SECONDARY_CTRL_MAX 127
+
+struct nvme_secondary_ctrl_list {
+	uint8_t   num;
+	uint8_t   rsvd[31];
+	struct nvme_secondary_ctrl sc_entry[NVME_ID_SECONDARY_CTRL_MAX];
+};
+
+enum nvme_virt_mgmt_rt {
+	NVME_VIRT_MGMT_RESOURCE_TYPE_VQ = 0x0,
+	NVME_VIRT_MGMT_RESOURCE_TYPE_VI = 0x1,
+};
+
+enum nvme_virt_mgmt_act {
+	NVME_VIRT_MGMT_ACTION_PRIMARY_ALLOC_FLEXIBLE    = 0x1,
+	NVME_VIRT_MGMT_ACTION_SECONDARY_OFFLINE         = 0x7,
+	NVME_VIRT_MGMT_ACTION_SECONDARY_ASSIGN_FLEXIBLE = 0x8,
+	NVME_VIRT_MGMT_ACTION_SECONDARY_ONLINE          = 0x9,
 };

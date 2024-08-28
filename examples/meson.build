@@ -14,6 +14,7 @@ examples = {
   'io': ['io.c'],
   'perf': ['perf.c'],
   'regs': ['regs.c'],
+  'sriov': ['sriov.c'],
 }
 
 if config_host.get('HAVE_IOMMU_FAULT_QUEUE_ALLOC', false)

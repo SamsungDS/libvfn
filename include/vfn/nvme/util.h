@@ -161,4 +161,58 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
 int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seglist, union nvme_cmd *cmd,
 		  struct iovec *iov, int niov);
 
+/**
+ * nvme_vm_assign_max_flexible - Assign the maximum number of flexible resources
+ *                               to secondary controller
+ * @ctrl: primary controller &struct nvme_ctrl
+ * @scid: secondary controller identifier
+ *
+ * Use the VQFRSM and VIFRSM fields of the Primary Controller Capabilities
+ * Identify data structure to determine the maximum number of flexible resources
+ * that can be assigned to a single VF and assign that.
+ *
+ * Return: On success, returns ``0``; on error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_vm_assign_max_flexible(struct nvme_ctrl *ctrl, uint16_t scid);
+
+/**
+ * nvme_vm_set_online - Online a secondary controller
+ * @ctrl: primary controller &struct nvme_ctrl
+ * @scid: secondary controller identifier
+ *
+ * Online a secondary controller.
+ *
+ * Return: On success, returns ``0``; on error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_vm_set_online(struct nvme_ctrl *ctrl, uint16_t scid);
+
+/**
+ * nvme_vm_set_offline - Offline a secondary controller
+ * @ctrl: primary controller &struct nvme_ctrl
+ * @scid: secondary controller identifier
+ *
+ * Offline a secondary controller.
+ *
+ * Return: On success, returns ``0``; on error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_vm_set_offline(struct nvme_ctrl *ctrl, uint16_t scid);
+
+/**
+ * nvme_get_vf_cntlid - Get the controller identifier for a VF
+ * @ctrl: primary controller &struct nvme_ctrl
+ * @vfnum: virtual function number
+ * @cntlid: output parameter for the secondary controller identifier
+ *
+ * Use the Secondary Controller List Identify data structure to determine the
+ * controller identifier of the secondary controller identified by a Virtual
+ * Function Number.
+ *
+ * Return: On success, returns ``0``; on error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_get_vf_cntlid(struct nvme_ctrl *ctrl, int vfnum, uint16_t *cntlid);
+
 #endif /* LIBVFN_NVME_UTIL_H */

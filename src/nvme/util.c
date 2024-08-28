@@ -243,6 +243,54 @@ int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd
 	return 0;
 }
 
+static int nvme_virt_mgmt(struct nvme_ctrl *ctrl, uint16_t cntlid, enum nvme_virt_mgmt_rt rt,
+			  enum nvme_virt_mgmt_act act, uint16_t nr)
+{
+	union nvme_cmd cmd = {
+		.opcode = NVME_ADMIN_VIRT_MGMT,
+
+		.cdw10 = cpu_to_le32(cntlid << 16 | rt << 8 | act),
+		.cdw11 = cpu_to_le32(nr),
+	};
+
+	return nvme_admin(ctrl, &cmd, NULL, 0, NULL);
+}
+
+int nvme_vm_assign_max_flexible(struct nvme_ctrl *ctrl, uint16_t scid)
+{
+	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
+
+	union nvme_cmd cmd;
+	struct nvme_primary_ctrl_cap *cap;
+
+	__autovar_s(iommu_dmabuf) buffer;
+
+	if (iommu_get_dmabuf(ctx, &buffer, NVME_IDENTIFY_DATA_SIZE, IOMMU_MAP_EPHEMERAL))
+		return -1;
+
+	cmd.identify = (struct nvme_cmd_identify) {
+		.opcode = NVME_ADMIN_IDENTIFY,
+		.cns = NVME_IDENTIFY_CNS_PRIMARY_CTRL_CAP,
+	};
+
+	if (nvme_admin(ctrl, &cmd, buffer.vaddr, buffer.len, NULL))
+		return -1;
+
+	cap = buffer.vaddr;
+
+	if (nvme_virt_mgmt(ctrl, scid, NVME_VIRT_MGMT_RESOURCE_TYPE_VQ,
+			   NVME_VIRT_MGMT_ACTION_SECONDARY_ASSIGN_FLEXIBLE,
+			   le16_to_cpu(cap->vqfrsm)))
+		return -1;
+
+	if (nvme_virt_mgmt(ctrl, scid, NVME_VIRT_MGMT_RESOURCE_TYPE_VI,
+			   NVME_VIRT_MGMT_ACTION_SECONDARY_ASSIGN_FLEXIBLE,
+			   le16_to_cpu(cap->vifrsm)))
+		return -1;
+
+	return 0;
+}
+
 int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
 		  union nvme_cmd *cmd, struct iovec *iov, int niov)
 {
@@ -387,4 +435,51 @@ int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, union nvme_cmd 
 	cmd->flags |= NVME_FIELD_SET(NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG, CMD_FLAGS_PSDT);
 
 	return 0;
+}
+
+int nvme_get_vf_cntlid(struct nvme_ctrl *ctrl, int vfnum, uint16_t *cntlid)
+{
+	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
+
+	union nvme_cmd cmd;
+	struct nvme_secondary_ctrl_list *list;
+
+	__autovar_s(iommu_dmabuf) buffer;
+
+	if (iommu_get_dmabuf(ctx, &buffer, NVME_IDENTIFY_DATA_SIZE, IOMMU_MAP_EPHEMERAL))
+		return -1;
+
+	cmd.identify = (struct nvme_cmd_identify) {
+		.opcode = NVME_ADMIN_IDENTIFY,
+		.cns = NVME_IDENTIFY_CNS_SECONDARY_CTRL_LIST,
+	};
+
+	if (nvme_admin(ctrl, &cmd, buffer.vaddr, buffer.len, NULL))
+		return -1;
+
+	list = buffer.vaddr;
+
+	for (uint8_t i = 0; i < list->num; i++) {
+		struct nvme_secondary_ctrl *sctrl = &list->sc_entry[i];
+
+		if (le16_to_cpu(sctrl->vfn) == vfnum) {
+			*cntlid = le16_to_cpu(sctrl->scid);
+
+			return 0;
+		}
+	}
+
+	errno = ENOENT;
+
+	return -1;
+}
+
+int nvme_vm_set_online(struct nvme_ctrl *ctrl, uint16_t scid)
+{
+	return nvme_virt_mgmt(ctrl, scid, 0, NVME_VIRT_MGMT_ACTION_SECONDARY_ONLINE, 0);
+}
+
+int nvme_vm_set_offline(struct nvme_ctrl *ctrl, uint16_t scid)
+{
+	return nvme_virt_mgmt(ctrl, scid, 0, NVME_VIRT_MGMT_ACTION_SECONDARY_OFFLINE, 0);
 }

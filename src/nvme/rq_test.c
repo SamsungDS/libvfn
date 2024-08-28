@@ -40,6 +40,17 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr UNUSED, size_t *
 	return 0;
 }
 
+int iommu_get_dmabuf(struct iommu_ctx *ctx UNUSED, struct iommu_dmabuf *buffer UNUSED,
+		     size_t len UNUSED, unsigned long flags UNUSED)
+{
+	return 0;
+}
+
+void iommu_put_dmabuf(struct iommu_dmabuf *buffer UNUSED)
+{
+	;
+}
+
 int main(void)
 {
 	struct nvme_ctrl ctrl = {
