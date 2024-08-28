@@ -14,6 +14,7 @@ examples = {
   'io': ['io.c'],
   'perf': ['perf.c'],
   'regs': ['regs.c'],
+  'sriov': ['sriov.c'],
 }
 
 foreach example, sources : examples
