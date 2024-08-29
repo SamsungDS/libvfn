@@ -1,6 +1,26 @@
 # Changelog
 
-## v5.0.0: (unreleased)
+## v6.0.0: (unreleased)
+
+### ``nvme_ctrl``
+
+``nvme_pci_init`` has been deprecated and will generate a warning.
+
+## v5.2.0: (unreleased)
+
+### ``nvme_ctrl``
+
+A new set of functions for keeping track of controllers has been added to the
+public API. These are ``nvme_{get,add,del}_ctrl``. Please see the updated
+documentation.
+
+### Bugfixes and minor improvements
+
+* **BUGFIX**: ``nvme_close`` will now deallocate the doorbell buffer memory.
+* **Improvement**: ``nvme_close`` and ``vfio_pci_close`` will now zero their
+  respective structs.
+
+## v5.0.0:
 
 ### ``nvme_rq``
 
