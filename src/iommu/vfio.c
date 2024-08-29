@@ -29,12 +29,12 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <linux/types.h>
+#include <linux/vfio.h>
+
 #include "ccan/str/str.h"
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
-
-#include <linux/types.h>
-#include <linux/vfio.h>
 
 #include "vfn/support.h"
 #include "vfn/iommu.h"
