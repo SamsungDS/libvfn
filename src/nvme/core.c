@@ -559,7 +559,7 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 	return 0;
 }
 
-int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
+static int nvme_init_pci(struct nvme_ctrl *ctrl, const char *bdf)
 {
 	if (vfio_pci_open(&ctrl->pci, bdf) < 0 && errno != EALREADY)
 		return -1;
@@ -591,13 +591,18 @@ int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 	return 0;
 }
 
+int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
+{
+	return nvme_init_pci(ctrl, bdf);
+}
+
 int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
 		   const struct nvme_ctrl_opts *opts)
 {
 	uint8_t mpsmin, mpsmax;
 	uint64_t cap;
 
-	if (nvme_pci_init(ctrl, bdf))
+	if (nvme_init_pci(ctrl, bdf))
 		return -1;
 
 	if (opts)
