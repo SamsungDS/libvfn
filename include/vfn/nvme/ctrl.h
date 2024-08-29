@@ -21,7 +21,7 @@
  * @ncqr: number of completion queues to request
  * @quirks: quirks to apply
  *
- * Note: @nsqr and @ncqr are zeroes based values.
+ * **Note**: @nsqr and @ncqr are zeroes based values.
  */
 struct nvme_ctrl_opts {
 	int nsqr, ncqr;
@@ -116,8 +116,11 @@ struct nvme_ctrl {
  * Initialize PCI device based on vfio-pci without NVMe controller
  * initialization.
  *
+ * **Deprecated**: To be removed in v7.0.0.
+ *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
+__attribute__((__deprecated__))
 int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf);
 
 /**
@@ -126,13 +129,15 @@ int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf);
  * @bdf: PCI device identifier ("bus:device:function")
  * @opts: Controller configuration options
  *
- * Initialize NVMe controller instance configuration values and sq/cq instance
- * array.  It won't create any queue resources, no commands at all.
+ * Configure the @ctrl struct with basic information about the controller from
+ * the CAP register. This will also allocate memory for Submission and
+ * Completion queues (as requested in @opts).
+ *
+ * **Warning**: It is NOT safe to call nvme_init after this call.
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
-		   const struct nvme_ctrl_opts *opts);
+int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_opts *opts);
 
 /**
  * nvme_init - Initialize controller
