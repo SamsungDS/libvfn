@@ -738,8 +738,23 @@ void nvme_close(struct nvme_ctrl *ctrl)
 
 	free(ctrl->cq);
 
+	if (ctrl->dbbuf.doorbells) {
+		struct iommu_ctx *ctx = __iommu_ctx(ctrl);
+		size_t len;
+
+		log_fatal_if(iommu_unmap_vaddr(ctx, ctrl->dbbuf.doorbells, &len),
+			     "iommu_unmap_vaddr");
+		pgunmap(ctrl->dbbuf.doorbells, len);
+
+		log_fatal_if(iommu_unmap_vaddr(ctx, ctrl->dbbuf.eventidxs, &len),
+			     "iommu_unmap_vaddr");
+		pgunmap(ctrl->dbbuf.eventidxs, len);
+	}
+
 	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->regs, 0x1000, 0);
 	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->doorbells, 0x1000, 0x1000);
 
 	vfio_pci_close(&ctrl->pci);
+
+	memset(ctrl, 0x0, sizeof(*ctrl));
 }
