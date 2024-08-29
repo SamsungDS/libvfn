@@ -578,7 +578,7 @@ int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 
 	ctrl->pci.classcode = classcode;
 
-	if (vfio_pci_open(&ctrl->pci, bdf))
+	if (vfio_pci_open(&ctrl->pci, bdf) < 0 && errno != EALREADY)
 		return -1;
 
 	/* map controller registers */

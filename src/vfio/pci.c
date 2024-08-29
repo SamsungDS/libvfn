@@ -141,6 +141,11 @@ void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t 
 
 int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 {
+	if (pci->bdf) {
+		errno = EALREADY;
+		return -1;
+	}
+
 	if (!pci->dev.ctx)
 		pci->dev.ctx = iommu_get_default_context();
 
