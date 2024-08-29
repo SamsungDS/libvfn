@@ -577,7 +577,6 @@ int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 	}
 
 	ctrl->pci.classcode = classcode;
-	ctrl->pci.bdf = bdf;
 
 	if (vfio_pci_open(&ctrl->pci, bdf))
 		return -1;
