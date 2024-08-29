@@ -561,25 +561,17 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 
 int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 {
-	unsigned long long classcode;
-
-	if (pci_device_info_get_ull(bdf, "class", &classcode)) {
-		log_debug("could not get device class code\n");
+	if (vfio_pci_open(&ctrl->pci, bdf) < 0 && errno != EALREADY)
 		return -1;
-	}
 
-	log_info("pci class code is 0x%06llx\n", classcode);
-
-	if ((classcode & 0xffff00) != 0x010800) {
+	if ((ctrl->pci.classcode & 0xffff00) != 0x010800) {
 		log_debug("%s is not an NVMe device\n", bdf);
+
+		log_fatal_if(vfio_pci_close(&ctrl->pci), "vfio_pci_close");
+
 		errno = EINVAL;
 		return -1;
 	}
-
-	ctrl->pci.classcode = classcode;
-
-	if (vfio_pci_open(&ctrl->pci, bdf) < 0 && errno != EALREADY)
-		return -1;
 
 	/* map controller registers */
 	ctrl->regs = vfio_pci_map_bar(&ctrl->pci, 0, 0x1000, 0,
