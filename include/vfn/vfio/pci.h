@@ -29,7 +29,7 @@ struct vfio_pci_device {
 	struct vfio_device dev;
 
 	unsigned long long classcode;
-	const char *bdf;
+	char *bdf;
 
 	struct vfio_region_info config_region_info;
 	struct vfio_region_info bar_region_info[PCI_STD_NUM_BARS];

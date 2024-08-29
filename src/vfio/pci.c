@@ -141,8 +141,6 @@ void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t 
 
 int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 {
-	pci->bdf = bdf;
-
 	if (!pci->dev.ctx)
 		pci->dev.ctx = iommu_get_default_context();
 
@@ -186,6 +184,8 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 		return -1;
 	}
 
+	pci->bdf = strdup(bdf);
+
 	return 0;
 }
 
@@ -193,10 +193,14 @@ int vfio_pci_close(struct vfio_pci_device *pci)
 {
 	struct iommu_ctx *ctx = pci->dev.ctx;
 
-	close(pci->dev.fd);
+	log_fatal_if(close(pci->dev.fd), "close");
 
 	if (ctx->ops.put_device_fd)
-		return ctx->ops.put_device_fd(ctx, pci->bdf);
+		if (ctx->ops.put_device_fd(ctx, pci->bdf))
+			return -1;
+
+	free(pci->bdf);
+	memset(pci, 0x0, sizeof(*pci));
 
 	return 0;
 }
