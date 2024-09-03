@@ -190,7 +190,10 @@ jobs:
           path: build/meson-logs/testlog.txt
 
   nix-tests:
-    name: "test building with Nix"
+    name: "nix build"
+
+    needs: [sanity]
+
     runs-on: ubuntu-latest
 
     steps:
