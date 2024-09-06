@@ -27,8 +27,7 @@ struct nvme_dbbuf {
  */
 struct nvme_cq {
 	/* private: */
-	void *vaddr;
-	uint64_t iova;
+	struct iommu_dmabuf mem;
 
 	int id;
 	uint16_t head;
@@ -51,13 +50,8 @@ struct nvme_sq {
 	/* private: */
 	struct nvme_cq *cq;
 
-	void *vaddr;
-	uint64_t iova;
-
-	struct {
-		void *vaddr;
-		uint64_t iova;
-	} pages;
+	struct iommu_dmabuf mem;
+	struct iommu_dmabuf pages;
 
 	uint16_t tail, ptail;
 	int qsize;
@@ -84,7 +78,7 @@ struct nvme_sq {
  */
 static inline void nvme_sq_post(struct nvme_sq *sq, const union nvme_cmd *sqe)
 {
-	memcpy(sq->vaddr + (sq->tail << NVME_SQES), sqe, 1 << NVME_SQES);
+	memcpy(sq->mem.vaddr + (sq->tail << NVME_SQES), sqe, 1 << NVME_SQES);
 
 	trace_guard(NVME_SQ_POST) {
 		trace_emit("sqid %d tail %d\n", sq->id, sq->tail);
@@ -174,7 +168,7 @@ static inline void nvme_sq_exec(struct nvme_sq *sq, const union nvme_cmd *sqe)
  */
 static inline struct nvme_cqe *nvme_cq_head(struct nvme_cq *cq)
 {
-	return (struct nvme_cqe *)(cq->vaddr + (cq->head << NVME_CQES));
+	return (struct nvme_cqe *)(cq->mem.vaddr + (cq->head << NVME_CQES));
 }
 
 /**
