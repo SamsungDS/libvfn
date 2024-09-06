@@ -49,6 +49,13 @@
 #define sqtdbl(doorbells, qid, dstrd) \
 	(doorbells + (2 * qid) * (4 << dstrd))
 
+#ifdef __linux__
+# define __reg32_read(regs, offset) mmio_read32((regs) + (offset))
+# define __reg32_write(regs, offset, v) mmio_write32((regs) + (offset), (v))
+# define __reg64_read(regs, offset) mmio_read64((regs) + (offset))
+# define __reg64_write_hl(regs, offset, v) mmio_hl_write64((regs) + (offset), (v))
+#endif
+
 struct nvme_ctrl_handle {
 	struct nvme_ctrl *ctrl;
 	struct list_node list;
@@ -115,7 +122,7 @@ static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vec
 	uint64_t cap;
 	uint8_t dstrd;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(__reg64_read(ctrl->regs, NVME_REG_CAP));
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid && qid > ctrl->config.ncqa + 1) {
@@ -178,7 +185,7 @@ static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 
 	pagesize = __mps_to_pagesize(ctrl->config.mps);
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(__reg64_read(ctrl->regs, NVME_REG_CAP));
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid && qid > ctrl->config.nsqa + 1) {
@@ -285,9 +292,9 @@ int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 	aqa = NVME_AQ_QSIZE - 1;
 	aqa |= aqa << 16;
 
-	mmio_write32(ctrl->regs + NVME_REG_AQA, cpu_to_le32(aqa));
-	mmio_hl_write64(ctrl->regs + NVME_REG_ASQ, cpu_to_le64(sq->mem.iova));
-	mmio_hl_write64(ctrl->regs + NVME_REG_ACQ, cpu_to_le64(cq->mem.iova));
+	__reg32_write(ctrl->regs, NVME_REG_AQA, cpu_to_le32(aqa));
+	__reg64_write_hl(ctrl->regs, NVME_REG_ASQ, cpu_to_le64(sq->mem.iova));
+	__reg64_write_hl(ctrl->regs, NVME_REG_ACQ, cpu_to_le64(cq->mem.iova));
 
 	return 0;
 
@@ -419,7 +426,7 @@ static int nvme_wait_rdy(struct nvme_ctrl *ctrl, unsigned short rdy)
 	unsigned long timeout_ms;
 	struct timeabs deadline;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(__reg64_read(ctrl->regs, NVME_REG_CAP));
 	timeout_ms = 500 * (NVME_FIELD_GET(cap, CAP_TO) + 1);
 	deadline = timeabs_add(time_now(), time_from_msec(timeout_ms));
 
@@ -431,7 +438,7 @@ static int nvme_wait_rdy(struct nvme_ctrl *ctrl, unsigned short rdy)
 			return -1;
 		}
 
-		csts = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CSTS));
+		csts = le32_to_cpu(__reg32_read(ctrl->regs, NVME_REG_CSTS));
 	} while (NVME_FIELD_GET(csts, CSTS_RDY) != rdy);
 
 	return 0;
@@ -443,7 +450,7 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	uint32_t cc;
 	uint64_t cap;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(__reg64_read(ctrl->regs, NVME_REG_CAP));
 	css = NVME_FIELD_GET(cap, CAP_CSS);
 
 	cc =
@@ -461,7 +468,7 @@ int nvme_enable(struct nvme_ctrl *ctrl)
 	else
 		cc |= NVME_FIELD_SET(NVME_CC_CSS_NVM, CC_CSS);
 
-	mmio_write32(ctrl->regs + NVME_REG_CC, cpu_to_le32(cc));
+	__reg32_write(ctrl->regs, NVME_REG_CC, cpu_to_le32(cc));
 
 	return nvme_wait_rdy(ctrl, 1);
 }
@@ -470,8 +477,8 @@ int nvme_reset(struct nvme_ctrl *ctrl)
 {
 	uint32_t cc;
 
-	cc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CC));
-	mmio_write32(ctrl->regs + NVME_REG_CC, cpu_to_le32(cc & 0xfe));
+	cc = le32_to_cpu(__reg32_read(ctrl->regs, NVME_REG_CC));
+	__reg32_write(ctrl->regs, NVME_REG_CC, cpu_to_le32(cc & 0xfe));
 
 	return nvme_wait_rdy(ctrl, 0);
 }
@@ -499,7 +506,7 @@ static int nvme_init_dbconfig(struct nvme_ctrl *ctrl)
 		uint64_t cap;
 		uint8_t dstrd;
 
-		cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+		cap = le64_to_cpu(__reg64_read(ctrl->regs, NVME_REG_CAP));
 		dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 		ctrl->adminq.cq->dbbuf.doorbell =
@@ -577,7 +584,7 @@ int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
 	if ((ctrl->pci.classcode & 0xff) == 0x03)
 		ctrl->flags = NVME_CTRL_F_ADMINISTRATIVE;
 
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	cap = le64_to_cpu(__reg64_read(ctrl->regs, NVME_REG_CAP));
 	mpsmin = NVME_FIELD_GET(cap, CAP_MPSMIN);
 	mpsmax = NVME_FIELD_GET(cap, CAP_MPSMAX);
 
