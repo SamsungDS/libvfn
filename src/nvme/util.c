@@ -29,7 +29,6 @@
 #include <linux/vfio.h>
 
 #include <vfn/support.h>
-#include <vfn/iommu.h>
 #include <vfn/vfio.h>
 #include <vfn/trace.h>
 #include <vfn/nvme.h>
@@ -46,13 +45,6 @@ uint64_t nvme_crc64(uint64_t crc, const unsigned char *buffer, size_t len)
 		crc = (crc >> 8) ^ crc64_nvme_table[(crc & 0xff) ^ buffer[i]];
 
 	return crc ^ (uint64_t)~0;
-}
-
-int nvme_set_errno_from_cqe(struct nvme_cqe *cqe)
-{
-	errno = le16_to_cpu(cqe->sfp) >> 1 ? EIO : 0;
-
-	return errno ? -1 : 0;
 }
 
 int nvme_aer(struct nvme_ctrl *ctrl, void *opaque)

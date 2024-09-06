@@ -3,4 +3,4 @@
 Memory Allocation Helpers
 =========================
 
-.. kernel-doc:: include/vfn/support/mem.h
+.. kernel-doc:: include/vfn/support/platform/posix/mem.h
