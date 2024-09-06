@@ -82,8 +82,8 @@ struct nvme_ctrl {
 	 * @dbbuf: doorbell buffers
 	 */
 	struct {
-		void *doorbells;
-		void *eventidxs;
+		struct iommu_dmabuf doorbells;
+		struct iommu_dmabuf eventidxs;
 	} dbbuf;
 
 	/**
