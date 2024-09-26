@@ -46,6 +46,9 @@ struct iommu_ctx *iommu_get_default_context(void)
 	if (__iommufd_is_broken())
 		goto fallback;
 
+	if (getenv("VFN_IOMMU_FORCE_VFIO"))
+		goto fallback;
+
 	return iommufd_get_default_iommu_context();
 
 fallback:
