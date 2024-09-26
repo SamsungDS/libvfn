@@ -16,6 +16,16 @@
  * more details.
  */
 
+/*
+ * Basic example of doing DMA P2P using a CMB.
+ *
+ * This example expects two devices (a source and a destination) where the
+ * destination MUST have a CMB. For instance, testing with QEMU:
+ *
+ *   -device nvme,serial=deadc0de,drive=...
+ *   -device nvme,serial=deadbeef,drive=...,cmb_size_mb=1
+ */
+
 #include <linux/pci_regs.h>
 
 #include <vfn/nvme.h>
@@ -49,15 +59,12 @@ static inline off_t bar_offset(int bar)
 	return PCI_BASE_ADDRESS_0 + bar * 4;
 }
 
-static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64_t *cba)
+static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *iova, size_t *len)
 {
-	uint64_t cap, szu, ofst;
+	uint64_t cap, szu, ofst, hwaddr;
 	uint32_t cmbloc, cmbsz, v32;
-	size_t len;
 	int bir;
 	void *cmb;
-	struct iommu_iova_range *iova_ranges;
-	int num_iova_ranges;
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
 
@@ -68,42 +75,39 @@ static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *hwaddr, uint64
 	cmbloc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBLOC));
 
 	szu = 1 << (12 + 4 * NVME_GET(cmbsz, CMBSZ_SZU));
-	len = szu * NVME_GET(cmbsz, CMBSZ_SZ);
+	*len = szu * NVME_GET(cmbsz, CMBSZ_SZ);
 
 	ofst = szu * NVME_GET(cmbloc, CMBLOC_OFST);
 	bir = NVME_GET(cmbloc, CMBLOC_BIR);
 
-	printf("cmb bar is %d\n", bir);
+	printf("cmb bir is %d\n", bir);
 
 	if (vfio_pci_read_config(&ctrl->pci, &v32, sizeof(v32), bar_offset(bir)) < 0)
 		err(1, "failed to read pci config");
 
-	*hwaddr = v32 & PCI_BASE_ADDRESS_MEM_MASK;
+	hwaddr = v32 & PCI_BASE_ADDRESS_MEM_MASK;
 
 	if (vfio_pci_read_config(&ctrl->pci, &v32, sizeof(v32), bar_offset(bir + 1)) < 0)
 		err(1, "failed to read pci config");
 
-	*hwaddr |= (uint64_t)v32 << 32;
+	hwaddr |= (uint64_t)v32 << 32;
 
-	printf("cmb bar is mapped at physical address 0x%lx\n", *hwaddr);
+	printf("cmb bar is mapped at physical address 0x%lx\n", hwaddr);
 
 	/* map the cmb */
-	cmb = vfio_pci_map_bar(&ctrl->pci, bir, len, ofst, PROT_READ | PROT_WRITE);
+	cmb = vfio_pci_map_bar(&ctrl->pci, bir, *len, ofst, PROT_READ | PROT_WRITE);
 	if (!cmb)
 		err(1, "failed to map cmb");
 
-	if (!NVME_GET(cap, CAP_CMBS)) {
-		*cba = *hwaddr;
-		return cmb;
+	if (iommu_map_vaddr(__iommu_ctx(ctrl), cmb, *len, iova, 0x0))
+		err(1, "failed to map cmb in iommu (try VFN_IOMMU_FORCE_VFIO=1)");
+
+	if (NVME_GET(cap, CAP_CMBS)) {
+		printf("assigned cmb base address is 0x%lx\n", *iova);
+
+		/* set the base address and enable the memory space */
+		mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(*iova | 0x3));
 	}
-
-	/* choose a base address that is guaranteed not to be involved in dma */
-	num_iova_ranges = iommu_get_iova_ranges(__iommu_ctx(ctrl), &iova_ranges);
-	*cba = ALIGN_UP(iova_ranges[num_iova_ranges - 1].last + 1, 4096);
-	printf("assigned cmb base address is 0x%lx\n", *cba);
-
-	/* set the base address and enable the memory space */
-	mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(*cba | 0x3));
 
 	return cmb;
 }
@@ -112,7 +116,8 @@ int main(int argc, char **argv)
 {
 	struct nvme_ctrl src = {}, dst = {};
 
-	uint64_t hwaddr, cba;
+	uint64_t iova;
+	size_t len;
 	void *cmb;
 
 	union nvme_cmd cmd = {};
@@ -136,14 +141,12 @@ int main(int argc, char **argv)
 	if (nvme_init(&dst, bdfs[1], &ctrl_opts))
 		err(1, "failed to initialize destination nvme controller");
 
-	cmb = nvme_configure_cmb(&dst, &hwaddr, &cba);
+	cmb = nvme_configure_cmb(&dst, &iova, &len);
 
 	cmd.identify = (struct nvme_cmd_identify) {
 		.opcode = nvme_admin_identify,
 		.cns = NVME_IDENTIFY_CNS_CTRL,
-
-		/* external reference; use the system address */
-		.dptr.prp1 = cpu_to_le64(hwaddr),
+		.dptr.prp1 = cpu_to_le64(iova),
 	};
 
 	if (nvme_admin(&src, &cmd, NULL, 0, NULL))
