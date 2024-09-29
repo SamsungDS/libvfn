@@ -28,6 +28,8 @@ if get_option('debug')
   add_project_arguments(['-DDEBUG'], language: ['c', 'cpp'])
 endif
 
+linux_headers = include_directories(get_option('linux-headers'))
+
 ##
 ##  Programs
 ##  --------
@@ -35,6 +37,7 @@ endif
 
 perl = find_program('perl')
 trace_pl = find_program('scripts/trace.pl')
+
 
 ##
 ##  Compiler Configuration
@@ -64,8 +67,14 @@ config_host.set('NVME_AQ_QSIZE', get_option('aq_qsize'),
   description: 'admin command queue size')
 
 config_host.set('HAVE_VFIO_DEVICE_BIND_IOMMUFD',
-  cc.has_header_symbol('linux/vfio.h', 'VFIO_DEVICE_BIND_IOMMUFD'),
-  description: 'weather VFIO_DEVICE_BIND_IOMMUFD is defined in linux/vfio.h')
+  cc.has_header_symbol('linux/vfio.h', 'VFIO_DEVICE_BIND_IOMMUFD',
+    include_directories: linux_headers),
+  description: 'if VFIO_DEVICE_BIND_IOMMUFD is defined in linux/vfio.h')
+
+config_host.set('HAVE_IOMMU_FAULT_QUEUE_ALLOC',
+  cc.has_header_symbol('linux/iommufd.h', 'IOMMU_FAULT_QUEUE_ALLOC',
+    include_directories: linux_headers),
+  description: 'if IOMMU_FAULT_QUEUE_ALLOC is defined in linux/iommufd.h')
 
 subdir('internal')
 
@@ -73,6 +82,7 @@ add_project_arguments([
     '-include', meson.current_build_dir() / 'internal/config-host.h',
   ], language: 'c',
 )
+
 
 ##
 ##  Optional dependencies
@@ -171,4 +181,5 @@ summary_info += {'Debugging': get_option('debug')}
 summary_info += {'Documentation': build_docs}
 summary_info += {'Profiling': get_option('profiling')}
 summary_info += {'iommufd': config_host.get('HAVE_VFIO_DEVICE_BIND_IOMMUFD')}
+summary_info += {'iommufd fault queue': config_host.get('HAVE_IOMMU_FAULT_QUEUE_ALLOC')}
 summary(summary_info, bool_yn: true, section: 'Features')
