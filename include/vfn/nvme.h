@@ -36,6 +36,7 @@ extern "C" {
 #include <vfn/trace.h>
 #include <vfn/trace/events.h>
 #include <vfn/iommu.h>
+#include <vfn/iommu/dmabuf.h>
 #include <vfn/vfio.h>
 #include <vfn/nvme/types.h>
 #include <vfn/nvme/queue.h>

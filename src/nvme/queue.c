@@ -26,14 +26,9 @@
 
 #include <linux/vfio.h>
 
-#include <vfn/support/barrier.h>
-#include <vfn/support/compiler.h>
-#include <vfn/support/endian.h>
-#include <vfn/support/mmio.h>
-#include <vfn/support/ticks.h>
+#include <vfn/support.h>
 #include <vfn/trace.h>
-#include <vfn/nvme/types.h>
-#include <vfn/nvme/queue.h>
+#include <vfn/nvme.h>
 
 #include "ccan/time/time.h"
 

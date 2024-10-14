@@ -40,41 +40,11 @@ static inline size_t __abort_on_overflow(unsigned int n, size_t sz)
 	return n * sz;
 }
 
-/**
- * xmalloc - version of malloc that cannot fail
- * @sz: number of bytes to allocate
- *
- * Call malloc, but only return NULL when @sz is zero. Otherwise, abort.
- *
- * Return: pointer to allocated memory
- */
-static inline void *xmalloc(size_t sz)
-{
-	void *mem;
-
-	if (unlikely(!sz))
-		return NULL;
-
-	mem = malloc(sz);
-	if (unlikely(!mem))
-		backtrace_abort();
-
-	return mem;
-}
-
-static inline void *zmalloc(size_t sz)
-{
-	void *mem;
-
-	if (unlikely(!sz))
-		return NULL;
-
-	mem = calloc(1, sz);
-	if (unlikely(!mem))
-		backtrace_abort();
-
-	return mem;
-}
+#ifdef __APPLE__
+# include "vfn/support/platform/driverkit/mem.h"
+#else
+# include "vfn/support/platform/posix/mem.h"
+#endif
 
 static inline void *mallocn(unsigned int n, size_t sz)
 {
@@ -96,17 +66,6 @@ static inline void *zmallocn(unsigned int n, size_t sz)
 	}
 
 	return zmalloc(n * sz);
-}
-
-static inline void *reallocn(void *mem, unsigned int n, size_t sz)
-{
-	if (would_overflow(n, sz)) {
-		fprintf(stderr, "allocation of %d * %zu bytes would overflow\n", n, sz);
-
-		backtrace_abort();
-	}
-
-	return realloc(mem, n * sz);
 }
 
 #define _new_t(t, n, f) \
