@@ -40,7 +40,7 @@
 #include "ccan/minmax/minmax.h"
 #include "ccan/str/str.h"
 
-int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
+int vfio_set_irq(struct vfio_device *dev, int *eventfds, int start, int count)
 {
 	struct vfio_irq_set *irq_set;
 	size_t irq_set_size;
@@ -59,7 +59,7 @@ int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
 		.argsz = (uint32_t)irq_set_size,
 		.flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER,
 		.index = dev->irq_info.index,
-		.start = 0,
+		.start = start,
 		.count = count,
 	};
 
@@ -76,18 +76,33 @@ int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count)
 	return 0;
 }
 
-int vfio_disable_irq(struct vfio_device *dev)
+int vfio_disable_irq(struct vfio_device *dev, int start, int count)
 {
-	struct vfio_irq_set irq_set;
+	struct vfio_irq_set *irq_set;
+	size_t irq_set_size;
+	int *data;
 	int ret;
 
-	irq_set = (struct vfio_irq_set) {
-		.argsz = sizeof(irq_set),
-		.flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER,
+	irq_set_size = sizeof(*irq_set) + sizeof(int) * count;
+	irq_set = xmalloc(irq_set_size);
+
+	data = xmalloc(sizeof(int) * count);
+	for (int i = 0; i < count; i++)
+		data[i] = -1;
+
+	*irq_set = (struct vfio_irq_set) {
+		.argsz = (uint32_t)irq_set_size,
+		.flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER,
 		.index = dev->irq_info.index,
+		.start = start,
+		.count = count,
 	};
 
-	ret = ioctl(dev->fd, VFIO_DEVICE_SET_IRQS, &irq_set);
+	memcpy(irq_set->data, data, sizeof(int) * count);
+
+	ret = ioctl(dev->fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	free(data);
+	free(irq_set);
 
 	if (ret) {
 		log_debug("failed to disable device irq\n");
@@ -95,6 +110,11 @@ int vfio_disable_irq(struct vfio_device *dev)
 	}
 
 	return 0;
+}
+
+int vfio_disable_irq_all(struct vfio_device *dev)
+{
+	return vfio_disable_irq(dev, 0, dev->irq_info.count);
 }
 
 int vfio_reset(struct vfio_device *dev)

@@ -28,6 +28,7 @@ struct vfio_device {
  * vfio_set_irq - Enable IRQs through eventfds
  * @dev: &struct vfio_device
  * @eventfds: array of eventfds
+ * @start: start irq number
  * @count: number of eventfds
  *
  * Enable interrupts for a range of vectors. See linux/vfio.h for documentation
@@ -35,17 +36,29 @@ struct vfio_device {
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int vfio_set_irq(struct vfio_device *dev, int *eventfds, int count);
+int vfio_set_irq(struct vfio_device *dev, int *eventfds, int start, int count);
 
 /**
- * vfio_disable_irq - Disable all IRQs
+ * vfio_disable_irq - Disable number of count IRQs from given start
+ * @dev: &struct vfio_device
+ * @start: start irq number
+ * @count: number of eventfds
+ *
+ * Disable given number of IRQs from start.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
+ */
+int vfio_disable_irq(struct vfio_device *dev, int start, int count);
+
+/**
+ * vfio_disable_irq_all - Disable all IRQs
  * @dev: &struct vfio_device
  *
  * Disable all IRQs.
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int vfio_disable_irq(struct vfio_device *dev);
+int vfio_disable_irq_all(struct vfio_device *dev);
 
 /**
  * vfio_reset - reset vfio device

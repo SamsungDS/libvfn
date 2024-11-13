@@ -6,6 +6,11 @@
 
 ``nvme_pci_init`` has been deprecated and will generate a warning.
 
+``vfio_set_irq`` has been updated to receive ``start`` parameter to specify
+start irq number to enable.  With this, ``vfio_disable_irq`` has been updated
+to disable specific one or more irqs from ``start`` for ``count`` of irqs.
+``vfio_disable_irq_all`` has been newly added to disable all the enabled irqs.
+
 ## v5.2.0: (unreleased)
 
 ### ``nvme_ctrl``
