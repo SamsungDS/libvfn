@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 	if (efd < 0)
 		err(1, "failed to create eventfd");
 
-	if (vfio_set_irq(&ctrl.pci.dev, efds, 2))
+	if (vfio_set_irq(&ctrl.pci.dev, efds, 0, 2))
 		err(1, "failed to set irqs");
 
 	if (nvme_create_ioqpair(&ctrl, 1, 64, 1, 0x0))
