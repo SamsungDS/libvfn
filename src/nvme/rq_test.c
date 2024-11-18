@@ -52,7 +52,7 @@ int main(void)
 	struct nvme_sgld *sglds;
 	struct iovec iov[8];
 
-	plan_tests(96);
+	plan_tests(126);
 
 	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
@@ -62,35 +62,35 @@ int main(void)
 
 	/* test 512b aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x200);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x200) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 4k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x1000);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x1000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 4k + 8 aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x1008);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 8k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2000);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 8k + 16 aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2010);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2010) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -99,7 +99,7 @@ int main(void)
 
 	/* test 12k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3000);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -108,7 +108,7 @@ int main(void)
 
 	/* test 12k + 24 aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3018);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3018) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -117,35 +117,35 @@ int main(void)
 
 	/* test 512b unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x200);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x200) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 512 unaligned (nasty) */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x200);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x200) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 4k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1000);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 4k + 8 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1008);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 4k + 8 unaligned (nasty) */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x1008);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -154,14 +154,14 @@ int main(void)
 
 	/* test 4k - 4 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1000 - 4);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1000 - 4) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 8k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -170,7 +170,7 @@ int main(void)
 
 	/* test 8k + 16 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2010);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2010) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -179,14 +179,14 @@ int main(void)
 
 	/* test 8k - 4 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000 - 4);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000 - 4) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 12k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3000);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -196,7 +196,7 @@ int main(void)
 
 	/* test 12k + 24 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3018);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3018) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -207,7 +207,7 @@ int main(void)
 	/* test 512b aligned 1-iovec */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x200};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
@@ -215,7 +215,7 @@ int main(void)
 	/* test 4k aligned 1-iovec */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
@@ -223,7 +223,7 @@ int main(void)
 	/* test 8k aligned 1-iovec */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x2000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
@@ -231,7 +231,7 @@ int main(void)
 	/* test 12k aligned 1-iovec */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x3000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -242,7 +242,7 @@ int main(void)
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x1000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
@@ -252,7 +252,7 @@ int main(void)
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x1000};
 	iov[2] = (struct iovec) {.iov_base = (void *)0x1002000, .iov_len = 0x1000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -263,7 +263,7 @@ int main(void)
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x2000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -273,7 +273,7 @@ int main(void)
 	/* test 512b unaligned 1-iovec */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x200};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
@@ -281,7 +281,7 @@ int main(void)
 	/* test 4k unaligned 1-iovec */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x1000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
@@ -290,7 +290,7 @@ int main(void)
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x1000 - 4};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x1000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
@@ -300,7 +300,7 @@ int main(void)
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x1000 - 4};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x1000};
 	iov[2] = (struct iovec) {.iov_base = (void *)0x1002000, .iov_len = 0x1000};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
@@ -311,7 +311,7 @@ int main(void)
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
 	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x1000 - 4};
-	nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2);
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);

@@ -64,7 +64,7 @@ static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t 
 
 	if (prpcount > max_prps) {
 		errno = EINVAL;
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -125,7 +125,7 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
 
 	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
-	if (!prpcount) {
+	if (prpcount < 0) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -145,7 +145,7 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
-	int prpcount;
+	int ret, prpcount;
 	uint64_t iova;
 
 	if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
@@ -155,6 +155,8 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 
 	/* map the first segment */
 	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
+	if (prpcount < 0)
+		goto invalid;
 
 	/*
 	 * At this point, one of three conditions must hold:
@@ -188,11 +190,17 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 			goto invalid;
 		}
 
-		prpcount += __map_prp_append(&prplist[prpcount - 1], iova, len, max_prps - prpcount,
-					     pageshift);
+		ret = __map_prp_append(&prplist[prpcount - 1], iova, len, max_prps - prpcount,
+				       pageshift);
+		if (ret < 0)
+			goto invalid;
+
+		prpcount += ret;
 	}
 
 	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(rq->page.iova), prplist[0], prpcount);
+
+	return 0;
 
 invalid:
 	errno = EINVAL;
