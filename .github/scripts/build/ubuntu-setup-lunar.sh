@@ -1,1 +1,0 @@
-ubuntu-setup-mantic.sh

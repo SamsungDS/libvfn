@@ -145,12 +145,12 @@ jobs:
           - {os: 'debian', ver: 'bullseye'}
           - {os: 'debian', ver: 'buster'}
           - {os: 'fedora', ver: 'rawhide'}
-          - {os: 'fedora', ver: '38'}
-          - {os: 'fedora', ver: '37'}
+          - {os: 'fedora', ver: '41'}
+          - {os: 'fedora', ver: '40'}
           - {os: 'rockylinux', ver: '8'}
           - {os: 'rockylinux', ver: '9'}
-          - {os: 'ubuntu', ver: 'mantic'}
-          - {os: 'ubuntu', ver: 'lunar'}
+          - {os: 'ubuntu', ver: 'oracular'}
+          - {os: 'ubuntu', ver: 'noble'}
           - {os: 'ubuntu', ver: 'jammy'}
           - {os: 'ubuntu', ver: 'focal'}
 
