@@ -110,7 +110,7 @@ int nvme_del_ctrl(struct nvme_ctrl *ctrl)
 	return 0;
 }
 
-static int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
+int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	uint64_t cap;
@@ -181,8 +181,8 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	memset(cq, 0x0, sizeof(*cq));
 }
 
-static int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
-			     struct nvme_cq *cq, unsigned long UNUSED flags)
+int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
+		      struct nvme_cq *cq, unsigned long UNUSED flags)
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
 	uint64_t cap;
