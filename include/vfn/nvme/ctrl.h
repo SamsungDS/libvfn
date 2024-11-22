@@ -228,6 +228,38 @@ int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags);
 int nvme_enable(struct nvme_ctrl *ctrl);
 
 /**
+ * nvme_configure_sq - Initialize a SQ instance whose qid is given @qid
+ * @ctrl: See &struct nvme_ctrl
+ * @qid: Queue identifier
+ * @qsize: Queue size
+ * @cq: Associated I/O Completion Queue
+ * @flags: See &enum nvme_create_iosq_flags
+ *
+ * Initialize SQ instance attributes and doorbell.  It does not issue Create
+ * I/O SQ admin commmand to controller, instead it just initializes SQ
+ * instance.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
+		      struct nvme_cq *cq, unsigned long flags);
+
+/**
+ * nvme_configure_cq - Initialize a CQ instance whose qid is given @qid
+ * @ctrl: See &struct nvme_ctrl
+ * @qid: Queue identifier
+ * @qsize: Queue size
+ * @vector: interrupt vector
+ *
+ * Initialize CQ instance attributes and doorbell.  It does not issue Create
+ * I/O CQ admin commmand to controller, instead it just initializes CQ
+ * instance.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
+
+/**
  * nvme_create_iocq - Create an I/O Completion Queue
  * @ctrl: Controller reference
  * @qid: Queue identifier
