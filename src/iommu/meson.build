@@ -1,6 +1,7 @@
 iommu_sources = files(
   'context.c',
   'dma.c',
+  'dmabuf.c',
   'vfio.c',
 )
 
