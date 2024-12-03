@@ -219,8 +219,8 @@ jobs:
       fail-fast: false
       matrix:
         machine:
-          - {os: "fedora", image: "38", kernel: "default"}
-          - {os: "fedora", image: "rawhide", kernel: "iommufd"}
+          - {os: "fedora", image: "41", kernel: "default"}
+          - {os: "fedora", image: "41", kernel: "iommufd"}
 
     runs-on: [self-hosted, kvm]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || ((github.event_name == 'pull_request') && contains(github.event.pull_request.labels.*.name, 'approved'))
