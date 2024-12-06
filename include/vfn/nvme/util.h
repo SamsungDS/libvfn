@@ -110,4 +110,55 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, v
 int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t len,
 	       struct nvme_cqe *cqe_copy);
 
+/**
+ * nvme_map_prp - Set up the Physical Region Pages in the data pointer of the
+ *                command from a buffer that is contiguous in iova mapped
+ *                memory.
+ * @ctrl: &struct nvme_ctrl
+ * @prplist: The first PRP list page address
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iova: I/O Virtual Address
+ * @len: Length of buffer
+ *
+ * Map a buffer of size @len into the command payload.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd,
+		 uint64_t iova, size_t len);
+
+/**
+ * nvme_mapv_prp - Set up the Physical Region Pages in the data pointer of
+ *                 the command from an iovec.
+ * @ctrl: &struct nvme_ctrl
+ * @prplist: The first PRP list page address
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iovecs
+ * @niov: number of iovec in @iovec
+ *
+ * Map the memory contained in @iov into the request PRPs. The first entry is
+ * allowed to be unaligned, but the entry MUST end on a page boundary. All
+ * subsequent entries MUST be page aligned.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
+		  union nvme_cmd *cmd, struct iovec *iov, int niov);
+
+/**
+ * nvme_mapv_sgl - Set up a Scatter/Gather List in the data pointer of the
+ *                 command from an iovec.
+ * @ctrl: &struct nvme_ctrl
+ * @seglist: SGL segment list page address
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iovecs
+ * @niov: number of iovec in @iovec
+ *
+ * Map the memory contained in @iov into the request SGL.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seglist, union nvme_cmd *cmd,
+		  struct iovec *iov, int niov);
+
 #endif /* LIBVFN_NVME_UTIL_H */
