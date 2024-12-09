@@ -106,6 +106,16 @@ struct nvme_ctrl {
 	 * See &enum nvme_ctrl_feature_flags.
 	 */
 	unsigned long flags;
+
+	/**
+	 * @cmb: CMB atribute initialized by nvme_configure_cmb()
+	 */
+	struct {
+		int bar;
+		void *vaddr;
+		uint64_t iova;
+		size_t size;
+	} cmb;
 };
 
 /**
@@ -339,5 +349,29 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq);
  * @sq: Associated I/O Submission Queue
  */
 void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq);
+
+/**
+ * nvme_configure_cmb - Initialize Controller Memory Buffer
+ * @ctrl: See &struct nvme_ctrl
+ *
+ * Enable CMB in the @ctrl and initialize @ctrl->cmb members.  It first maps
+ * a vaddr to the CMB BAR memory region and map it to IOMMU.  And the mapped
+ * iova will be configured as CBA(CMB Base Address) to the register.
+ *
+ * **Note** iommufd-backed IOMMU does not support BAR vaddr to be mapped to the
+ * IOMMU page table.  vfio-backed IOMMU should be used.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int nvme_configure_cmb(struct nvme_ctrl *ctrl);
+
+/**
+ * nvme_discard_cmb - Disable CMB and discard cmb instance @ctrl->cmb
+ * @ctrl: See &struct nvme_ctrl
+ *
+ * Disable CMB in the @ctrl and discard @ctrl->cmb members.
+ */
+void nvme_discard_cmb(struct nvme_ctrl *ctrl);
 
 #endif /* LIBVFN_NVME_CTRL_H */

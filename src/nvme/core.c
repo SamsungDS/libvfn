@@ -735,6 +735,8 @@ void nvme_close(struct nvme_ctrl *ctrl)
 
 	free(ctrl->cq);
 
+	nvme_discard_cmb(ctrl);
+
 	if (ctrl->dbbuf.doorbells) {
 		struct iommu_ctx *ctx = __iommu_ctx(ctrl);
 		size_t len;
@@ -754,4 +756,78 @@ void nvme_close(struct nvme_ctrl *ctrl)
 	vfio_pci_close(&ctrl->pci);
 
 	memset(ctrl, 0x0, sizeof(*ctrl));
+}
+
+int nvme_configure_cmb(struct nvme_ctrl *ctrl)
+{
+	uint64_t cmbmsc;
+	uint32_t cmbloc;
+	uint32_t cmbsz;
+	uint64_t cap;
+	int bar;
+
+	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	if (!NVME_FIELD_GET(cap, CAP_CMBS))
+		return 0;
+
+	cmbmsc = NVME_FIELD_SET(1, CMBMSC_CRE);
+	mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(cmbmsc));
+
+	/*
+	 * Read CMBMSC back here to guarantee that the previous CMBMSC write to
+	 * be flushed before reading CMBLOC register avoiding reordering.
+	 */
+	cmbmsc = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CMBMSC));
+	cmbloc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBLOC));
+	bar = NVME_FIELD_GET(cmbloc, CMBLOC_BIR);
+
+	cmbsz = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBSZ));
+
+	ctrl->cmb.bar = bar;
+	ctrl->cmb.size = nvme_cmb_size(cmbsz);
+	ctrl->cmb.vaddr = vfio_pci_map_bar(&ctrl->pci, bar,
+			ctrl->cmb.size, NVME_FIELD_GET(cmbloc, CMBLOC_OFST),
+			PROT_READ | PROT_WRITE);
+	if (!ctrl->cmb.vaddr) {
+		log_debug("could not map bar %d vaddr\n", bar);
+		return -1;
+	}
+
+	if (iommu_map_vaddr(__iommu_ctx(ctrl), ctrl->cmb.vaddr,
+				ctrl->cmb.size, &ctrl->cmb.iova, 0x0)) {
+		log_debug("could not map bar vaddr to iommu\n");
+		return -1;
+	}
+
+	cmbmsc |= NVME_FIELD_SET(1, CMBMSC_CMSE) |
+		(ctrl->cmb.iova >> NVME_CMBMSC_CBA_SHIFT) <<
+		NVME_CMBMSC_CBA_SHIFT;
+
+	mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(cmbmsc));
+
+	log_debug("cmb initialized (bar=%d, iova=%#lx, vaddr=%p, size=%#lx)\n",
+			bar, ctrl->cmb.iova, ctrl->cmb.vaddr, ctrl->cmb.size);
+	return 0;
+}
+
+void nvme_discard_cmb(struct nvme_ctrl *ctrl)
+{
+	uint64_t cmbmsc;
+	uint32_t cmbloc;
+
+	if (!ctrl->cmb.vaddr)
+		return;
+
+	cmbmsc = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CMBMSC));
+	cmbmsc &= ~(1 << NVME_CMBMSC_CMSE_SHIFT);
+	cmbmsc &= ~(NVME_CMBMSC_CBA_MASK << NVME_CMBMSC_CBA_SHIFT);
+	mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(cmbmsc));
+
+	iommu_unmap_vaddr(__iommu_ctx(ctrl), ctrl->cmb.vaddr, NULL);
+
+	cmbloc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBLOC));
+	vfio_pci_unmap_bar(&ctrl->pci, ctrl->cmb.bar, ctrl->cmb.vaddr,
+			ctrl->cmb.size, NVME_FIELD_GET(cmbloc, CMBLOC_OFST));
+
+	memset(&ctrl->cmb, 0, sizeof(ctrl->cmb));
 }
