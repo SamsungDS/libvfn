@@ -27,6 +27,9 @@ enum nvme_reg {
 	NVME_REG_AQA			= 0x0024,
 	NVME_REG_ASQ			= 0x0028,
 	NVME_REG_ACQ			= 0x0030,
+	NVME_REG_CMBLOC			= 0x0038,
+	NVME_REG_CMBSZ			= 0x003c,
+	NVME_REG_CMBMSC			= 0x0050,
 };
 
 enum nvme_cap {
@@ -42,6 +45,8 @@ enum nvme_cap {
 	NVME_CAP_MPSMIN_MASK		= 0xf,
 	NVME_CAP_MPSMAX_SHIFT		= 52,
 	NVME_CAP_MPSMAX_MASK		= 0xf,
+	NVME_CAP_CMBS_SHIFT		= 57,
+	NVME_CAP_CMBS_MASK		= 0x1,
 
 	NVME_CAP_CSS_CSI		= 1 << 6,
 	NVME_CAP_CSS_ADMIN		= 1 << 7,
@@ -74,6 +79,42 @@ enum nvme_csts {
 	NVME_CSTS_RDY_SHIFT		= 0,
 	NVME_CSTS_RDY_MASK		= 0x1,
 };
+
+enum nvme_cmbloc {
+	NVME_CMBLOC_BIR_SHIFT		= 0,
+	NVME_CMBLOC_BIR_MASK		= 0x7,
+	NVME_CMBLOC_OFST_SHIFT		= 12,
+	NVME_CMBLOC_OFST_MASK		= 0xfffff,
+};
+
+enum nvme_cmbsz {
+	NVME_CMBSZ_SZU_SHIFT	= 8,
+	NVME_CMBSZ_SZU_MASK	= 0xf,
+	NVME_CMBSZ_SZ_SHIFT	= 12,
+	NVME_CMBSZ_SZ_MASK	= 0xfffff,
+	NVME_CMBSZ_SZU_4K	= 0,
+	NVME_CMBSZ_SZU_64K	= 1,
+	NVME_CMBSZ_SZU_1M	= 2,
+	NVME_CMBSZ_SZU_16M	= 3,
+	NVME_CMBSZ_SZU_256M	= 4,
+	NVME_CMBSZ_SZU_4G	= 5,
+	NVME_CMBSZ_SZU_64G	= 6,
+};
+
+static inline __u64 nvme_cmb_size(__u32 cmbsz)
+{
+	return ((__u64)NVME_FIELD_GET(cmbsz, CMBSZ_SZ)) *
+		(1ULL << (12 + 4 * NVME_FIELD_GET(cmbsz, CMBSZ_SZU)));
+}
+
+enum nvme_cmbmsc {
+	NVME_CMBMSC_CRE_SHIFT		= 0,
+	NVME_CMBMSC_CRE_MASK		= 0x1,
+	NVME_CMBMSC_CMSE_SHIFT		= 1,
+	NVME_CMBMSC_CMSE_MASK		= 0x1,
+	NVME_CMBMSC_CBA_SHIFT		= 12,
+};
+static const __u64 NVME_CMBMSC_CBA_MASK = 0xfffffffffffffull;
 
 enum nvme_feat {
 	NVME_FEAT_NRQS_NSQR_SHIFT	= 0,

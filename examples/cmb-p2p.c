@@ -54,70 +54,11 @@ static const struct nvme_ctrl_opts ctrl_opts = {
 	.ncqr = 63,
 };
 
-static inline off_t bar_offset(int bar)
-{
-	return PCI_BASE_ADDRESS_0 + bar * 4;
-}
-
-static void *nvme_configure_cmb(struct nvme_ctrl *ctrl, uint64_t *iova, size_t *len)
-{
-	uint64_t cap, szu, ofst, hwaddr;
-	uint32_t cmbloc, cmbsz, v32;
-	int bir;
-	void *cmb;
-
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
-
-	if (NVME_GET(cap, CAP_CMBS))
-		mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(0x1));
-
-	cmbsz = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBSZ));
-	cmbloc = le32_to_cpu(mmio_read32(ctrl->regs + NVME_REG_CMBLOC));
-
-	szu = 1 << (12 + 4 * NVME_GET(cmbsz, CMBSZ_SZU));
-	*len = szu * NVME_GET(cmbsz, CMBSZ_SZ);
-
-	ofst = szu * NVME_GET(cmbloc, CMBLOC_OFST);
-	bir = NVME_GET(cmbloc, CMBLOC_BIR);
-
-	printf("cmb bir is %d\n", bir);
-
-	if (vfio_pci_read_config(&ctrl->pci, &v32, sizeof(v32), bar_offset(bir)) < 0)
-		err(1, "failed to read pci config");
-
-	hwaddr = v32 & PCI_BASE_ADDRESS_MEM_MASK;
-
-	if (vfio_pci_read_config(&ctrl->pci, &v32, sizeof(v32), bar_offset(bir + 1)) < 0)
-		err(1, "failed to read pci config");
-
-	hwaddr |= (uint64_t)v32 << 32;
-
-	printf("cmb bar is mapped at physical address 0x%lx\n", hwaddr);
-
-	/* map the cmb */
-	cmb = vfio_pci_map_bar(&ctrl->pci, bir, *len, ofst, PROT_READ | PROT_WRITE);
-	if (!cmb)
-		err(1, "failed to map cmb");
-
-	if (iommu_map_vaddr(__iommu_ctx(ctrl), cmb, *len, iova, 0x0))
-		err(1, "failed to map cmb in iommu (try VFN_IOMMU_FORCE_VFIO=1)");
-
-	if (NVME_GET(cap, CAP_CMBS)) {
-		printf("assigned cmb base address is 0x%lx\n", *iova);
-
-		/* set the base address and enable the memory space */
-		mmio_hl_write64(ctrl->regs + NVME_REG_CMBMSC, cpu_to_le64(*iova | 0x3));
-	}
-
-	return cmb;
-}
-
 int main(int argc, char **argv)
 {
 	struct nvme_ctrl src = {}, dst = {};
 
 	uint64_t iova;
-	size_t len;
 	void *cmb;
 
 	union nvme_cmd cmd = {};
@@ -141,7 +82,11 @@ int main(int argc, char **argv)
 	if (nvme_init(&dst, bdfs[1], &ctrl_opts))
 		err(1, "failed to initialize destination nvme controller");
 
-	cmb = nvme_configure_cmb(&dst, &iova, &len);
+	if (nvme_configure_cmb(&dst))
+		err(1, "failed to initialize cmb to destination nvme controller");
+
+	iova = dst.cmb.iova;
+	cmb = dst.cmb.vaddr;
 
 	cmd.identify = (struct nvme_cmd_identify) {
 		.opcode = nvme_admin_identify,
