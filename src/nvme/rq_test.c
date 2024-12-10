@@ -56,7 +56,7 @@ int main(void)
 
 	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
-	rq.page.iova = 0x8000000;
+	rq.page.iova = (uint64_t)rq.page.vaddr;
 	prplist = rq.page.vaddr;
 	sglds = rq.page.vaddr;
 
@@ -93,7 +93,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2010) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -102,7 +102,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -111,7 +111,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3018) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -148,7 +148,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -164,7 +164,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -173,7 +173,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2010) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -189,7 +189,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 	ok1(le64_to_cpu(prplist[2]) == 0x1003000);
@@ -199,7 +199,7 @@ int main(void)
 	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3018) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 	ok1(le64_to_cpu(prplist[2]) == 0x1003000);
@@ -234,7 +234,7 @@ int main(void)
 	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 1) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -255,7 +255,7 @@ int main(void)
 	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -266,7 +266,7 @@ int main(void)
 	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
@@ -303,7 +303,7 @@ int main(void)
 	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 3) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
-	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x8000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
 	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
 	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
