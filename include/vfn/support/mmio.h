@@ -69,7 +69,7 @@ static inline void mmio_write32(void *addr, leint32_t v)
 static inline void mmio_lh_write64(void *addr, leint64_t v)
 {
 	mmio_write32(addr, (leint32_t __force)v);
-	mmio_write32(addr + 4, (leint32_t __force)(v >> 32));
+	mmio_write32(addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
 }
 
 /**
