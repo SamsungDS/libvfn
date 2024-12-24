@@ -40,7 +40,7 @@ struct iova_mapping {
 };
 
 struct iova_map {
-	pthread_mutex_t lock;
+	pthread_rwlock_t lock;
 	struct skiplist list;
 };
 

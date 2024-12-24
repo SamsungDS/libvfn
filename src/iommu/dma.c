@@ -41,7 +41,7 @@ static int iova_cmp(const void *vaddr, const struct skiplist_node *n)
 static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t iova,
 			unsigned long flags)
 {
-	__autolock(&map->lock);
+	__autowrlock(&map->lock);
 
 	struct skiplist_node *update[SKIPLIST_LEVELS] = {};
 	struct iova_mapping *m;
@@ -70,7 +70,7 @@ static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t 
 
 static void iova_map_remove(struct iova_map *map, void *vaddr)
 {
-	__autolock(&map->lock);
+	__autowrlock(&map->lock);
 
 	struct skiplist_node *n, *update[SKIPLIST_LEVELS] = {};
 
@@ -83,7 +83,7 @@ static void iova_map_remove(struct iova_map *map, void *vaddr)
 
 static struct iova_mapping *iova_map_find(struct iova_map *map, void *vaddr)
 {
-	__autolock(&map->lock);
+	__autordlock(&map->lock);
 
 	return container_of_or_null(skiplist_find(&map->list, vaddr, iova_cmp, NULL),
 				    struct iova_mapping, list);
@@ -91,7 +91,7 @@ static struct iova_mapping *iova_map_find(struct iova_map *map, void *vaddr)
 
 static void iova_map_clear_with(struct iova_map *map, skiplist_iter_fn fn, void *opaque)
 {
-	__autolock(&map->lock);
+	__autowrlock(&map->lock);
 
 	skiplist_clear_with(&map->list, fn, opaque);
 }

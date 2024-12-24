@@ -84,5 +84,5 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	pthread_mutex_init(&ctx->lock, NULL);
 
 	skiplist_init(&ctx->map.list);
-	pthread_mutex_init(&ctx->map.lock, NULL);
+	pthread_rwlock_init(&ctx->map.lock, NULL);
 }
