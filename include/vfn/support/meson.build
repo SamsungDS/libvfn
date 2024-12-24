@@ -10,6 +10,7 @@ vfn_support_headers = files([
   'mem.h',
   'mmio.h',
   'mutex.h',
+  'rwlock.h',
   'ticks.h',
   'timer.h',
 ])
