@@ -48,7 +48,6 @@ struct iommu_ctx {
 	struct iova_map map;
 	struct iommu_ctx_ops ops;
 
-	pthread_mutex_t lock;
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
 };
