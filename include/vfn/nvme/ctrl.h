@@ -215,6 +215,49 @@ int nvme_del_ctrl(struct nvme_ctrl *ctrl);
  */
 int nvme_reset(struct nvme_ctrl *ctrl);
 
+/**
+ * nvme_configure_sq - Configure a submission queue instance
+ * @ctrl: Controller to configure a submission queue instance
+ * @qid: Queue identifier
+ * @qsize: Queue size
+ * @cq: Corresponding completion queue instance
+ * @flags: Submission queue configuration flags
+ *
+ * Create a submission queue instance for the given @qid.  This allocates
+ * memory spaces for the submission queue and map it to IOMMU page table for
+ * the DMA operations.
+ *
+ * The newly created SQ instance can be referred by ``ctrl->sq[qid]``.
+ *
+ * **Note** This helper does not issue a Create I/O Submission Queue admin
+ * command to the admin submission queue.  Caller should prepare command
+ * submission with the instance to be configured.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
+		      struct nvme_cq *cq, unsigned long flags);
+
+/**
+ * nvme_configure_cq - Configure a completion queue instance
+ * @ctrl: Controller to configure a completion queue instance
+ * @qid: Queue identifier
+ * @qsize: Queue size
+ * @vector: interrupt vector
+ *
+ * Create a completion queue instance for the given @qid.  This allocates
+ * memory spaces for the completion queue and map it to IOMMU page table for
+ * the DMA operations.
+ *
+ * The newly created CQ instance can be referred by ``ctrl->cq[qid]``.
+ *
+ * **Note** This helper does not issue a Create I/O Completion Queue admin
+ * command to the admin submission queue.  Caller should prepare command
+ * submission with the instance to be configured.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
 
 /**
  * nvme_configure_adminq - Configure admin sq/cq pair
