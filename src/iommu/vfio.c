@@ -343,6 +343,9 @@ close_fd:
 static int vfio_get_group_fd(struct vfio_container *vfio,
 		struct vfio_group *group)
 {
+	if (group->fd != -1)
+		return group->fd;
+
 	group->fd = vfio_group_open(group->path);
 	if (group->fd < 0) {
 		log_debug("failed to open vfio group\n");
@@ -399,6 +402,8 @@ static struct vfio_group *__vfio_get_group(struct vfio_container *vfio,
 		if (!group->path) {
 			group->path = strdup(path);
 			group->nr_devs = 0;
+			group->fd = -1;
+
 			return group;
 		}
 	}
