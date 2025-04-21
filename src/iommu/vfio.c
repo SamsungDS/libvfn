@@ -477,6 +477,7 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 
 	if (atomic_dec_fetch(&group->nr_devs) == 0) {
 		close(group->fd);
+		group->fd = -1;
 
 		/*
 		 * Kernel vfio driver will remove IOMMU driver and data from
