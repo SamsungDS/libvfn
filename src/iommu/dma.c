@@ -212,3 +212,22 @@ int iommu_iova_range_to_string(struct iommu_iova_range *r, char **str)
 {
 	return asprintf(str, "[0x%llx; 0x%llx]", r->start, r->last);
 }
+
+ssize_t iommu_translate_iova(struct iommu_ctx *ctx, uint64_t iova, void **vaddr)
+{
+	__autordlock(&ctx->map.lock);
+
+	struct skiplist_node *n, *next;
+	struct iova_mapping *m;
+
+	skiplist_for_each_safe(&ctx->map.list, n, next, 0) {
+		m = container_of_var(n, m, list);
+		if (iova >= m->iova && iova < m->iova + m->len) {
+			*vaddr = m->vaddr + (iova - m->iova);
+			return m->len - (iova - m->iova);
+		}
+	}
+
+	errno = EINVAL;
+	return -1;
+}
