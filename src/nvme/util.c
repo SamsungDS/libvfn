@@ -263,7 +263,7 @@ int nvme_vm_assign_max_flexible(struct nvme_ctrl *ctrl, uint16_t scid)
 	union nvme_cmd cmd;
 	struct nvme_primary_ctrl_cap *cap;
 
-	__autovar_s(iommu_dmabuf) buffer;
+	__autovar_s(iommu_dmabuf) buffer = {};
 
 	if (iommu_get_dmabuf(ctx, &buffer, NVME_IDENTIFY_DATA_SIZE, IOMMU_MAP_EPHEMERAL))
 		return -1;
@@ -444,7 +444,7 @@ int nvme_get_vf_cntlid(struct nvme_ctrl *ctrl, int vfnum, uint16_t *cntlid)
 	union nvme_cmd cmd;
 	struct nvme_secondary_ctrl_list *list;
 
-	__autovar_s(iommu_dmabuf) buffer;
+	__autovar_s(iommu_dmabuf) buffer = {};
 
 	if (iommu_get_dmabuf(ctx, &buffer, NVME_IDENTIFY_DATA_SIZE, IOMMU_MAP_EPHEMERAL))
 		return -1;

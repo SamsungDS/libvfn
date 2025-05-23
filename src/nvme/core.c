@@ -608,7 +608,7 @@ int nvme_init(struct nvme_ctrl *ctrl, const char *bdf, const struct nvme_ctrl_op
 	uint16_t oacs;
 	uint32_t sgls;
 
-	__autovar_s(iommu_dmabuf) buffer;
+	__autovar_s(iommu_dmabuf) buffer = {};
 
 	union nvme_cmd cmd = {};
 	struct nvme_cqe cqe;
