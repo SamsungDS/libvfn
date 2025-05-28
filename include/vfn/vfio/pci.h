@@ -64,6 +64,19 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf);
 int vfio_pci_close(struct vfio_pci_device *pci);
 
 /**
+ * vfio_pci_get_irq_info - get &struct vfio_irq_info
+ * @pci: &struct vfio_pci_device
+ * @irq: &struct vfio_irq_info to copy to
+ *
+ * Caller should provide @irq instance with @irq->argsz filled with the number
+ * of bytes to copy from the @pci instance.
+ *
+ * Return: On success, returns ``0``. On error, returns ``-1`` and sets
+ * ``errno``.
+ */
+int vfio_pci_get_irq_info(struct vfio_pci_device *pci, struct vfio_irq_info *irq);
+
+/**
  * vfio_pci_map_bar - map a vfio device region into virtual memory
  * @pci: &struct vfio_pci_device
  * @idx: the vfio region index to map
