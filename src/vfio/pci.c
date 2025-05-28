@@ -109,6 +109,19 @@ static int vfio_pci_init_irq(struct vfio_pci_device *pci)
 	return 0;
 }
 
+int vfio_pci_get_irq_info(struct vfio_pci_device *pci, struct vfio_irq_info *irq)
+{
+	int size = irq->argsz ? irq->argsz : sizeof(struct vfio_irq_info);
+
+	if (!pci->bdf) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	memcpy(irq, &pci->dev.irq_info, size);
+	return 0;
+}
+
 void *vfio_pci_map_bar(struct vfio_pci_device *pci, int idx, size_t len, uint64_t offset,
 		       int prot)
 {
