@@ -26,7 +26,6 @@ struct driverkit_bar_info {
 struct driverkit_pci_device {
 	IOPCIDevice *dev;
 	struct iommu_ctx ctx;
-	OSDictionary *iommu_mappings;
 	const char *bdf;
 
 	struct driverkit_bar_info bar_region_info[6];

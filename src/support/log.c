@@ -22,7 +22,13 @@ struct log_state __log_state;
 
 static void __attribute__((constructor)) init_log_level(void)
 {
-	char *buf = getenv("LOGV");
+#ifdef __APPLE__
+	goto set_default;
+	// dummy to satisfy compiler with getenv
+	#define getenv
+#endif
+	char *buf;
+	buf = getenv("LOGV");
 	char *endptr;
 	long v;
 

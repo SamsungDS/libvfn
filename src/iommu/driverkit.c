@@ -100,11 +100,6 @@ static int driverkit_dma_unmap(struct iommu_ctx *ctx, struct iova_mapping *m)
 	return 0;
 }
 
-static int driverkit_dma_unmap_all(struct iommu_ctx *ctx)
-{
-	return 0;
-}
-
 static const struct iommu_ctx_ops driverkit_ops = {
 	.get_device_fd = NULL,
 
@@ -113,7 +108,6 @@ static const struct iommu_ctx_ops driverkit_ops = {
 
 	.dma_map = driverkit_dma_map,
 	.dma_unmap = driverkit_dma_unmap,
-	.dma_unmap_all = driverkit_dma_unmap_all,
 };
 
 void iommu_ctx_init(struct iommu_ctx *ctx)

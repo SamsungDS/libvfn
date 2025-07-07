@@ -189,11 +189,7 @@ int nvme_rq_spin(struct nvme_rq *rq, struct nvme_cqe *cqe_copy)
 	}
 
 	if (!nvme_cqe_ok(&cqe)) {
-		#ifdef __APPLE__
-		if (false) {
-		#else
 		if (logv(LOG_DEBUG)) {
-		#endif
 			uint16_t status = le16_to_cpu(cqe.sfp) >> 1;
 
 			log_debug("cqe status 0x%" PRIx16 "\n", (uint16_t)(status & 0x7ff));
