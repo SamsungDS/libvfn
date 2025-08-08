@@ -77,6 +77,69 @@ struct skiplist_node *skiplist_find(struct skiplist *list, const void *key,
 	return NULL;
 }
 
+struct skiplist_node *skiplist_find_le(struct skiplist *list, const void *key,
+				       int (*cmp)(const void *key, const struct skiplist_node *n),
+				       struct skiplist_node **path)
+{
+	struct skiplist_node *next, *p = &list->sentinel;
+	int k = list->height;
+
+	do {
+		next = skiplist_next(list, p, k);
+
+		/* advance at this level as long as key is larger than or equal to next */
+		while (next && cmp(key, next) >= 0) {
+			p = next;
+			next = skiplist_next(list, p, k);
+		}
+
+		/*
+		 * Our key is smaller than next or we reached the end of the
+		 * list.
+		 *
+		 * Drop down a level, and record the node where we did so.
+		 */
+		if (path)
+			path[k] = p;
+	} while (--k >= 0);
+
+	/* return the node that is less than or equal to key */
+	if (p != &list->sentinel)
+		return p;
+
+	return NULL;
+}
+
+struct skiplist_node *skiplist_find_ge(struct skiplist *list, const void *key,
+				       int (*cmp)(const void *key, const struct skiplist_node *n),
+				       struct skiplist_node **path)
+{
+	struct skiplist_node *next, *p = &list->sentinel;
+	int k = list->height;
+
+	do {
+		next = skiplist_next(list, p, k);
+
+		/* advance at this level as long as key is larger than next */
+		while (next && cmp(key, next) > 0) {
+			p = next;
+			next = skiplist_next(list, p, k);
+		}
+
+		/*
+		 * Our key is smaller than or equal to next or we reached the end of the
+		 * list.
+		 *
+		 * Drop down a level, and record the node where we did so.
+		 */
+		if (path)
+			path[k] = p;
+	} while (--k >= 0);
+
+	/* return the node that is greater than or equal to key */
+	return next;
+}
+
 static inline int __skiplist_random_level(void)
 {
 	int k = 0;
