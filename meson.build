@@ -66,14 +66,31 @@ config_host = configuration_data()
 config_host.set('NVME_AQ_QSIZE', get_option('aq_qsize'),
   description: 'admin command queue size')
 
-config_host.set('HAVE_VFIO_DEVICE_BIND_IOMMUFD',
-  cc.has_header_symbol('linux/vfio.h', 'VFIO_DEVICE_BIND_IOMMUFD',
-    include_directories: linux_headers),
-  description: 'if VFIO_DEVICE_BIND_IOMMUFD is defined in linux/vfio.h')
+# Check iommufd option
+iommufd_opt = get_option('iommufd')
+has_iommufd = false
 
-config_host.set('HAVE_IOMMU_FAULT_QUEUE_ALLOC',
-  cc.has_header_symbol('linux/iommufd.h', 'IOMMU_FAULT_QUEUE_ALLOC',
-    include_directories: linux_headers),
+if not iommufd_opt.disabled()
+  has_vfio_bind = cc.has_header_symbol('linux/vfio.h', 'VFIO_DEVICE_BIND_IOMMUFD',
+    include_directories: linux_headers)
+
+  if has_vfio_bind
+    has_iommufd = true
+  elif iommufd_opt.enabled()
+    error('iommufd enabled but VFIO_DEVICE_BIND_IOMMUFD not found in linux/vfio.h')
+  endif
+endif
+
+config_host.set('HAVE_VFIO_DEVICE_BIND_IOMMUFD', has_iommufd,
+  description: 'if iommufd support is enabled')
+
+has_fault_queue = false
+if has_iommufd
+  has_fault_queue = cc.has_header_symbol('linux/iommufd.h', 'IOMMU_FAULT_QUEUE_ALLOC',
+    include_directories: linux_headers)
+endif
+
+config_host.set('HAVE_IOMMU_FAULT_QUEUE_ALLOC', has_fault_queue,
   description: 'if IOMMU_FAULT_QUEUE_ALLOC is defined in linux/iommufd.h')
 
 subdir('internal')
@@ -180,6 +197,6 @@ summary_info = {}
 summary_info += {'Debugging': get_option('debug')}
 summary_info += {'Documentation': build_docs}
 summary_info += {'Profiling': get_option('profiling')}
-summary_info += {'iommufd': config_host.get('HAVE_VFIO_DEVICE_BIND_IOMMUFD')}
-summary_info += {'iommufd fault queue': config_host.get('HAVE_IOMMU_FAULT_QUEUE_ALLOC')}
+summary_info += {'iommufd': has_iommufd}
+summary_info += {'iommufd fault queue': has_fault_queue}
 summary(summary_info, bool_yn: true, section: 'Features')

@@ -15,3 +15,6 @@ option('trace-events-file', type: 'string', value: 'config/trace-events-all',
 
 option('linux-headers', type: 'string', value: '',
   description: 'path to linux headers')
+
+option('iommufd', type: 'feature', value: 'auto',
+  description: 'enable/disable iommufd support')
