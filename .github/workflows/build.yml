@@ -140,10 +140,10 @@ jobs:
           - {os: 'almalinux', ver: '9'}
           - {os: 'alpine', ver: 'latest'}
           - {os: 'archlinux', ver: 'latest'}
+          - {os: 'debian', ver: 'forky'}
           - {os: 'debian', ver: 'trixie'}
           - {os: 'debian', ver: 'bookworm'}
           - {os: 'debian', ver: 'bullseye'}
-          - {os: 'debian', ver: 'buster'}
           - {os: 'fedora', ver: 'rawhide'}
           - {os: 'fedora', ver: '41'}
           - {os: 'fedora', ver: '40'}
