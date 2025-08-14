@@ -54,6 +54,12 @@ void skiplist_clear_with(struct skiplist *list, skiplist_iter_fn fn, void *opaqu
 struct skiplist_node *skiplist_find(struct skiplist *list, const void *key,
 				    int (*cmp)(const void *key, const struct skiplist_node *n),
 				    struct skiplist_node **path);
+struct skiplist_node *skiplist_find_le(struct skiplist *list, const void *key,
+				       int (*cmp)(const void *key, const struct skiplist_node *n),
+				       struct skiplist_node **path);
+struct skiplist_node *skiplist_find_ge(struct skiplist *list, const void *key,
+				       int (*cmp)(const void *key, const struct skiplist_node *n),
+				       struct skiplist_node **path);
 void skiplist_link(struct skiplist *list, struct skiplist_node *n,
 		   struct skiplist_node *update[SKIPLIST_LEVELS]);
 void skiplist_erase(struct skiplist *list, struct skiplist_node *n,
