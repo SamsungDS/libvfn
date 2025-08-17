@@ -98,7 +98,7 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 	struct skiplist_node *n, *update[SKIPLIST_LEVELS];
 	unsigned int v;
 
-	plan_tests(21);
+	plan_tests(31);
 
 	skiplist_init(&list);
 
@@ -151,6 +151,48 @@ int main(int argc UNUSED, char *argv[] UNUSED)
 	skiplist_erase(&list, n, update);
 
 	ok(skiplist_find(&list, &v, __cmp, NULL) == NULL, "find 0 not ok");
+
+	/* Test skiplist_find_le - list currently has [1, 2, 3] */
+	v = 2;
+	n = skiplist_find_le(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 2, "find_le(2) returns 2");
+
+	v = 4;
+	n = skiplist_find_le(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 3, "find_le(4) returns 3");
+
+	v = 0;
+	n = skiplist_find_le(&list, &v, __cmp, NULL);
+	ok(n == NULL, "find_le(0) returns NULL (no values <= 0)");
+
+	v = 1;
+	n = skiplist_find_le(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 1, "find_le(1) returns 1");
+
+	v = 3;
+	n = skiplist_find_le(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 3, "find_le(3) returns 3");
+
+	/* Test skiplist_find_ge - list currently has [1, 2, 3] */
+	v = 2;
+	n = skiplist_find_ge(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 2, "find_ge(2) returns 2");
+
+	v = 0;
+	n = skiplist_find_ge(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 1, "find_ge(0) returns 1");
+
+	v = 4;
+	n = skiplist_find_ge(&list, &v, __cmp, NULL);
+	ok(n == NULL, "find_ge(4) returns NULL (no values >= 4)");
+
+	v = 1;
+	n = skiplist_find_ge(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 1, "find_ge(1) returns 1");
+
+	v = 3;
+	n = skiplist_find_ge(&list, &v, __cmp, NULL);
+	ok(n && skiplist_entry(n, struct entry, list)->v == 3, "find_ge(3) returns 3");
 
 	return exit_status();
 }
