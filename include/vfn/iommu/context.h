@@ -23,4 +23,12 @@
  */
 struct iommu_ctx *iommu_get_context(const char *name);
 
+/**
+ * iommu_ctx_is_iommufd - Check whether the given @ctx is binded to iommufd
+ * @ctx: &struct iommu_ctx
+ *
+ * Return: ``true`` if @ctx is binded to iommufd, otherwise ``false``.
+ */
+bool iommu_ctx_is_iommufd(struct iommu_ctx *ctx);
+
 #endif /* LIBVFN_IOMMU_CONTEXT_H */

@@ -78,6 +78,7 @@ struct vfio_container {
 };
 
 static struct vfio_container vfio_default_container = {
+	.ctx.iommufd = false,
 	.fd = -1,
 	.name = "default",
 	.nr_groups = 0,
