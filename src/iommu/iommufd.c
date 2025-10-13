@@ -28,19 +28,26 @@
 #include <sys/mman.h>
 
 #include <linux/types.h>
-#include <linux/iommufd.h>
 #include <linux/vfio.h>
+
+#ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
+#include <linux/iommufd.h>
+#endif
 
 #include "vfn/trace.h"
 #include "vfn/support.h"
 #include "vfn/pci.h"
 #include "vfn/iommu.h"
+
+#include "context.h"
+
+#ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
+
 #include "vfn/iommu/iommufd.h"
 
 #include "ccan/list/list.h"
 #include "ccan/compiler/compiler.h"
 
-#include "context.h"
 #include "trace.h"
 
 static int __iommufd = -1;
@@ -419,3 +426,22 @@ struct iommu_ctx *iommufd_get_default_iommu_context(void)
 
 	return &iommufd_default_ioas.ctx;
 }
+
+#else /* !HAVE_VFIO_DEVICE_BIND_IOMMUFD */
+
+struct iommu_ctx *iommufd_get_iommu_context(const char *name)
+{
+	(void)name;
+	log_debug("iommufd support not compiled in (missing kernel headers)\n");
+	errno = ENOTSUP;
+	return NULL;
+}
+
+struct iommu_ctx *iommufd_get_default_iommu_context(void)
+{
+	log_debug("iommufd support not compiled in (missing kernel headers)\n");
+	errno = ENOTSUP;
+	return NULL;
+}
+
+#endif /* HAVE_VFIO_DEVICE_BIND_IOMMUFD */
