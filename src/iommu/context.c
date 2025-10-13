@@ -81,3 +81,8 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	skiplist_init(&ctx->map.list);
 	pthread_rwlock_init(&ctx->map.lock, NULL);
 }
+
+bool iommu_ctx_is_iommufd(struct iommu_ctx *ctx)
+{
+	return ctx->iommufd;
+}

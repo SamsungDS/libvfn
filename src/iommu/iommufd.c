@@ -72,6 +72,7 @@ struct iommu_ioas {
 };
 
 static struct iommu_ioas iommufd_default_ioas = {
+	.ctx.iommufd = true,
 	.name = "default",
 };
 

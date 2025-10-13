@@ -50,6 +50,8 @@ struct iommu_ctx {
 
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
+
+	bool iommufd;
 };
 
 struct iommu_ctx *iommu_get_default_context(void);
