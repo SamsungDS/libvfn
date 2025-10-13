@@ -57,10 +57,8 @@ struct iommu_ctx *iommu_get_default_context(void);
 struct iommu_ctx *vfio_get_default_iommu_context(void);
 struct iommu_ctx *vfio_get_iommu_context(const char *name);
 
-#ifdef HAVE_VFIO_DEVICE_BIND_IOMMUFD
 struct iommu_ctx *iommufd_get_default_iommu_context(void);
 struct iommu_ctx *iommufd_get_iommu_context(const char *name);
-#endif
 
 void iommu_ctx_init(struct iommu_ctx *ctx);
 int iommu_iova_range_to_string(struct iommu_iova_range *range, char **str);
