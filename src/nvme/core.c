@@ -109,9 +109,9 @@ int nvme_del_ctrl(struct nvme_ctrl *ctrl)
 	return 0;
 }
 
-int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
+static int __nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize,
+                               int vector, struct nvme_cq *cq)
 {
-	struct nvme_cq *cq = &ctrl->cq[qid];
 	uint64_t cap;
 	uint8_t dstrd;
 
@@ -147,10 +147,40 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 		cq->dbbuf.eventidx = cqhdbl(ctrl->dbbuf.eventidxs.vaddr, qid, dstrd);
 	}
 
-	if (iommu_get_dmabuf(__iommu_ctx(ctrl), &cq->mem, qsize << NVME_CQES, 0x0))
+	return 0;
+}
+
+int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
+{
+	struct nvme_cq *cq = &ctrl->cq[qid];
+
+	if (__nvme_configure_cq(ctrl, qid, qsize, vector, cq) < 0)
 		return -1;
 
+	if (iommu_get_dmabuf(__iommu_ctx(ctrl), &cq->mem, qsize << NVME_CQES, 0x0)) {
+		return -1;
+	}
+
 	return 0;
+}
+
+int nvme_configure_cq_mem(struct nvme_ctrl *ctrl, int qid, int qsize, int vector,
+                          struct iommu_dmabuf *mem)
+{
+	struct nvme_cq *cq = &ctrl->cq[qid];
+
+	if (!mem) {
+		errno = EINVAL;
+		return -1;
+        }
+
+        if (__nvme_configure_cq(ctrl, qid, qsize, vector, cq) < 0)
+                return -1;
+
+        cq->flags |= NVME_Q_MEM_PREALLOCATED;
+        cq->mem = *mem;
+
+        return 0;
 }
 
 void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
@@ -158,7 +188,8 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	if (!cq->mem.vaddr)
 		return;
 
-	iommu_put_dmabuf(&cq->mem);
+	if (!(cq->flags & NVME_Q_MEM_PREALLOCATED))
+		iommu_put_dmabuf(&cq->mem);
 
 	if (ctrl->dbbuf.doorbells.vaddr) {
 		__STORE_PTR(uint32_t *, cq->dbbuf.doorbell, 0);
@@ -168,10 +199,9 @@ void nvme_discard_cq(struct nvme_ctrl *ctrl, struct nvme_cq *cq)
 	memset(cq, 0x0, sizeof(*cq));
 }
 
-int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
-		      struct nvme_cq *cq, unsigned long UNUSED flags)
+static int __nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
+                               struct nvme_cq *cq, struct nvme_sq *sq)
 {
-	struct nvme_sq *sq = &ctrl->sq[qid];
 	uint64_t cap;
 	uint8_t dstrd;
 	size_t pagesize;
@@ -233,12 +263,42 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 			rq->rq_next = &sq->rqs[i - 1];
 	}
 
+	return 0;
+}
+
+int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
+		      struct nvme_cq *cq, unsigned long UNUSED flags)
+{
+	struct nvme_sq *sq = &ctrl->sq[qid];
+
+	if (__nvme_configure_sq(ctrl, qid, qsize, cq, sq) < 0)
+		return -1;
+
 	if (iommu_get_dmabuf(__iommu_ctx(ctrl), &sq->mem, qsize << NVME_SQES, 0x0)) {
 		free(sq->rqs);
 		iommu_put_dmabuf(&sq->pages);
-
 		return -1;
 	}
+
+	return 0;
+}
+
+int nvme_configure_sq_mem(struct nvme_ctrl *ctrl, int qid, int qsize,
+			  struct nvme_cq *cq, unsigned long UNUSED flags,
+			  struct iommu_dmabuf *mem)
+{
+	struct nvme_sq *sq = &ctrl->sq[qid];
+
+	if (!mem) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (__nvme_configure_sq(ctrl, qid, qsize, cq, sq) < 0)
+		return -1;
+
+	sq->flags |= NVME_Q_MEM_PREALLOCATED;
+	sq->mem = *mem;
 
 	return 0;
 }
@@ -248,7 +308,8 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	if (!sq->mem.vaddr)
 		return;
 
-	iommu_put_dmabuf(&sq->mem);
+	if (!(sq->flags & NVME_Q_MEM_PREALLOCATED))
+		iommu_put_dmabuf(&sq->mem);
 
 	free(sq->rqs);
 
@@ -262,22 +323,12 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	memset(sq, 0x0, sizeof(*sq));
 }
 
-int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
+static int __nvme_configure_adminq(struct nvme_ctrl *ctrl)
 {
 	int aqa;
 
 	struct nvme_cq *cq = &ctrl->cq[NVME_AQ];
 	struct nvme_sq *sq = &ctrl->sq[NVME_AQ];
-
-	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE, 0)) {
-		log_debug("failed to configure admin completion queue\n");
-		return -1;
-	}
-
-	if (nvme_configure_sq(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags)) {
-		log_debug("failed to configure admin submission queue\n");
-		goto discard_cq;
-	}
 
 	ctrl->adminq.cq = cq;
 	ctrl->adminq.sq = sq;
@@ -289,6 +340,48 @@ int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 	mmio_hl_write64(ctrl->regs + NVME_REG_ASQ, cpu_to_le64(sq->mem.iova));
 	mmio_hl_write64(ctrl->regs + NVME_REG_ACQ, cpu_to_le64(cq->mem.iova));
 
+	return 0;
+}
+
+int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
+{
+	struct nvme_cq *cq = &ctrl->cq[NVME_AQ];
+
+	if (nvme_configure_cq(ctrl, NVME_AQ, NVME_AQ_QSIZE, 0)) {
+		log_debug("failed to configure admin completion queue\n");
+		return -1;
+	}
+
+	if (nvme_configure_sq(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags)) {
+		log_debug("failed to configure admin submission queue\n");
+		goto discard_cq;
+	}
+
+	__nvme_configure_adminq(ctrl);
+	return 0;
+
+discard_cq:
+	nvme_discard_cq(ctrl, cq);
+	return -1;
+}
+
+
+int nvme_configure_adminq_mem(struct nvme_ctrl *ctrl, unsigned long sq_flags,
+			      struct iommu_dmabuf *cq_mem, struct iommu_dmabuf *sq_mem)
+{
+	struct nvme_cq *cq = &ctrl->cq[NVME_AQ];
+
+	if (nvme_configure_cq_mem(ctrl, NVME_AQ, NVME_AQ_QSIZE, 0, cq_mem)) {
+		log_debug("failed to configure admin completion queue\n");
+		return -1;
+	}
+
+	if (nvme_configure_sq_mem(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags, sq_mem)) {
+		log_debug("failed to configure admin submission queue\n");
+		goto discard_cq;
+	}
+
+	__nvme_configure_adminq(ctrl);
 	return 0;
 
 discard_cq:

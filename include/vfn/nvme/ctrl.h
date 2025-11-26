@@ -239,6 +239,30 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 		      struct nvme_cq *cq, unsigned long flags);
 
 /**
+ * nvme_configure_sq_mem - Configure a submission queue instance with pre-allocated buffer
+ * @ctrl: Controller to configure a submission queue instance
+ * @qid: Queue identifier
+ * @qsize: Queue size
+ * @cq: Corresponding completion queue instance
+ * @flags: Submission queue configuration flags
+ * @mem: Memory of the pre-allocated queue buffer
+ *
+ * Create a submission queue instance for the given @qid.  This does *not*
+ * allocate memory — it assumes the buffer is already allocated and mapped.
+ *
+ * The newly created SQ instance can be referred by ``ctrl->sq[qid]``.
+ *
+ * **Note** This helper does not issue a Create I/O Submission Queue admin
+ * command to the admin submission queue.  Caller should prepare command
+ * submission with the instance to be configured.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_sq_mem(struct nvme_ctrl *ctrl, int qid, int qsize,
+                          struct nvme_cq *cq, unsigned long flags,
+                          struct iommu_dmabuf *mem);
+
+/**
  * nvme_configure_cq - Configure a completion queue instance
  * @ctrl: Controller to configure a completion queue instance
  * @qid: Queue identifier
@@ -259,6 +283,30 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
  */
 int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
 
+
+/**
+ * nvme_configure_cq_mem - Configure a completion queue instance with pre-allocated memory.
+ * @ctrl: Controller to configure a completion queue instance
+ * @qid: Queue identifier
+ * @qsize: Queue size
+ * @vector: interrupt vector
+ * @mem: Memory of the pre-allocated queue buffer
+ *
+ * Create a completion queue instance for the given @qid.  This does *not*
+ * allocate memory — it assumes the buffer is already allocated and mapped.
+ *
+ * The newly created CQ instance can be referred by ``ctrl->cq[qid]``.
+ *
+ * **Note** This helper does not issue a Create I/O Completion Queue admin
+ * command to the admin submission queue.  Caller should prepare command
+ * submission with the instance to be configured.
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_cq_mem(struct nvme_ctrl *ctrl, int qid, int qsize, int vector,
+                          struct iommu_dmabuf *mem);
+
+
 /**
  * nvme_configure_adminq - Configure admin sq/cq pair
  * @ctrl: Controller to setup adminq
@@ -269,6 +317,22 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
  * Return: ``0`` on success, ``-1`` on error and set ``errno``.
  */
 int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags);
+
+
+/**
+ * nvme_configure_adminq_mem - Configure admin sq/cq pair with pre-allocated memory.
+ * @ctrl: Controller to setup adminq
+ * @sq_flags: SQ flags to configure (XXX: yet to implement)
+ * @cq_mem: CQ Memory Region of pre-allocated buffer
+ * @sq_mem: SQ Memory Region of the pre-allocated buffer
+ *
+ * Configure admin sq/cq address and size to controller registers
+ *
+ * Return: ``0`` on success, ``-1`` on error and set ``errno``.
+ */
+int nvme_configure_adminq_mem(struct nvme_ctrl *ctrl, unsigned long sq_flags,
+                              struct iommu_dmabuf *cq_mem, struct iommu_dmabuf *sq_mem);
+
 
 /**
  * nvme_enable - Enable controller

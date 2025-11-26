@@ -23,6 +23,16 @@ struct nvme_dbbuf {
 };
 
 /**
+ * enum nvme_q_flags - NVMe queue flags
+ * @NVME_Q_MEM_PREALLOCATED: Indicates that the SQ/CQ memory region was allocated
+ *                           externally. If set, the memory will not be freed
+ *                           during instance teardown.
+ */
+ enum nvme_q_flags {
+	 NVME_Q_MEM_PREALLOCATED   = (1 << 0),
+ };
+
+/**
  * struct nvme_cq - Completion Queue
  */
 struct nvme_cq {
@@ -41,6 +51,7 @@ struct nvme_cq {
 
 	int phase;
 	int vector;
+	uint32_t flags;
 };
 
 /**
@@ -66,6 +77,7 @@ struct nvme_sq {
 	/* rq stack */
 	struct nvme_rq *rqs;
 	struct nvme_rq *rq_top;
+	uint32_t flags;
 };
 
 /**
