@@ -40,7 +40,7 @@ static inline leint64_t mmio_lh_read64(void *addr)
 	/* memory-mapped register */
 	lo = *(const volatile uint32_t __force *)addr;
 	/* memory-mapped register */
-	hi = *(const volatile uint32_t __force *)(addr + 4);
+	hi = *(const volatile uint32_t __force *)((char *)addr + 4);
 
 	return (leint64_t __force)(((uint64_t)hi << 32) | lo);
 }
@@ -69,7 +69,7 @@ static inline void mmio_write32(void *addr, leint32_t v)
 static inline void mmio_lh_write64(void *addr, leint64_t v)
 {
 	mmio_write32(addr, (leint32_t __force)v);
-	mmio_write32(addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
+	mmio_write32((char *)addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
 }
 
 /**
@@ -82,7 +82,7 @@ static inline void mmio_lh_write64(void *addr, leint64_t v)
  */
 static inline void mmio_hl_write64(void *addr, leint64_t v)
 {
-	mmio_write32(addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
+	mmio_write32((char *)addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
 	mmio_write32(addr, (leint32_t __force)v);
 }
 
