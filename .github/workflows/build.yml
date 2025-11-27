@@ -136,7 +136,7 @@ jobs:
       fail-fast: false
       matrix:
         container:
-          - {os: 'almalinux', ver: '8'}
+          - {os: 'almalinux', ver: '10'}
           - {os: 'almalinux', ver: '9'}
           - {os: 'alpine', ver: 'latest'}
           - {os: 'archlinux', ver: 'latest'}
@@ -145,11 +145,11 @@ jobs:
           - {os: 'debian', ver: 'bookworm'}
           - {os: 'debian', ver: 'bullseye'}
           - {os: 'fedora', ver: 'rawhide'}
-          - {os: 'fedora', ver: '41'}
-          - {os: 'fedora', ver: '40'}
-          - {os: 'rockylinux', ver: '8'}
+          - {os: 'fedora', ver: '43'}
+          - {os: 'fedora', ver: '42'}
           - {os: 'rockylinux', ver: '9'}
-          - {os: 'ubuntu', ver: 'oracular'}
+          - {os: 'rockylinux', ver: '8'}
+          - {os: 'ubuntu', ver: 'questing'}
           - {os: 'ubuntu', ver: 'noble'}
           - {os: 'ubuntu', ver: 'jammy'}
           - {os: 'ubuntu', ver: 'focal'}
