@@ -19,7 +19,6 @@ foreach name, sources : include_bundle_tests
 endforeach
 
 cpp = executable('cpp', [tests_sources, 'cpp.cc'],
-  cpp_args: ['-Wno-pointer-arith'],
   link_with: [vfn_lib],
   include_directories: [vfn_inc],
 )
