@@ -38,12 +38,21 @@ static inline bool __iommufd_is_available(void)
 	return true;
 }
 
+static inline bool __force_vfio(void)
+{
+#ifdef VFN_IOMMU_FORCE_VFIO
+	return true;
+#else
+	return getenv("VFN_IOMMU_FORCE_VFIO");
+#endif
+}
+
 struct iommu_ctx *iommu_get_default_context(void)
 {
 	if (!__iommufd_is_available())
 		goto fallback;
 
-	if (getenv("VFN_IOMMU_FORCE_VFIO"))
+	if (__force_vfio())
 		goto fallback;
 
 	return iommufd_get_default_iommu_context();
@@ -57,7 +66,7 @@ struct iommu_ctx *iommu_get_context(const char *name)
 	if (!__iommufd_is_available())
 		goto fallback;
 
-	if (getenv("VFN_IOMMU_FORCE_VFIO"))
+	if (__force_vfio())
 		goto fallback;
 
 	return iommufd_get_iommu_context(name);
