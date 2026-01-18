@@ -79,6 +79,8 @@ if not iommufd_opt.disabled()
   elif iommufd_opt.enabled()
     error('iommufd enabled but VFIO_DEVICE_BIND_IOMMUFD not found in linux/vfio.h')
   endif
+else
+  add_project_arguments(['-DVFN_IOMMU_FORCE_VFIO'], language: 'c')
 endif
 
 config_host.set('HAVE_VFIO_DEVICE_BIND_IOMMUFD', has_iommufd,
