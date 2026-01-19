@@ -616,13 +616,8 @@ put_doorbells:
 	return -1;
 }
 
-static int nvme_init_pci(struct nvme_ctrl *ctrl, const char *bdf,
-			 const struct nvme_ctrl_opts *opts)
+static int nvme_init_pci(struct nvme_ctrl *ctrl, const char *bdf)
 {
-	uint8_t dstrd;
-	uint64_t cap;
-	size_t size;
-
 	if (vfio_pci_open(&ctrl->pci, bdf) < 0 && errno != EALREADY)
 		return -1;
 
@@ -644,11 +639,7 @@ static int nvme_init_pci(struct nvme_ctrl *ctrl, const char *bdf,
 	}
 
 	/* map queue doorbells */
-	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
-	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
-	size = 2 * (max_t(int, opts->nsqr, opts->ncqr) + 2) * (4 << dstrd);
-
-	ctrl->doorbells = vfio_pci_map_bar(&ctrl->pci, 0, size, 0x1000, PROT_WRITE);
+	ctrl->doorbells = vfio_pci_map_bar(&ctrl->pci, 0, SIZE_MAX, 0x1000, PROT_WRITE);
 	if (!ctrl->doorbells) {
 		log_debug("could not map doorbells\n");
 		return -1;
@@ -659,7 +650,7 @@ static int nvme_init_pci(struct nvme_ctrl *ctrl, const char *bdf,
 
 int nvme_pci_init(struct nvme_ctrl *ctrl, const char *bdf)
 {
-	return nvme_init_pci(ctrl, bdf, &nvme_ctrl_opts_default);
+	return nvme_init_pci(ctrl, bdf);
 }
 
 int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
@@ -668,13 +659,13 @@ int nvme_ctrl_init(struct nvme_ctrl *ctrl, const char *bdf,
 	uint8_t mpsmin, mpsmax;
 	uint64_t cap;
 
+	if (nvme_init_pci(ctrl, bdf))
+		return -1;
+
 	if (opts)
 		memcpy(&ctrl->opts, opts, sizeof(*opts));
 	else
 		memcpy(&ctrl->opts, &nvme_ctrl_opts_default, sizeof(*opts));
-
-	if (nvme_init_pci(ctrl, bdf, &ctrl->opts))
-		return -1;
 
 	if ((ctrl->pci.classcode & 0xff) == 0x03)
 		ctrl->flags = NVME_CTRL_F_ADMINISTRATIVE;
@@ -805,7 +796,7 @@ void nvme_close(struct nvme_ctrl *ctrl)
 	}
 
 	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->regs, 0x1000, 0);
-	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->doorbells, 0x1000, 0x1000);
+	vfio_pci_unmap_bar(&ctrl->pci, 0, ctrl->doorbells, SIZE_MAX, 0x1000);
 
 	vfio_pci_close(&ctrl->pci);
 
