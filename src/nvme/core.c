@@ -323,7 +323,7 @@ void nvme_discard_sq(struct nvme_ctrl *ctrl, struct nvme_sq *sq)
 	memset(sq, 0x0, sizeof(*sq));
 }
 
-static int __nvme_configure_adminq(struct nvme_ctrl *ctrl)
+static int __nvme_configure_adminq(struct nvme_ctrl *ctrl, int sq_size, int cq_size)
 {
 	int aqa;
 
@@ -333,8 +333,8 @@ static int __nvme_configure_adminq(struct nvme_ctrl *ctrl)
 	ctrl->adminq.cq = cq;
 	ctrl->adminq.sq = sq;
 
-	aqa = NVME_AQ_QSIZE - 1;
-	aqa |= aqa << 16;
+	aqa = (sq_size - 1);
+	aqa |= (cq_size - 1) << 16;
 
 	mmio_write32(ctrl->regs + NVME_REG_AQA, cpu_to_le32(aqa));
 	mmio_hl_write64(ctrl->regs + NVME_REG_ASQ, cpu_to_le64(sq->mem.iova));
@@ -357,7 +357,7 @@ int nvme_configure_adminq(struct nvme_ctrl *ctrl, unsigned long sq_flags)
 		goto discard_cq;
 	}
 
-	__nvme_configure_adminq(ctrl);
+	__nvme_configure_adminq(ctrl, NVME_AQ_QSIZE, NVME_AQ_QSIZE);
 	return 0;
 
 discard_cq:
@@ -370,18 +370,20 @@ int nvme_configure_adminq_mem(struct nvme_ctrl *ctrl, unsigned long sq_flags,
 			      struct iommu_dmabuf *cq_mem, struct iommu_dmabuf *sq_mem)
 {
 	struct nvme_cq *cq = &ctrl->cq[NVME_AQ];
+	int cq_size = (int)(cq_mem->len / sizeof(struct nvme_cqe));
+	int sq_size = (int)(sq_mem->len / sizeof(union nvme_cmd));
 
-	if (nvme_configure_cq_mem(ctrl, NVME_AQ, NVME_AQ_QSIZE, 0, cq_mem)) {
+	if (nvme_configure_cq_mem(ctrl, NVME_AQ, cq_size, 0, cq_mem)) {
 		log_debug("failed to configure admin completion queue\n");
 		return -1;
 	}
 
-	if (nvme_configure_sq_mem(ctrl, NVME_AQ, NVME_AQ_QSIZE, cq, sq_flags, sq_mem)) {
+	if (nvme_configure_sq_mem(ctrl, NVME_AQ, sq_size, cq, sq_flags, sq_mem)) {
 		log_debug("failed to configure admin submission queue\n");
 		goto discard_cq;
 	}
 
-	__nvme_configure_adminq(ctrl);
+	__nvme_configure_adminq(ctrl, sq_size, cq_size);
 	return 0;
 
 discard_cq:

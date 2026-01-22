@@ -249,6 +249,7 @@ int nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
  *
  * Create a submission queue instance for the given @qid.  This does *not*
  * allocate memory — it assumes the buffer is already allocated and mapped.
+ * The size of the queue will be decided by @mem->len / sizeof(sqe).
  *
  * The newly created SQ instance can be referred by ``ctrl->sq[qid]``.
  *
@@ -294,6 +295,7 @@ int nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
  *
  * Create a completion queue instance for the given @qid.  This does *not*
  * allocate memory — it assumes the buffer is already allocated and mapped.
+ * The size of the queue will be decided by @mem->len / sizeof(cqe).
  *
  * The newly created CQ instance can be referred by ``ctrl->cq[qid]``.
  *
