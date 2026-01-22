@@ -618,6 +618,9 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 
 			vfio->fd = -1;
 			vfio->iommu_set = false;
+			vfio->next = 0;
+			vfio->next_ephemeral = 0;
+			vfio->nephemerals = 0;
 		}
 	}
 
