@@ -65,7 +65,7 @@ struct vfio_container {
 
 	int fd;
 
-#define VFN_MAX_VFIO_GROUPS 64
+#define VFN_MAX_VFIO_GROUPS 256
 	struct vfio_group groups[VFN_MAX_VFIO_GROUPS];
 	int nr_groups;
 
