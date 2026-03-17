@@ -142,7 +142,8 @@ int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t le
 	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
 }
 
-static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
+static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist,
+				  uint64_t prplist_iova, uint64_t iova, size_t len,
 				  int pageshift)
 {
 	size_t pagesize = 1 << pageshift;
@@ -150,6 +151,9 @@ static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t 
 
 	/* number of prps required to map the buffer */
 	int prpcount = 1;
+
+	uint64_t __prplist_iova = prplist_iova;
+	leint64_t *__prplist = prplist;
 
 	*prp1 = cpu_to_le64(iova);
 
@@ -164,17 +168,23 @@ static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t 
 		/* align down to simplify loop below */
 		iova = ALIGN_DOWN(iova, pagesize);
 
-	if (prpcount > max_prps) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	/*
 	 * Map the remaining parts of the buffer into prp2/prplist. iova will be
 	 * aligned from the above, which simplifies this.
 	 */
-	for (int i = 1; i < prpcount; i++)
-		prplist[i - 1] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
+	for (int i = 1, pos = 0; i < prpcount; i++) {
+		if (pos == max_prps - 1) {
+			uint64_t next_iova = __prplist_iova + pagesize;
+			__prplist[pos] = cpu_to_le64(next_iova);
+
+			__prplist = (leint64_t *)((char *)__prplist + pagesize);
+			__prplist_iova = next_iova;
+
+			pos = 0;
+		}
+
+		__prplist[pos++] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
+	}
 
 	/*
 	 * prpcount may be zero if the buffer length was less than the page
@@ -232,7 +242,8 @@ int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd
 		return -1;
 	}
 
-	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
+	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, prplist_iova,
+			iova, len, pageshift);
 	if (prpcount < 0) {
 		errno = EINVAL;
 		return -1;
@@ -314,7 +325,8 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
 	}
 
 	/* map the first segment */
-	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
+	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, prplist_iova,
+			iova, len, pageshift);
 	if (prpcount < 0)
 		goto invalid;
 
