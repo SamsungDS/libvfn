@@ -224,6 +224,35 @@ static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, uint64_
 	return false;
 }
 
+static bool __iova_reserve_align(struct iommu_iova_range *ranges, int nranges,
+				 uint64_t *next, size_t len, size_t align,
+				 uint64_t *iova)
+{
+	uint64_t _next = *next;
+
+	for (int i = 0; i < nranges; i++) {
+		struct iommu_iova_range *r = &ranges[i];
+		uint64_t aligned;
+
+		if (r->last < _next)
+			continue;
+
+		_next = max_t(uint64_t, _next, r->start);
+		aligned = ALIGN_UP(_next, align);
+
+		/* overflow or out of range */
+		if (aligned < _next || aligned > r->last || r->last - aligned + 1 < len)
+			continue;
+
+		*iova = aligned;
+		*next = aligned + len;
+
+		return true;
+	}
+
+	return false;
+}
+
 static int iova_free_range_cmp(const void *iova, const struct skiplist_node *n)
 {
 	const uint64_t *start = iova;
@@ -280,6 +309,74 @@ static bool __iova_get_free(struct skiplist *free_list, size_t len,
 	} else {
 		range->start += len;
 		range->len -= len;
+	}
+
+	return true;
+}
+
+static void __iova_put_free(struct skiplist *free_list, uint64_t start, size_t len);
+
+static bool __iova_get_free_align(struct skiplist *free_list, size_t len,
+				  size_t align, uint64_t *iova)
+{
+	struct vfio_iova_free_range *range, *best_fit = NULL;
+	struct skiplist_node *n, *next;
+	uint64_t best_aligned = 0;
+	size_t best_fit_avail = SIZE_MAX;
+
+	/* Find best-fit free range accounting for alignment padding */
+	skiplist_for_each_safe(free_list, n, next, 0) {
+		uint64_t aligned;
+		size_t pad, avail;
+
+		if (n == NULL || n == &free_list->sentinel)
+			continue;
+		range = container_of_var(n, range, list);
+
+		aligned = ALIGN_UP(range->start, align);
+		if (aligned < range->start)	/* overflow */
+			continue;
+
+		pad = aligned - range->start;
+		if (pad >= range->len)		/* alignment eats the entire range */
+			continue;
+
+		avail = range->len - pad;
+		if (avail < len)
+			continue;
+
+		if (avail < best_fit_avail) {
+			best_fit = range;
+			best_fit_avail = avail;
+			best_aligned = aligned;
+			if (avail == len)
+				break;
+		}
+	}
+
+	if (!best_fit)
+		return false;
+
+	*iova = best_aligned;
+
+	{
+		uint64_t orig_start = best_fit->start;
+		uint64_t orig_end = orig_start + best_fit->len;
+		size_t pad_len = best_aligned - orig_start;
+		struct skiplist_node *update[SKIPLIST_LEVELS] = {};
+
+		skiplist_find(free_list, &orig_start, iova_free_range_cmp, update);
+		skiplist_erase(free_list, &best_fit->list, update);
+		free(best_fit);
+
+		/* Return alignment padding before the allocated region */
+		if (pad_len)
+			__iova_put_free(free_list, orig_start, pad_len);
+
+		/* Return leftover after the allocated region */
+		if (best_aligned + len < orig_end)
+			__iova_put_free(free_list, best_aligned + len,
+					orig_end - (best_aligned + len));
 	}
 
 	return true;
@@ -369,6 +466,37 @@ static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, uint
 		return 0;
 
 enomem:
+	errno = ENOMEM;
+	return -1;
+}
+
+static int vfio_iommu_type1_iova_reserve_align(struct iommu_ctx *ctx, size_t len,
+					       size_t align, uint64_t *iova,
+					       unsigned long flags UNUSED)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+
+	__autolock(&vfio->lock);
+
+	if (!ALIGNED(len, __VFN_PAGESIZE)) {
+		log_debug("len is not page aligned\n");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!align || !ALIGNED(align, __VFN_PAGESIZE)) {
+		log_debug("align is zero or not page aligned\n");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (__iova_get_free_align(&vfio->free_iovas, len, align, iova))
+		return 0;
+
+	if (__iova_reserve_align(ctx->iova_ranges, ctx->nranges, &vfio->next,
+				 len, align, iova))
+		return 0;
+
 	errno = ENOMEM;
 	return -1;
 }
@@ -748,6 +876,7 @@ static const struct iommu_ctx_ops vfio_ops = {
 	.put_device_fd = vfio_put_device_fd,
 
 	.iova_reserve = vfio_iommu_type1_iova_reserve,
+	.iova_reserve_align = vfio_iommu_type1_iova_reserve_align,
 	.iova_put_ephemeral = vfio_iommu_type1_iova_put_ephemeral,
 
 	.dma_map = vfio_iommu_type1_do_dma_map,
