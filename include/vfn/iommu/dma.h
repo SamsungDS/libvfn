@@ -55,6 +55,27 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
 		    unsigned long flags);
 
 /**
+ * iommu_map_vaddr_align - Map a virtual memory address to an aligned I/O virtual address
+ * @ctx: &struct iommu_ctx
+ * @vaddr: virtual memory address to map
+ * @len: number of bytes to map
+ * @align: required IOVA alignment in bytes; must be page-aligned and non-zero
+ * @iova: output parameter for mapped I/O virtual address
+ * @flags: combination of enum iommu_map_flags; %IOMMU_MAP_FIXED_IOVA is not supported
+ *
+ * Like iommu_map_vaddr(), but guarantees that the allocated I/O virtual address
+ * is aligned to @align bytes.  The alignment is satisfied by searching the free
+ * IOVA pool with best-fit semantics and falling back to linear allocation, so
+ * previously freed IOVAs are reused when possible.
+ *
+ * %IOMMU_MAP_FIXED_IOVA and %IOMMU_MAP_EPHEMERAL are not supported.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
+ */
+int iommu_map_vaddr_align(struct iommu_ctx *ctx, void *vaddr, size_t len,
+			  size_t align, uint64_t *iova, unsigned long flags);
+
+/**
  * iommu_unmap_vaddr - Unmap a virtual memory address in the IOMMU
  * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to unmap

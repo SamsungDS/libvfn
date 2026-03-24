@@ -145,6 +145,48 @@ out:
 	return 0;
 }
 
+int iommu_map_vaddr_align(struct iommu_ctx *ctx, void *vaddr, size_t len,
+			  size_t align, uint64_t *iova, unsigned long flags)
+{
+	uint64_t _iova;
+
+	if (flags & IOMMU_MAP_FIXED_IOVA) {
+		log_debug("IOMMU_MAP_FIXED_IOVA is not supported with alignment\n");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (iommu_translate_vaddr(ctx, vaddr, &_iova))
+		goto out;
+
+	if (!ctx->ops.iova_reserve_align) {
+		log_debug("backend does not support aligned iova reservation\n");
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+
+	if (ctx->ops.iova_reserve_align(ctx, len, align, &_iova, flags)) {
+		log_debug("failed to allocate aligned iova\n");
+		return -1;
+	}
+
+	if (ctx->ops.dma_map(ctx, vaddr, len, &_iova, flags)) {
+		log_debug("failed to map dma\n");
+		return -1;
+	}
+
+	if (iova_map_add(&ctx->map, vaddr, len, _iova, flags)) {
+		log_debug("failed to add mapping\n");
+		return -1;
+	}
+
+out:
+	if (iova)
+		*iova = _iova;
+
+	return 0;
+}
+
 int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 {
 	struct iova_mapping *m;
