@@ -47,14 +47,14 @@ static inline void logv_set(int v)
 }
 
 /**
- * __log - Log a message at a given verbosity level
+ * __do_log - Log a message at a given verbosity level
  * @v: verbosity level
  * @fmt: format string
  * @...: format string arguments
  *
  * Log a formatted message to stderr if current verbosity level is at least @v.
  */
-static inline void __attribute__((format(printf, 2, 3))) __log(int v, char const *fmt, ...)
+static inline void __attribute__((format(printf, 2, 3))) __do_log(int v, char const *fmt, ...)
 {
 	va_list va;
 
@@ -71,16 +71,16 @@ static inline void __attribute__((format(printf, 2, 3))) __log(int v, char const
 #endif
 
 #ifdef DEBUG
-# define log_error(fmt, ...) __log(LOG_ERROR, "E %s (%s:%d): " log_fmt(fmt), \
+# define log_error(fmt, ...) __do_log(LOG_ERROR, "E %s (%s:%d): " log_fmt(fmt), \
 				   __func__, __FILE__, __LINE__, ##__VA_ARGS__)
-# define log_info(fmt, ...)  __log(LOG_INFO,  "I %s (%s:%d): " log_fmt(fmt), \
+# define log_info(fmt, ...)  __do_log(LOG_INFO,  "I %s (%s:%d): " log_fmt(fmt), \
 				   __func__, __FILE__, __LINE__, ##__VA_ARGS__)
-# define log_debug(fmt, ...) __log(LOG_DEBUG, "D %s (%s:%d): " log_fmt(fmt), \
+# define log_debug(fmt, ...) __do_log(LOG_DEBUG, "D %s (%s:%d): " log_fmt(fmt), \
 				   __func__, __FILE__, __LINE__, ##__VA_ARGS__)
 #else
-# define log_error(fmt, ...) __log(LOG_ERROR, log_fmt(fmt), ##__VA_ARGS__)
-# define log_info(fmt, ...)  __log(LOG_INFO,  log_fmt(fmt), ##__VA_ARGS__)
-# define log_debug(fmt, ...) __log(LOG_DEBUG, log_fmt(fmt), ##__VA_ARGS__)
+# define log_error(fmt, ...) __do_log(LOG_ERROR, log_fmt(fmt), ##__VA_ARGS__)
+# define log_info(fmt, ...)  __do_log(LOG_INFO,  log_fmt(fmt), ##__VA_ARGS__)
+# define log_debug(fmt, ...) __do_log(LOG_DEBUG, log_fmt(fmt), ##__VA_ARGS__)
 #endif /* DEBUG */
 
 #define log_fatal(fmt, ...) \
