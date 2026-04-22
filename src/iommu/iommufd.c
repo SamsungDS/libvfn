@@ -102,6 +102,12 @@ static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
 		}
 	}
 
+	ioas->ctx.iova_max = (iova_t)0;
+	for (int i = 0; i < ioas->ctx.nranges; i++) {
+		if ((iova_t)ioas->ctx.iova_ranges[i].last > ioas->ctx.iova_max)
+			ioas->ctx.iova_max = (iova_t)ioas->ctx.iova_ranges[i].last;
+	}
+
 	if (logv(LOG_INFO)) {
 		for (int i = 0; i < ioas->ctx.nranges; i++) {
 			struct iommu_iova_range *r = &ioas->ctx.iova_ranges[i];
