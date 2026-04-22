@@ -88,6 +88,8 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	ctx->iova_ranges[0].last = IOVA_MAX_39BITS - 1;
 	ctx->iova_max = IOVA_MAX_39BITS - 1;
 
+	iommu_init_next_same(ctx);
+
 	skiplist_init(&ctx->map.list);
 	pthread_rwlock_init(&ctx->map.lock, NULL);
 }

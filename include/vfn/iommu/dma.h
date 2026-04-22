@@ -105,6 +105,31 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len);
  */
 int iommu_unmap_all(struct iommu_ctx *ctx);
 
+/**
+ * iommu_alloc_same_iova - Allocate a buffer where the iova value is the same
+ *	as the virtual address
+ * @ctx: &struct iommu_ctx
+ * @len: number of bytes to map
+ *
+ * In order to avoid having to look up an iova from a virtual address or
+ * to pass around both a virtual address and iova, allocate memory that
+ * has the same virtual address as the iova.
+ *
+ * Return: pointer to allocated memory or ``NULL`` on failure.
+ */
+void *iommu_alloc_same_iova(struct iommu_ctx *ctx, size_t len);
+
+/**
+ * iommu_free_same_iova - Free memory allocated with iommu_alloc_same_iova()
+ * @ctx: &struct iommu_ctx
+ * @vaddr: virtual memory address to unmap
+ *
+ * Unmap memory allocated with iommu_alloc_same_iova().
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
+ */
+int iommu_free_same_iova(struct iommu_ctx *ctx, void *vaddr);
+
 #ifndef IOMMU_IOAS_IOVA_RANGES
 struct iommu_iova_range {
 	iova_t __attribute__((aligned(8))) start;
