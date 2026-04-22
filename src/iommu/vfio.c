@@ -104,6 +104,12 @@ static void vfio_iommu_type1_get_cap_iova_ranges(struct iommu_ctx *ctx,
 
 	memcpy(ctx->iova_ranges, cap_iova_range->iova_ranges, len);
 
+	ctx->iova_max = (iova_t)0;
+	for (int i = 0; i < ctx->nranges; i++) {
+		if (ctx->iova_ranges[i].last > ctx->iova_max)
+			ctx->iova_max = ctx->iova_ranges[i].last;
+	}
+
 	if (logv(LOG_INFO)) {
 		for (int i = 0; i < ctx->nranges; i++) {
 			struct iommu_iova_range *r = &ctx->iova_ranges[i];

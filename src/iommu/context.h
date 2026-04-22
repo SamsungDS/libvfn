@@ -52,6 +52,7 @@ struct iommu_ctx {
 
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
+	iova_t iova_max;
 
 	bool iommufd;
 };
