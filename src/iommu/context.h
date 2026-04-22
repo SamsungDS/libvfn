@@ -53,6 +53,7 @@ struct iommu_ctx {
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
 	iova_t iova_max;
+	iova_t iova_next_same;
 
 	bool iommufd;
 };
@@ -67,3 +68,28 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 
 void iommu_ctx_init(struct iommu_ctx *ctx);
 int iommu_iova_range_to_string(struct iommu_iova_range *range, char **str);
+
+/*
+ * iommu_alloc_same_iova() mmaps memory at an address equal to the iova, so
+ * the address returned by the same-iova allocator must fit within whatever
+ * virtual address space the kernel/architecture actually gives userspace,
+ * which can be much narrower than what the IOMMU reports as a valid iova
+ * (e.g. AMD-Vi's default page tables grow dynamically and report an aperture
+ * up to UINT64_MAX).
+ *
+ * 47 bits is the size of the default (4-level page table) address space on
+ * x86-64, and is also the default map window on 5-level systems until a
+ * process opts into the larger range, so it is a safe lower bound across
+ * kernel configurations.
+ */
+#define IOMMU_MAX_SAME_IOVA ((iova_t)((1ULL << 47) - 1))
+
+static inline void iommu_init_next_same(struct iommu_ctx *ctx)
+{
+	iova_t max = ctx->iova_max;
+
+	if (max > IOMMU_MAX_SAME_IOVA)
+		max = IOMMU_MAX_SAME_IOVA;
+
+	ctx->iova_next_same = (max / 4) + 1;
+}

@@ -244,6 +244,57 @@ int iommu_unmap_all(struct iommu_ctx *ctx)
 	return 0;
 }
 
+void *iommu_alloc_same_iova(struct iommu_ctx *ctx, size_t len)
+{
+	iova_t iova;
+	void *vaddr;
+
+	len = ALIGN_UP(len, __VFN_PAGESIZE);
+
+retry:
+	if (ctx->iova_next_same + len >= ctx->iova_max ||
+	    ctx->iova_next_same + len >= IOMMU_MAX_SAME_IOVA) {
+		log_debug("same iova space is full\n");
+		errno = ENOMEM;
+		return NULL;
+	}
+
+	vaddr = mmap((void *)ctx->iova_next_same, len, PROT_READ | PROT_WRITE,
+		     MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, 0, 0);
+	if (vaddr == MAP_FAILED) {
+		if (errno == EEXIST) {
+			log_debug("unable to map memory at %08lx, retrying\n", ctx->iova_next_same);
+			ctx->iova_next_same += len;
+			goto retry;
+		}
+
+		log_debug("unable to map memory at %08lx: %m\n", ctx->iova_next_same);
+		return NULL;
+	}
+
+	iova = (iova_t)vaddr;
+
+	if (iommu_map_vaddr(ctx, vaddr, len, &iova, IOMMU_MAP_FIXED_IOVA)) {
+		log_debug("unable to map iova at %p\n", vaddr);
+		munmap(vaddr, len);
+		return NULL;
+	}
+
+	ctx->iova_next_same += len;
+
+	return vaddr;
+}
+
+int iommu_free_same_iova(struct iommu_ctx *ctx, void *vaddr)
+{
+	size_t len;
+
+	if (iommu_unmap_vaddr(ctx, vaddr, &len))
+		return -1;
+
+	return munmap(vaddr, len);
+}
+
 int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **ranges)
 {
 	*ranges = ctx->iova_ranges;
