@@ -43,7 +43,7 @@ static struct opt_table opts[] = {
 	OPT_ENDTABLE,
 };
 
-struct vfio_pci_device pdev;
+static struct vfio_pci_device pdev;
 
 int main(int argc, char **argv)
 {
