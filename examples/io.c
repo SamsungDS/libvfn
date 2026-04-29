@@ -26,7 +26,7 @@
 
 #include "common.h"
 
-static bool op_write, op_read;
+static bool op_write, op_read, op_same_iova;
 static unsigned int op_len;
 static unsigned long nsid;
 static int fd;
@@ -41,6 +41,8 @@ static struct opt_table opts[] = {
 	OPT_WITH_ARG("-N|--nsid", opt_set_ulongval, opt_show_ulongval, &nsid, "namespace identifier"),
 	OPT_WITHOUT_ARG("-w|--write", opt_set_bool, &op_write, "perform a write"),
 	OPT_WITHOUT_ARG("-r|--read", opt_set_bool, &op_read, "perform a read"),
+	OPT_WITHOUT_ARG("-S|--same-iova", opt_set_bool, &op_same_iova,
+			"use memory with the same iova"),
 	OPT_WITH_ARG("-z|--size", opt_set_uintval_bi, opt_show_uintval_bi, &op_len, "size of operation"),
 	OPT_ENDTABLE,
 };
@@ -77,10 +79,19 @@ int main(int argc, char **argv)
 	if (nvme_create_ioqpair(&ctrl, 1, 64, -1, 0x0))
 		err(1, "could not create io queue pair");
 
-	vaddr = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+	if (op_same_iova) {
+		vaddr = iommu_alloc_same_iova(__iommu_ctx(&ctrl), 0x1000);
+		if (!vaddr)
+			err(1, "unable to allocate memory with same address as the iova");
 
-	if (iommu_map_vaddr(__iommu_ctx(&ctrl), vaddr, 0x1000, &iova, 0x0))
-		err(1, "failed to reserve iova");
+		iova = same_iova(vaddr);
+	} else {
+		vaddr = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE,
+			     MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+
+		if (iommu_map_vaddr(__iommu_ctx(&ctrl), vaddr, 0x1000, &iova, 0x0))
+			err(1, "failed to reserve iova");
+	}
 
 	if (op_write) {
 		fprintf(stderr, "reading payload\n");
