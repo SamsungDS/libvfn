@@ -25,6 +25,17 @@ struct iova_vec {
 };
 
 /**
+ * same_iova() - annotate casts where the iova is known to be
+ *               the same as the virtual address
+ * @ptr: pointer to memory created by iommu_alloc_same_iova()
+ *
+ * When iommu_alloc_same_iova() is used the virtual address and iova
+ * are the same. Use this macro to annotate conversions where this is
+ * known to be the case.
+ */
+#define same_iova(ptr) ((iova_t __force)ptr)
+
+/**
  * enum iommu_map_flags - Flags for DMA mapping
  * @IOMMU_MAP_FIXED_IOVA: If cleared, an appropriate IOVA will be allocated
  * @IOMMU_MAP_EPHEMERAL: If set, the mapping is considered temporary
