@@ -39,7 +39,7 @@
 #include "types.h"
 
 int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
-		    uint64_t iova, size_t len)
+		    iova_t iova, size_t len)
 {
 	return nvme_map_prp(ctrl, rq->page.vaddr, cmd, iova, len);
 }

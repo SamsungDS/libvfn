@@ -22,7 +22,7 @@
 
 #define __max_prps 513
 
-bool iommu_translate_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr, uint64_t *iova)
+bool iommu_translate_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr, iova_t *iova)
 {
 	*iova = (uint64_t)vaddr;
 
@@ -30,7 +30,7 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr, uint64_t *
 }
 
 int iommu_map_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr UNUSED, size_t len UNUSED,
-		    uint64_t *iova UNUSED, unsigned long flags UNUSED)
+		    iova_t *iova UNUSED, unsigned long flags UNUSED)
 {
 	return 0;
 }

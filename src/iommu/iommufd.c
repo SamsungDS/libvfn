@@ -224,7 +224,7 @@ static int iommufd_put_device_fd(struct iommu_ctx *ctx UNUSED, const char *bdf)
 	return -1;
 }
 
-static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
+static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
 				 unsigned long flags)
 {
 	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
@@ -272,7 +272,7 @@ static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
 	return 0;
 }
 
-static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, size_t len)
+static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, iova_t iova, size_t len)
 {
 	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
 

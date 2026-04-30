@@ -80,7 +80,7 @@ int nvme_sync(struct nvme_ctrl *ctrl, struct nvme_sq *sq, union nvme_cmd *sqe, v
 {
 	struct nvme_cqe cqe;
 	struct nvme_rq *rq;
-	uint64_t iova;
+	iova_t iova;
 	bool do_unmap = false;
 	int ret = 0;
 
@@ -142,7 +142,7 @@ int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t le
 	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
 }
 
-static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t iova, size_t len,
+static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, iova_t iova, size_t len,
 				  int pageshift)
 {
 	size_t pagesize = 1 << pageshift;
@@ -183,7 +183,7 @@ static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, uint64_t 
 	return clamp_t(int, prpcount, 1, prpcount);
 }
 
-static inline int __map_prp_append(leint64_t *prplist, uint64_t iova, size_t len, int max_prps,
+static inline int __map_prp_append(leint64_t *prplist, iova_t iova, size_t len, int max_prps,
 				   int pageshift)
 {
 	int prpcount = max_t(int, 1, (int)len >> pageshift);
@@ -220,12 +220,12 @@ static inline void __set_prp2(leint64_t *prp2, leint64_t prplist, leint64_t prpl
 }
 
 int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd,
-		 uint64_t iova, size_t len)
+		 iova_t iova, size_t len)
 {
 	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
 	int prpcount;
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
-	uint64_t prplist_iova;
+	iova_t prplist_iova;
 
 	if (!iommu_translate_vaddr(ctx, prplist, &prplist_iova)) {
 		errno = EFAULT;
@@ -301,7 +301,7 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
 	int ret, prpcount;
-	uint64_t iova, prplist_iova;
+	iova_t iova, prplist_iova;
 
 	if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
 		errno = EFAULT;
@@ -367,7 +367,7 @@ invalid:
 	return -1;
 }
 
-static inline void __sgl_data(struct nvme_sgld *sgld, uint64_t iova, size_t len)
+static inline void __sgl_data(struct nvme_sgld *sgld, iova_t iova, size_t len)
 {
 	sgld->addr = cpu_to_le64(iova);
 	sgld->len = cpu_to_le32((uint32_t)len);
@@ -375,7 +375,7 @@ static inline void __sgl_data(struct nvme_sgld *sgld, uint64_t iova, size_t len)
 	sgld->type = NVME_SGLD_TYPE_DATA_BLOCK << 4;
 }
 
-static inline void __sgl_segment(struct nvme_sgld *sgld, uint64_t iova, int n)
+static inline void __sgl_segment(struct nvme_sgld *sgld, iova_t iova, int n)
 {
 	sgld->addr = cpu_to_le64(iova);
 	sgld->len = cpu_to_le32(n << 4);
@@ -392,8 +392,8 @@ int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, union nvme_cmd 
 	int max_sglds = 1 << (pageshift - 4);
 	int dword_align = ctrl->flags & NVME_CTRL_F_SGLS_DWORD_ALIGNMENT;
 
-	uint64_t iova;
-	uint64_t seg_iova;
+	iova_t iova;
+	iova_t seg_iova;
 
 	if (niov == 1) {
 		if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {

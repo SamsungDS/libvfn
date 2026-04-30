@@ -48,7 +48,7 @@ static struct opt_table opts[] = {
 int main(int argc, char **argv)
 {
 	void *vaddr;
-	uint64_t iova;
+	iova_t iova;
 	int ret;
 
 	struct nvme_ctrl ctrl = {};

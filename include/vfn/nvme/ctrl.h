@@ -113,7 +113,7 @@ struct nvme_ctrl {
 	struct {
 		int bar;
 		void *vaddr;
-		uint64_t iova;
+		iova_t iova;
 		size_t size;
 	} cmb;
 };
