@@ -220,7 +220,7 @@ static void __unmap_mapping(void *opaque, struct skiplist_node *n)
 	struct iommu_ctx *ctx = opaque;
 	struct iova_mapping *m = container_of_var(n, m, list);
 
-	log_fatal_if(ctx->ops.dma_unmap(ctx, m->len, m->iova),
+	log_fatal_if(ctx->ops.dma_unmap(ctx, m->iova, m->len),
 		     "failed to unmap dma (iova 0x%" PRIx64 " len %zu)\n", m->iova, m->len);
 
 	free(m);
