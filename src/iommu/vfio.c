@@ -54,7 +54,7 @@ struct vfio_group {
 };
 
 struct vfio_iova_free_range {
-	uint64_t start;
+	iova_t start;
 	uint64_t len;
 	struct skiplist_node list;
 };
@@ -70,7 +70,8 @@ struct vfio_container {
 	int nr_groups;
 
 	pthread_mutex_t lock;
-	uint64_t next, next_ephemeral, nephemerals;
+	iova_t next, next_ephemeral;
+	uint64_t nephemerals;
 	struct iommu_iova_range ephemerals;
 	struct skiplist free_iovas;
 
@@ -199,10 +200,10 @@ static int vfio_iommu_type1_get_capabilities(struct vfio_container *vfio)
 }
 #endif /* VFIO_IOMMU_INFO_CAPS */
 
-static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, uint64_t *next,
-			   size_t len, uint64_t *iova)
+static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, iova_t *next,
+			   size_t len, iova_t *iova)
 {
-	uint64_t _next = *next;
+	iova_t _next = *next;
 
 	for (int i = 0; i < nranges; i++) {
 		struct iommu_iova_range *r = &ranges[i];
@@ -210,7 +211,7 @@ static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, uint64_
 		if (r->last < _next)
 			continue;
 
-		_next = max_t(uint64_t, _next, r->start);
+		_next = max_t(iova_t, _next, r->start);
 
 		if (_next > r->last || r->last - _next + 1 < len)
 			continue;
@@ -225,19 +226,19 @@ static bool __iova_reserve(struct iommu_iova_range *ranges, int nranges, uint64_
 }
 
 static bool __iova_reserve_align(struct iommu_iova_range *ranges, int nranges,
-				 uint64_t *next, size_t len, size_t align,
-				 uint64_t *iova)
+				 iova_t *next, size_t len, size_t align,
+				 iova_t *iova)
 {
-	uint64_t _next = *next;
+	iova_t _next = *next;
 
 	for (int i = 0; i < nranges; i++) {
 		struct iommu_iova_range *r = &ranges[i];
-		uint64_t aligned;
+		iova_t aligned;
 
 		if (r->last < _next)
 			continue;
 
-		_next = max_t(uint64_t, _next, r->start);
+		_next = max_t(iova_t, _next, r->start);
 		aligned = ALIGN_UP(_next, align);
 
 		/* overflow or out of range */
@@ -290,7 +291,7 @@ static struct vfio_iova_free_range *__iova_get_free_range(struct skiplist *free_
 }
 
 static bool __iova_get_free(struct skiplist *free_list, size_t len,
-			    uint64_t *iova)
+			    iova_t *iova)
 {
 	struct vfio_iova_free_range *range;
 
@@ -314,19 +315,19 @@ static bool __iova_get_free(struct skiplist *free_list, size_t len,
 	return true;
 }
 
-static void __iova_put_free(struct skiplist *free_list, uint64_t start, size_t len);
+static void __iova_put_free(struct skiplist *free_list, iova_t start, size_t len);
 
 static bool __iova_get_free_align(struct skiplist *free_list, size_t len,
-				  size_t align, uint64_t *iova)
+				  size_t align, iova_t *iova)
 {
 	struct vfio_iova_free_range *range, *best_fit = NULL;
 	struct skiplist_node *n, *next;
-	uint64_t best_aligned = 0;
+	iova_t best_aligned = 0;
 	size_t best_fit_avail = SIZE_MAX;
 
 	/* Find best-fit free range accounting for alignment padding */
 	skiplist_for_each_safe(free_list, n, next, 0) {
-		uint64_t aligned;
+		iova_t aligned;
 		size_t pad, avail;
 
 		if (n == NULL || n == &free_list->sentinel)
@@ -382,7 +383,7 @@ static bool __iova_get_free_align(struct skiplist *free_list, size_t len,
 	return true;
 }
 
-static void __iova_put_free(struct skiplist *free_list, uint64_t start, size_t len)
+static void __iova_put_free(struct skiplist *free_list, iova_t start, size_t len)
 {
 	struct skiplist_node *update[SKIPLIST_LEVELS] = {};
 	struct skiplist_node *prev_node, *next_node;
@@ -437,7 +438,7 @@ static void __iova_put_free(struct skiplist *free_list, uint64_t start, size_t l
 	skiplist_link(free_list, &new_range->list, update);
 }
 
-static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, uint64_t *iova,
+static int vfio_iommu_type1_iova_reserve(struct iommu_ctx *ctx, size_t len, iova_t *iova,
 					 unsigned long flags)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
@@ -471,7 +472,7 @@ enomem:
 }
 
 static int vfio_iommu_type1_iova_reserve_align(struct iommu_ctx *ctx, size_t len,
-					       size_t align, uint64_t *iova,
+					       size_t align, iova_t *iova,
 					       unsigned long flags UNUSED)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
@@ -503,7 +504,7 @@ static int vfio_iommu_type1_iova_reserve_align(struct iommu_ctx *ctx, size_t len
 
 static int vfio_iommu_type1_init(struct vfio_container *vfio)
 {
-	uint64_t iova;
+	iova_t iova;
 
 	if (vfio->iommu_set)
 		return 0;
@@ -759,7 +760,7 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 }
 
 static int vfio_iommu_type1_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
-				       uint64_t *iova, unsigned long flags)
+				       iova_t *iova, unsigned long flags)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 
@@ -795,7 +796,7 @@ static int vfio_iommu_type1_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_
 	return 0;
 }
 
-static void vfio_iova_put(struct iommu_ctx *ctx, uint64_t iova, size_t len)
+static void vfio_iova_put(struct iommu_ctx *ctx, iova_t iova, size_t len)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 
@@ -807,7 +808,7 @@ static void vfio_iova_put(struct iommu_ctx *ctx, uint64_t iova, size_t len)
 	__iova_put_free(&vfio->free_iovas, iova, len);
 }
 
-static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, uint64_t iova, size_t len)
+static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, iova_t iova, size_t len)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 
@@ -835,7 +836,7 @@ static void vfio_iommu_type1_recycle_ephemeral_iovas(struct vfio_container *vfio
 	__autolock(&vfio->lock);
 
 	trace_guard(VFIO_IOMMU_TYPE1_RECYCLE_EPHEMERAL_IOVAS) {
-		trace_emit("recycling ephemeral range (0x%" PRIx64 " -> 0x%llx)\n",
+		trace_emit("recycling ephemeral range (0x%" PRIx64 " -> 0x%" PRIx64 ")\n",
 			   vfio->next_ephemeral, vfio->ephemerals.start);
 	}
 

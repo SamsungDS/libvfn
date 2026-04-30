@@ -157,7 +157,7 @@ static void run(void)
 	uint64_t twarmup, trun, tupdate;
 	bool warmup = (warmup_in_seconds > 0);
 	float iops, mbps, lavg, lmin, lmax;
-	uint64_t iova;
+	iova_t iova;
 	void *mem;
 	unsigned int to_submit = io_depth;
 

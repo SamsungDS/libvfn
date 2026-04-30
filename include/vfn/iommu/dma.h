@@ -13,6 +13,8 @@
 #ifndef LIBVFN_IOMMU_DMA_H
 #define LIBVFN_IOMMU_DMA_H
 
+typedef uint64_t iova_t;
+
 /**
  * enum iommu_map_flags - Flags for DMA mapping
  * @IOMMU_MAP_FIXED_IOVA: If cleared, an appropriate IOVA will be allocated
@@ -51,7 +53,7 @@ enum iommu_map_flags {
  *
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
-int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
+int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
 		    unsigned long flags);
 
 /**
@@ -73,7 +75,7 @@ int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *io
  * Return: ``0`` on success, ``-1`` on error and sets ``errno``.
  */
 int iommu_map_vaddr_align(struct iommu_ctx *ctx, void *vaddr, size_t len,
-			  size_t align, uint64_t *iova, unsigned long flags);
+			  size_t align, iova_t *iova, unsigned long flags);
 
 /**
  * iommu_unmap_vaddr - Unmap a virtual memory address in the IOMMU
@@ -101,8 +103,8 @@ int iommu_unmap_all(struct iommu_ctx *ctx);
 
 #ifndef IOMMU_IOAS_IOVA_RANGES
 struct iommu_iova_range {
-	__aligned_u64 start;
-	__aligned_u64 last;
+	iova_t __attribute__((aligned(8))) start;
+	iova_t __attribute__((aligned(8))) last;
 };
 #endif
 
@@ -117,7 +119,7 @@ struct iommu_iova_range {
  *
  * Return: ``true`` on success, ``false`` if no mapping was found.
  */
-bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova);
+bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, iova_t *iova);
 
 /**
  * iommu_translate_iova - Translate a I/O virtual address into a virtual address
@@ -131,7 +133,7 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova);
  * Return: > 0 remain size of the map from @vaddr on success, ``-1`` on error
  * and sets ``errno``.
  */
-ssize_t iommu_translate_iova(struct iommu_ctx *ctx, uint64_t iova, void **vaddr);
+ssize_t iommu_translate_iova(struct iommu_ctx *ctx, iova_t iova, void **vaddr);
 
 /**
  * iommu_get_iova_ranges - Get iova ranges

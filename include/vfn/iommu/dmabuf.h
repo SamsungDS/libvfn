@@ -43,7 +43,7 @@ struct iommu_dmabuf {
 	struct iommu_ctx *ctx;
 
 	void *vaddr;
-	uint64_t iova;
+	iova_t iova;
 	ssize_t len;
 };
 

@@ -27,7 +27,7 @@ struct nvme_rq {
 
 	struct {
 		void *vaddr;
-		uint64_t iova;
+		iova_t iova;
 	} page;
 
 	struct nvme_rq *rq_next;
@@ -217,7 +217,7 @@ static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd, uint64_t iova,
+int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd, iova_t iova,
 		    size_t len);
 
 /**

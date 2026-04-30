@@ -125,7 +125,7 @@ int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t le
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
 int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd,
-		 uint64_t iova, size_t len);
+		 iova_t iova, size_t len);
 
 /**
  * nvme_mapv_prp - Set up the Physical Region Pages in the data pointer of

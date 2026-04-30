@@ -38,7 +38,7 @@ static int iova_cmp(const void *vaddr, const struct skiplist_node *n)
 	return 0;
 }
 
-static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, uint64_t iova,
+static int iova_map_add(struct iova_map *map, void *vaddr, size_t len, iova_t iova,
 			unsigned long flags)
 {
 	__autowrlock(&map->lock);
@@ -101,7 +101,7 @@ static void UNUSED iova_map_clear(struct iova_map *map)
 	iova_map_clear_with(map, NULL, NULL);
 }
 
-bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova)
+bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, iova_t *iova)
 {
 	struct iova_mapping *m = iova_map_find(&ctx->map, vaddr);
 
@@ -113,10 +113,10 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, uint64_t *iova)
 	return false;
 }
 
-int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, uint64_t *iova,
+int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
 		    unsigned long flags)
 {
-	uint64_t _iova;
+	iova_t _iova;
 
 	if (iommu_translate_vaddr(ctx, vaddr, &_iova))
 		goto out;
@@ -146,9 +146,9 @@ out:
 }
 
 int iommu_map_vaddr_align(struct iommu_ctx *ctx, void *vaddr, size_t len,
-			  size_t align, uint64_t *iova, unsigned long flags)
+			  size_t align, iova_t *iova, unsigned long flags)
 {
-	uint64_t _iova;
+	iova_t _iova;
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		log_debug("IOMMU_MAP_FIXED_IOVA is not supported with alignment\n");
@@ -252,10 +252,10 @@ int iommu_get_iova_ranges(struct iommu_ctx *ctx, struct iommu_iova_range **range
 
 int iommu_iova_range_to_string(struct iommu_iova_range *r, char **str)
 {
-	return asprintf(str, "[0x%llx; 0x%llx]", r->start, r->last);
+	return asprintf(str, "[0x%" PRIx64 "; 0x%" PRIx64 "]", r->start, r->last);
 }
 
-ssize_t iommu_translate_iova(struct iommu_ctx *ctx, uint64_t iova, void **vaddr)
+ssize_t iommu_translate_iova(struct iommu_ctx *ctx, iova_t iova, void **vaddr)
 {
 	__autordlock(&ctx->map.lock);
 

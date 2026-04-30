@@ -48,7 +48,7 @@ struct vfio_pci_device pdev;
 int main(int argc, char **argv)
 {
 	void *bar0;
-	uint64_t iova = IOVA_BASE;
+	iova_t iova = IOVA_BASE;
 	ssize_t len;
 	void *vaddr;
 
