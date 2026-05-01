@@ -242,6 +242,27 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
 		     struct iovec *iov, int niov);
 
 /**
+ * nvme_rq_mapv_iova_prp - Set up the Physical Region Pages in the data pointer of
+ *                         the command from an iova_vec.
+ * @ctrl: &struct nvme_ctrl
+ * @rq: Request tracker (&struct nvme_rq)
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iova_vecs
+ * @niov: number of iova_vec in @iov
+ *
+ * Map the memory contained in @iov into the request PRPs. The first entry is
+ * allowed to be unaligned, but the entry MUST end on a page boundary. All
+ * subsequent entries MUST be page aligned.
+ *
+ * This helper uses a pre-allocated PRP list page within @rq and same with
+ * calling ``nvme_mapv_iova_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iova, niov)``;
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_rq_mapv_iova_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+			  struct iova_vec *iov, int niov);
+
+/**
  * nvme_rq_mapv_sgl - Set up a Scatter/Gather List in the data pointer of the
  *                    command from an iovec.
  * @ctrl: &struct nvme_ctrl
@@ -259,6 +280,25 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
  */
 int nvme_rq_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov);
+
+/**
+ * nvme_rq_mapv_iova_sgl - Set up a Scatter/Gather List in the data pointer of the
+ *                         command from an iova_vec.
+ * @ctrl: &struct nvme_ctrl
+ * @rq: Request tracker (&struct nvme_rq)
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iova_vecs
+ * @niov: number of iova_vec in @iovec
+ *
+ * Map the memory contained in @iov into the request SGL.
+ *
+ * This helper uses a pre-allocated SGL segment list page within @rq and same
+ * with calling ``nvme_mapv_iova_sgl(ctrl, rq->page.vaddr, rq->page.iova, cmd, iova, niov)``;
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_rq_mapv_iova_sgl(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
+			  struct iova_vec *iov, int niov);
 
 /**
  * nvme_rq_mapv - Set up data pointer in the command from an iovec.
