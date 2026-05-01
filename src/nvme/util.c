@@ -291,7 +291,7 @@ int nvme_vm_assign_max_flexible(struct nvme_ctrl *ctrl, uint16_t scid)
 	return 0;
 }
 
-int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
+int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
 		  union nvme_cmd *cmd, struct iovec *iov, int niov)
 {
 	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
@@ -301,14 +301,9 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
 	int ret, prpcount;
-	iova_t iova, prplist_iova;
+	iova_t iova;
 
 	if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	if (!iommu_translate_vaddr(ctx, prplist, &prplist_iova)) {
 		errno = EFAULT;
 		return -1;
 	}
@@ -383,8 +378,8 @@ static inline void __sgl_segment(struct nvme_sgld *sgld, iova_t iova, int n)
 	sgld->type = NVME_SGLD_TYPE_LAST_SEGMENT << 4;
 }
 
-int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, union nvme_cmd *cmd,
-		  struct iovec *iov, int niov)
+int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, iova_t seg_iova,
+		  union nvme_cmd *cmd, struct iovec *iov, int niov)
 {
 	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
 
@@ -393,7 +388,6 @@ int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, union nvme_cmd 
 	int dword_align = ctrl->flags & NVME_CTRL_F_SGLS_DWORD_ALIGNMENT;
 
 	iova_t iova;
-	iova_t seg_iova;
 
 	if (niov == 1) {
 		if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
@@ -408,11 +402,6 @@ int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, union nvme_cmd 
 
 	if (niov > max_sglds) {
 		errno = EINVAL;
-		return -1;
-	}
-
-	if (!iommu_translate_vaddr(ctx, seg, &seg_iova)) {
-		errno = EFAULT;
 		return -1;
 	}
 

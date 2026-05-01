@@ -234,7 +234,7 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
  * subsequent entries MUST be page aligned.
  *
  * This helper uses a pre-allocated PRP list page within @rq and same with
- * calling ``nvme_mapv_prp(ctrl, rq->page.vaddr, cmd, iova, niov)``;
+ * calling ``nvme_mapv_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iova, niov)``;
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
@@ -253,7 +253,7 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
  * Map the memory contained in @iov into the request SGL.
  *
  * This helper uses a pre-allocated SGL segment list page within @rq and same
- * with calling ``nvme_mapv_sgl(ctrl, rq->page.vaddr, cmd, iova, niov)``;
+ * with calling ``nvme_mapv_sgl(ctrl, rq->page.vaddr, rq->page.iova, cmd, iova, niov)``;
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */

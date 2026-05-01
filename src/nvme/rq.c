@@ -47,13 +47,13 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
 int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov)
 {
-	return nvme_mapv_prp(ctrl, rq->page.vaddr, cmd, iov, niov);
+	return nvme_mapv_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iov, niov);
 }
 
 int nvme_rq_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov)
 {
-	return nvme_mapv_sgl(ctrl, rq->page.vaddr, cmd, iov, niov);
+	return nvme_mapv_sgl(ctrl, rq->page.vaddr, rq->page.iova, cmd, iov, niov);
 }
 
 int nvme_rq_mapv(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
