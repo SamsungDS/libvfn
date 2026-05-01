@@ -26,7 +26,7 @@
 
 #include "common.h"
 
-static bool op_write, op_read, op_same_iova, op_sgl, op_vector;
+static bool op_write, op_read, op_same_iova, op_sgl, op_vector, op_iova;
 static unsigned int op_len;
 static unsigned long nsid;
 static int fd;
@@ -38,6 +38,7 @@ static const struct nvme_ctrl_opts ctrl_opts = {
 
 static struct opt_table opts[] = {
 	OPT_SUBTABLE(opts_base, NULL),
+	OPT_WITHOUT_ARG("-i|--iova", opt_set_bool, &op_iova, "use iova based vector operation"),
 	OPT_WITH_ARG("-N|--nsid", opt_set_ulongval, opt_show_ulongval, &nsid, "namespace identifier"),
 	OPT_WITHOUT_ARG("-w|--write", opt_set_bool, &op_write, "perform a write"),
 	OPT_WITHOUT_ARG("-r|--read", opt_set_bool, &op_read, "perform a read"),
@@ -52,6 +53,7 @@ static struct opt_table opts[] = {
 
 int main(int argc, char **argv)
 {
+	struct iova_vec iovav[2];
 	size_t io_sz = 0x1000;
 	struct iovec iov[2];
 	void *vaddr;
@@ -120,10 +122,17 @@ int main(int argc, char **argv)
 	};
 
 	if (op_vector) {
-		iov[0].iov_base = vaddr + (io_sz / 2);
-		iov[0].iov_len = io_sz / 2;
-		iov[1].iov_base = vaddr;
-		iov[1].iov_len = io_sz / 2;
+		if (op_iova) {
+			iovav[0].iova = iova + (io_sz / 2);
+			iovav[0].len = io_sz / 2;
+			iovav[1].iova = iova;
+			iovav[1].len = io_sz / 2;
+		} else {
+			iov[0].iov_base = vaddr + (io_sz / 2);
+			iov[0].iov_len = io_sz / 2;
+			iov[1].iov_base = vaddr;
+			iov[1].iov_len = io_sz / 2;
+		}
 		/*
 		 * note: this assumes the device has an lba size of 512B.
 		 * A 0xf (Data SGL Length Invalid) status code will be
@@ -132,17 +141,28 @@ int main(int argc, char **argv)
 		cmd.rw.nlb = cpu_to_le16(15);
 		niov = 2;
 	} else {
-		iov[0].iov_base = vaddr;
-		iov[0].iov_len = io_sz;
+		if (op_iova) {
+			iovav[0].iova = iova;
+			iovav[0].len = io_sz;
+		} else {
+			iov[0].iov_base = vaddr;
+			iov[0].iov_len = io_sz;
+		}
 		niov = 1;
 	}
 
 	if (op_sgl) {
-		ret = nvme_rq_mapv_sgl(&ctrl, rq, &cmd, iov, niov);
+		if (op_iova)
+			ret = nvme_rq_mapv_iova_sgl(&ctrl, rq, &cmd, iovav, niov);
+		else
+			ret = nvme_rq_mapv_sgl(&ctrl, rq, &cmd, iov, niov);
 		if (ret)
 			err(1, "could not map sgls");
 	} else if (op_vector) {
-		ret = nvme_rq_mapv_prp(&ctrl, rq, &cmd, iov, niov);
+		if (op_iova)
+			ret = nvme_rq_mapv_iova_prp(&ctrl, rq, &cmd, iovav, niov);
+		else
+			ret = nvme_rq_mapv_prp(&ctrl, rq, &cmd, iov, niov);
 		if (ret)
 			err(1, "could not map vectored prps");
 	} else {
