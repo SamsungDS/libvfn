@@ -193,7 +193,7 @@ static void run(void)
 
 		nvme_rq_prep_cmd(rq, &iod->cmd);
 
-		iova += 0x1000;
+		iova += (iova_t)0x1000;
 
 		rq->opaque = iod;
 

@@ -36,7 +36,7 @@
 #define REG_ADDR 0x0
 #define REG_CMD  0x8
 
-#define IOVA_BASE 0xfef00000
+#define IOVA_BASE ((iova_t)0xfef00000)
 
 static struct opt_table opts[] = {
 	OPT_SUBTABLE(opts_base, NULL),

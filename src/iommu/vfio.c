@@ -304,7 +304,8 @@ static bool __iova_get_free(struct skiplist *free_list, size_t len,
 	if (range->len == len) {
 		struct skiplist_node *update[SKIPLIST_LEVELS] = {};
 
-		skiplist_find(free_list, &range->start, iova_free_range_cmp, update);
+		skiplist_find(free_list, (void *)&range->start,
+			      iova_free_range_cmp, update);
 		skiplist_erase(free_list, &range->list, update);
 		free(range);
 	} else {
@@ -322,7 +323,7 @@ static bool __iova_get_free_align(struct skiplist *free_list, size_t len,
 {
 	struct vfio_iova_free_range *range, *best_fit = NULL;
 	struct skiplist_node *n, *next;
-	iova_t best_aligned = 0;
+	iova_t best_aligned = (iova_t)0;
 	size_t best_fit_avail = SIZE_MAX;
 
 	/* Find best-fit free range accounting for alignment padding */
@@ -390,7 +391,8 @@ static void __iova_put_free(struct skiplist *free_list, iova_t start, size_t len
 	struct vfio_iova_free_range *new_range, *prev_range = NULL, *next_range = NULL;
 
 	/* Check if we can merge with adjacent ranges */
-	prev_node = skiplist_find_le(free_list, &start, iova_free_range_cmp, update);
+	prev_node = skiplist_find_le(free_list, (void *)&start,
+				     iova_free_range_cmp, update);
 	if (prev_node) {
 		prev_range = container_of_var(prev_node, prev_range, list);
 		/* Check if we can merge with previous range */
@@ -407,7 +409,7 @@ static void __iova_put_free(struct skiplist *free_list, iova_t start, size_t len
 					struct skiplist_node *del_update[SKIPLIST_LEVELS] = {};
 
 					prev_range->len += next_range->len;
-					skiplist_find(free_list, &next_range->start,
+					skiplist_find(free_list, (void *)&next_range->start,
 							iova_free_range_cmp, del_update);
 					skiplist_erase(free_list, next_node, del_update);
 					free(next_range);
@@ -418,7 +420,8 @@ static void __iova_put_free(struct skiplist *free_list, iova_t start, size_t len
 	}
 
 	/* Check if we can merge with next range */
-	next_node = skiplist_find_ge(free_list, &start, iova_free_range_cmp, update);
+	next_node = skiplist_find_ge(free_list, (void *)&start,
+				     iova_free_range_cmp, update);
 	if (next_node) {
 		next_range = container_of_var(next_node, next_range, list);
 		if (start + len == next_range->start) {
@@ -434,7 +437,7 @@ static void __iova_put_free(struct skiplist *free_list, iova_t start, size_t len
 	new_range->start = start;
 	new_range->len = len;
 
-	skiplist_find(free_list, &start, iova_free_range_cmp, update);
+	skiplist_find(free_list, (void *)&start, iova_free_range_cmp, update);
 	skiplist_link(free_list, &new_range->list, update);
 }
 
@@ -750,8 +753,8 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 
 			vfio->fd = -1;
 			vfio->iommu_set = false;
-			vfio->next = 0;
-			vfio->next_ephemeral = 0;
+			vfio->next = (iova_t)0;
+			vfio->next_ephemeral = (iova_t)0;
 			vfio->nephemerals = 0;
 		}
 	}
@@ -768,7 +771,7 @@ static int vfio_iommu_type1_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_
 		.argsz = sizeof(dma_map),
 		.vaddr = (uintptr_t)vaddr,
 		.size  = len,
-		.iova  = *iova,
+		.iova  = (uint64_t)*iova,
 		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
 	};
 
@@ -815,7 +818,7 @@ static int vfio_iommu_type1_do_dma_unmap(struct iommu_ctx *ctx, iova_t iova, siz
 	struct vfio_iommu_type1_dma_unmap dma_unmap = {
 		.argsz = sizeof(dma_unmap),
 		.size = len,
-		.iova = iova,
+		.iova = (uint64_t)iova,
 	};
 
 	trace_guard(VFIO_IOMMU_TYPE1_UNMAP_DMA) {

@@ -13,7 +13,11 @@
 #ifndef LIBVFN_IOMMU_DMA_H
 #define LIBVFN_IOMMU_DMA_H
 
+#ifdef __CHECKER__
+typedef uint64_t __attribute__((nocast)) iova_t;
+#else
 typedef uint64_t iova_t;
+#endif
 
 /**
  * enum iommu_map_flags - Flags for DMA mapping
