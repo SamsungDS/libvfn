@@ -362,6 +362,61 @@ invalid:
 	return -1;
 }
 
+int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
+		       union nvme_cmd *cmd, struct iova_vec *iov, int niov)
+{
+	int pageshift = __mps_to_pageshift(ctrl->config.mps);
+	size_t pagesize = 1 << pageshift;
+	int max_prps = 1 << (pageshift - 3);
+	int ret, prpcount;
+
+	/* map the first segment */
+	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iov[0].iova, iov[0].len, pageshift);
+	if (prpcount < 0)
+		goto invalid;
+
+	/*
+	 * At this point, one of three conditions must hold:
+	 *
+	 *   a) a single prp entry was set up by __map_first, or
+	 *   b) the iovec only has a single entry, or
+	 *   c) the first buffer ends on a page size boundary
+	 *
+	 * If none holds, the buffer(s) within the iovec cannot be mapped given
+	 * the PRP alignment requirements.
+	 */
+	if (!(prpcount == 1 || niov == 1 || ALIGNED(iov[0].iova + iov[0].len, pagesize))) {
+		log_error("iov[0].iova/len invalid\n");
+
+		goto invalid;
+	}
+
+	/* map remaining iovec entries; these must be page size aligned */
+	for (int i = 1; i < niov; i++) {
+		/* all entries but the last must have a page size aligned len */
+		if (i < niov - 1 && !ALIGNED(iov[i].len, pagesize)) {
+			log_error("unaligned iov[%u].len (%zu)\n", i, iov[i].len);
+
+			goto invalid;
+		}
+
+		ret = __map_prp_append(&prplist[prpcount - 1], iov[i].iova, iov[i].len,
+				       max_prps - prpcount, pageshift);
+		if (ret < 0)
+			goto invalid;
+
+		prpcount += ret;
+	}
+
+	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplist[0], prpcount);
+
+	return 0;
+
+invalid:
+	errno = EINVAL;
+	return -1;
+}
+
 static inline void __sgl_data(struct nvme_sgld *sgld, iova_t iova, size_t len)
 {
 	sgld->addr = cpu_to_le64(iova);
@@ -419,6 +474,39 @@ int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, iova_t seg_iova
 		}
 
 		__sgl_data(&seg[i], iova, iov[i].iov_len);
+	}
+
+	cmd->flags |= NVME_FIELD_SET(NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG, CMD_FLAGS_PSDT);
+
+	return 0;
+}
+
+int nvme_mapv_iova_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, iova_t seg_iova,
+		  union nvme_cmd *cmd, struct iova_vec *iov, int niov)
+{
+	int pageshift = __mps_to_pageshift(ctrl->config.mps);
+	int max_sglds = 1 << (pageshift - 4);
+	int dword_align = ctrl->flags & NVME_CTRL_F_SGLS_DWORD_ALIGNMENT;
+
+	if (niov == 1) {
+		__sgl_data(&cmd->dptr.sgl, iov->iova, iov->len);
+		return 0;
+	}
+
+	if (niov > max_sglds) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	__sgl_segment(&cmd->dptr.sgl, seg_iova, niov);
+
+	for (int i = 0; i < niov; i++) {
+		if (dword_align && (iov[i].iova & 0x3)) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		__sgl_data(&seg[i], iov[i].iova, iov[i].len);
 	}
 
 	cmd->flags |= NVME_FIELD_SET(NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG, CMD_FLAGS_PSDT);
