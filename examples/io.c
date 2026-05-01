@@ -49,6 +49,7 @@ static struct opt_table opts[] = {
 
 int main(int argc, char **argv)
 {
+	size_t io_sz = 0x1000;
 	void *vaddr;
 	iova_t iova;
 	int ret;
@@ -80,23 +81,23 @@ int main(int argc, char **argv)
 		err(1, "could not create io queue pair");
 
 	if (op_same_iova) {
-		vaddr = iommu_alloc_same_iova(__iommu_ctx(&ctrl), 0x1000);
+		vaddr = iommu_alloc_same_iova(__iommu_ctx(&ctrl), io_sz);
 		if (!vaddr)
 			err(1, "unable to allocate memory with same address as the iova");
 
 		iova = same_iova(vaddr);
 	} else {
-		vaddr = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE,
+		vaddr = mmap(NULL, io_sz, PROT_READ | PROT_WRITE,
 			     MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
-		if (iommu_map_vaddr(__iommu_ctx(&ctrl), vaddr, 0x1000, &iova, 0x0))
+		if (iommu_map_vaddr(__iommu_ctx(&ctrl), vaddr, io_sz, &iova, 0x0))
 			err(1, "failed to reserve iova");
 	}
 
 	if (op_write) {
 		fprintf(stderr, "reading payload\n");
 
-		ret = readmaxfd(fd, vaddr, 0x1000);
+		ret = readmaxfd(fd, vaddr, io_sz);
 		if (ret < 0)
 			err(1, "could not read fd");
 
@@ -110,7 +111,7 @@ int main(int argc, char **argv)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	ret = nvme_rq_map_prp(&ctrl, rq, &cmd, iova, 0x1000);
+	ret = nvme_rq_map_prp(&ctrl, rq, &cmd, iova, io_sz);
 	if (ret)
 		err(1, "could not map prps");
 
@@ -122,7 +123,7 @@ int main(int argc, char **argv)
 	if (op_read) {
 		fprintf(stderr, "writing payload\n");
 
-		ret = writeallfd(fd, vaddr, 0x1000);
+		ret = writeallfd(fd, vaddr, io_sz);
 		if (ret < 0)
 			err(1, "could not write fd");
 
