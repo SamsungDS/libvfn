@@ -132,6 +132,7 @@ int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd
  *                 the command from an iovec.
  * @ctrl: &struct nvme_ctrl
  * @prplist: The first PRP list page address
+ * @prplist_iova: The first PRP list iova address
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iov: array of iovecs
  * @niov: number of iovec in @iovec
@@ -142,7 +143,7 @@ int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
+int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
 		  union nvme_cmd *cmd, struct iovec *iov, int niov);
 
 /**
@@ -150,6 +151,7 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
  *                 command from an iovec.
  * @ctrl: &struct nvme_ctrl
  * @seglist: SGL segment list page address
+ * @seglist_iova: SGL segment list iova address
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iov: array of iovecs
  * @niov: number of iovec in @iovec
@@ -158,8 +160,8 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist,
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seglist, union nvme_cmd *cmd,
-		  struct iovec *iov, int niov);
+int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seglist, iova_t seglist_iova,
+		  union nvme_cmd *cmd, struct iovec *iov, int niov);
 
 /**
  * nvme_vm_assign_max_flexible - Assign the maximum number of flexible resources
