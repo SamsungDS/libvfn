@@ -73,35 +73,35 @@ int main(void)
 
 	/* test 512b aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x200) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x200) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 4k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x1000) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x1000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 4k + 8 aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x1008) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 8k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2000) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x2000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 8k + 16 aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x2010) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x2010) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -110,7 +110,7 @@ int main(void)
 
 	/* test 12k aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3000) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x3000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -119,7 +119,7 @@ int main(void)
 
 	/* test 12k + 24 aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, 0x3018) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, 0x3018) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -128,35 +128,35 @@ int main(void)
 
 	/* test 512b unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x200) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x200) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 512 unaligned (nasty) */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x200) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1001000 - 4, 0x200) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 4k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1000) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x1000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 4k + 8 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1008) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 4k + 8 unaligned (nasty) */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1001000 - 4, 0x1008) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1001000 - 4, 0x1008) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1001000 - 4);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -165,14 +165,14 @@ int main(void)
 
 	/* test 4k - 4 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x1000 - 4) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x1000 - 4) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x0);
 
 	/* test 8k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x2000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -181,7 +181,7 @@ int main(void)
 
 	/* test 8k + 16 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2010) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x2010) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -190,14 +190,14 @@ int main(void)
 
 	/* test 8k - 4 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x2000 - 4) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x2000 - 4) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 	/* test 12k unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3000) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x3000) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -207,7 +207,7 @@ int main(void)
 
 	/* test 12k + 24 unaligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000004, 0x3018) == 0);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000004, 0x3018) == 0);
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000004);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
@@ -333,7 +333,7 @@ int main(void)
 	 */
 
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
-	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, 0x1000000, (__max_prps + 1) * 0x1000) == -1);
+	ok1(nvme_rq_map_prp(&ctrl, &rq, &cmd, (iova_t)0x1000000, (__max_prps + 1) * 0x1000) == -1);
 
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000004, .iov_len = 0x1000};

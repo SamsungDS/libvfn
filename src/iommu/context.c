@@ -23,8 +23,8 @@
 
 #include "context.h"
 
-#define IOVA_MIN 0x10000
-#define IOVA_MAX_39BITS (1ULL << 39)
+#define IOVA_MIN	((iova_t)0x10000)
+#define IOVA_MAX_39BITS	((iova_t)(1ULL << 39))
 
 static inline bool __iommufd_is_available(void)
 {

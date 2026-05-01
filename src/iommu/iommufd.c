@@ -239,7 +239,7 @@ static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
 
 	if (flags & IOMMU_MAP_FIXED_IOVA) {
 		map.flags |= IOMMU_IOAS_MAP_FIXED_IOVA;
-		map.iova = *iova;
+		map.iova = (uint64_t)*iova;
 	}
 
 	if (flags & IOMMU_MAP_NOWRITE)
@@ -263,7 +263,7 @@ static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len,
 	if (flags & IOMMU_MAP_FIXED_IOVA)
 		return 0;
 
-	*iova = map.iova;
+	*iova = (iova_t)map.iova;
 
 	trace_guard(IOMMUFD_IOAS_MAP_DMA) {
 		trace_emit("allocated iova 0x%" PRIx64 "\n", *iova);
@@ -279,7 +279,7 @@ static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, iova_t iova, size_t le
 	struct iommu_ioas_unmap unmap = {
 		.size = sizeof(unmap),
 		.ioas_id = ioas->id,
-		.iova = iova,
+		.iova = (uint64_t)iova,
 		.length = len
 	};
 
@@ -297,7 +297,7 @@ static int iommu_ioas_do_dma_unmap(struct iommu_ctx *ctx, iova_t iova, size_t le
 
 static int iommu_ioas_do_dma_unmap_all(struct iommu_ctx *ctx)
 {
-	return iommu_ioas_do_dma_unmap(ctx, 0, UINT64_MAX);
+	return iommu_ioas_do_dma_unmap(ctx, (iova_t)0, UINT64_MAX);
 }
 
 static const struct iommu_ctx_ops iommufd_ops = {
