@@ -19,6 +19,11 @@ typedef uint64_t __attribute__((nocast)) iova_t;
 typedef uint64_t iova_t;
 #endif
 
+struct iova_vec {
+	iova_t iova;
+	size_t len;
+};
+
 /**
  * enum iommu_map_flags - Flags for DMA mapping
  * @IOMMU_MAP_FIXED_IOVA: If cleared, an appropriate IOVA will be allocated

@@ -147,6 +147,25 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iov
 		  union nvme_cmd *cmd, struct iovec *iov, int niov);
 
 /**
+ * nvme_mapv_iova_prp - Set up the Physical Region Pages in the data pointer of
+ *                      the command from an iova_vec.
+ * @ctrl: &struct nvme_ctrl
+ * @prplist: The first PRP list page address
+ * @prplist_iova: The first PRP list iova address
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iova_vecs
+ * @niov: number of iova_vec in @iovec
+ *
+ * Map the memory contained in @iov into the request PRPs. The first entry is
+ * allowed to be unaligned, but the entry MUST end on a page boundary. All
+ * subsequent entries MUST be page aligned.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
+		       union nvme_cmd *cmd, struct iova_vec *iov, int niov);
+
+/**
  * nvme_mapv_sgl - Set up a Scatter/Gather List in the data pointer of the
  *                 command from an iovec.
  * @ctrl: &struct nvme_ctrl
@@ -162,6 +181,23 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iov
  */
 int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seglist, iova_t seglist_iova,
 		  union nvme_cmd *cmd, struct iovec *iov, int niov);
+
+/**
+ * nvme_mapv_iova_sgl - Set up a Scatter/Gather List in the data pointer of the
+ *                      command from an iova_vec.
+ * @ctrl: &struct nvme_ctrl
+ * @seglist: SGL segment list page address
+ * @seglist_iova: SGL segment list iova address
+ * @cmd: NVMe command prototype (&union nvme_cmd)
+ * @iov: array of iova_vecs
+ * @niov: number of iovec in @iovec
+ *
+ * Map the memory contained in @iov into the request SGL.
+ *
+ * Return: ``0`` on success, ``-1`` on error and sets errno.
+ */
+int nvme_mapv_iova_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seglist, iova_t seglist_iova,
+		       union nvme_cmd *cmd, struct iova_vec *iov, int niov);
 
 /**
  * nvme_vm_assign_max_flexible - Assign the maximum number of flexible resources
