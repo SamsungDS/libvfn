@@ -26,7 +26,7 @@
 
 #include "common.h"
 
-static bool op_write, op_read, op_same_iova;
+static bool op_write, op_read, op_same_iova, op_sgl, op_vector;
 static unsigned int op_len;
 static unsigned long nsid;
 static int fd;
@@ -41,8 +41,11 @@ static struct opt_table opts[] = {
 	OPT_WITH_ARG("-N|--nsid", opt_set_ulongval, opt_show_ulongval, &nsid, "namespace identifier"),
 	OPT_WITHOUT_ARG("-w|--write", opt_set_bool, &op_write, "perform a write"),
 	OPT_WITHOUT_ARG("-r|--read", opt_set_bool, &op_read, "perform a read"),
+	OPT_WITHOUT_ARG("-s|--sgl", opt_set_bool, &op_sgl,
+			"use sgls in operation"),
 	OPT_WITHOUT_ARG("-S|--same-iova", opt_set_bool, &op_same_iova,
 			"use memory with the same iova"),
+	OPT_WITHOUT_ARG("-v|--vector", opt_set_bool, &op_vector, "use a vectored operation"),
 	OPT_WITH_ARG("-z|--size", opt_set_uintval_bi, opt_show_uintval_bi, &op_len, "size of operation"),
 	OPT_ENDTABLE,
 };
@@ -50,8 +53,10 @@ static struct opt_table opts[] = {
 int main(int argc, char **argv)
 {
 	size_t io_sz = 0x1000;
+	struct iovec iov[2];
 	void *vaddr;
 	iova_t iova;
+	int niov;
 	int ret;
 
 	struct nvme_ctrl ctrl = {};
@@ -71,6 +76,9 @@ int main(int argc, char **argv)
 		opt_usage_exit_fail("specify one of -r or -w");
 
 	opt_free_table();
+
+	if (op_vector || op_sgl)
+		io_sz *= 2;
 
 	fd = op_read ? STDOUT_FILENO : STDIN_FILENO;
 
@@ -111,9 +119,37 @@ int main(int argc, char **argv)
 		.nsid = cpu_to_le32(nsid),
 	};
 
-	ret = nvme_rq_map_prp(&ctrl, rq, &cmd, iova, io_sz);
-	if (ret)
-		err(1, "could not map prps");
+	if (op_vector) {
+		iov[0].iov_base = vaddr + (io_sz / 2);
+		iov[0].iov_len = io_sz / 2;
+		iov[1].iov_base = vaddr;
+		iov[1].iov_len = io_sz / 2;
+		/*
+		 * note: this assumes the device has an lba size of 512B.
+		 * A 0xf (Data SGL Length Invalid) status code will be
+		 * returned in sgl mode if this is not the case.
+		 */
+		cmd.rw.nlb = cpu_to_le16(15);
+		niov = 2;
+	} else {
+		iov[0].iov_base = vaddr;
+		iov[0].iov_len = io_sz;
+		niov = 1;
+	}
+
+	if (op_sgl) {
+		ret = nvme_rq_mapv_sgl(&ctrl, rq, &cmd, iov, niov);
+		if (ret)
+			err(1, "could not map sgls");
+	} else if (op_vector) {
+		ret = nvme_rq_mapv_prp(&ctrl, rq, &cmd, iov, niov);
+		if (ret)
+			err(1, "could not map vectored prps");
+	} else {
+		ret = nvme_rq_map_prp(&ctrl, rq, &cmd, iova, io_sz);
+		if (ret)
+			err(1, "could not map prps");
+	}
 
 	nvme_rq_exec(rq, &cmd);
 
