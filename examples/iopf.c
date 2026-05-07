@@ -43,7 +43,7 @@ static struct opt_table opts[] = {
 	OPT_ENDTABLE,
 };
 
-struct vfio_pci_device pdev;
+static struct vfio_pci_device pdev;
 
 int main(int argc, char **argv)
 {
@@ -89,8 +89,8 @@ int main(int argc, char **argv)
 
 	memset(vaddr, 0x42, 0x1000);
 
-	mmio_lh_write64(bar0 + REG_ADDR, iova);
-	mmio_write32(bar0 + REG_CMD, 0x3);
+	mmio_lh_write64(bar0 + REG_ADDR, cpu_to_le64(iova));
+	mmio_write32(bar0 + REG_CMD, cpu_to_le32(0x3));
 
 	/* wait for page fault */
 	while (read(fq.fault_fd, &pgfault, sizeof(pgfault)) == 0)
@@ -106,14 +106,14 @@ int main(int argc, char **argv)
 	if (write(fq.fault_fd, &pgresp, sizeof(pgresp)) < 0)
 		err(1, "failed to write page response");
 
-	while (mmio_read32(bar0 + REG_CMD) & 0x1)
+	while (le32_to_cpu(mmio_read32(bar0 + REG_CMD)) & 0x1)
 		;
 
 	memset(vaddr, 0x0, 0x1000);
 
-	mmio_write32(bar0 + REG_CMD, 0x1);
+	mmio_write32(bar0 + REG_CMD, cpu_to_le32(0x1));
 
-	while (mmio_read32(bar0 + REG_CMD) & 0x1)
+	while (le32_to_cpu(mmio_read32(bar0 + REG_CMD)) & 0x1)
 		;
 
 	for (int i = 0; i < 0x1000; i++) {
