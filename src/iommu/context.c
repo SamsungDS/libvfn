@@ -47,20 +47,6 @@ static inline bool __force_vfio(void)
 #endif
 }
 
-struct iommu_ctx *iommu_get_default_context(void)
-{
-	if (!__iommufd_is_available())
-		goto fallback;
-
-	if (__force_vfio())
-		goto fallback;
-
-	return iommufd_get_default_iommu_context();
-
-fallback:
-	return vfio_get_default_iommu_context();
-}
-
 struct iommu_ctx *iommu_get_context(const char *name)
 {
 	if (!__iommufd_is_available())
