@@ -58,12 +58,8 @@ struct iommu_ctx {
 	bool iommufd;
 };
 
-struct iommu_ctx *iommu_get_default_context(void);
+struct iommu_ctx *vfio_get_iommu_context(const char *bdf);
 
-struct iommu_ctx *vfio_get_default_iommu_context(void);
-struct iommu_ctx *vfio_get_iommu_context(const char *name);
-
-struct iommu_ctx *iommufd_get_default_iommu_context(void);
 struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 
 void iommu_ctx_init(struct iommu_ctx *ctx);

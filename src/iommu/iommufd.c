@@ -52,12 +52,16 @@
 
 static int __iommufd = -1;
 
+struct iommu_ioas;
+
 struct iommufd_device_info {
 	char *bdf;
 
 	int dev_fd;
 	int dev_id;
 	int hwpt_id;
+
+	struct iommu_ioas *ioas;
 
 	struct list_node list;
 };
@@ -69,11 +73,6 @@ struct iommu_ioas {
 
 	char *name;
 	uint32_t id;
-};
-
-static struct iommu_ioas iommufd_default_ioas = {
-	.ctx.iommufd = true,
-	.name = "default",
 };
 
 static int iommu_ioas_update_iova_ranges(struct iommu_ioas *ioas)
@@ -199,6 +198,7 @@ static int iommufd_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		.dev_fd = devfd,
 		.dev_id = bind.out_devid,
 		.hwpt_id = -1,
+		.ioas = ioas,
 	};
 
 	list_add(&iommufd_devices, &info->list);
@@ -212,24 +212,44 @@ close_dev:
 	return -1;
 }
 
-static int iommufd_put_device_fd(struct iommu_ctx *ctx UNUSED, const char *bdf)
+static void iommu_ioas_destroy(struct iommu_ioas *ioas)
 {
+	free(ioas->ctx.iova_ranges);
+	free(ioas->name);
+	free(ioas);
+}
+
+static int iommufd_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
+{
+	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
 	struct iommufd_device_info *info, *next;
+	bool ioas_in_use = false;
+	bool found = false;
 
 	list_for_each_safe(&iommufd_devices, info, next, list) {
-		if (info->bdf == bdf) {
+		if (!found && info->ioas == ioas && strcmp(info->bdf, bdf) == 0) {
 			list_del(&info->list);
 
 			free(info->bdf);
 			free(info);
 
-			return 0;
+			found = true;
+			continue;
 		}
+
+		if (info->ioas == ioas)
+			ioas_in_use = true;
 	}
 
-	errno = ENOENT;
+	if (!found) {
+		errno = ENOENT;
+		return -1;
+	}
 
-	return -1;
+	if (!ioas_in_use)
+		iommu_ioas_destroy(ioas);
+
+	return 0;
 }
 
 static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
@@ -424,30 +444,11 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 	return &ioas->ctx;
 }
 
-struct iommu_ctx *iommufd_get_default_iommu_context(void)
-{
-	if (__iommufd == -1) {
-		iommu_ctx_init(&iommufd_default_ioas.ctx);
-
-		log_fatal_if(iommufd_open(), "could not open /dev/iommu\n");
-		log_fatal_if(iommu_ioas_init(&iommufd_default_ioas), "iommu_ioas_init\n");
-	}
-
-	return &iommufd_default_ioas.ctx;
-}
-
 #else /* !HAVE_VFIO_DEVICE_BIND_IOMMUFD */
 
 struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 {
 	(void)name;
-	log_debug("iommufd support not compiled in (missing kernel headers)\n");
-	errno = ENOTSUP;
-	return NULL;
-}
-
-struct iommu_ctx *iommufd_get_default_iommu_context(void)
-{
 	log_debug("iommufd support not compiled in (missing kernel headers)\n");
 	errno = ENOTSUP;
 	return NULL;

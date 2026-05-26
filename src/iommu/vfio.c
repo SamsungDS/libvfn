@@ -24,7 +24,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <unistd.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -35,6 +34,7 @@
 #include "ccan/str/str.h"
 #include "ccan/compiler/compiler.h"
 #include "ccan/minmax/minmax.h"
+#include "ccan/list/list.h"
 
 #include "vfn/support.h"
 #include "vfn/iommu.h"
@@ -44,6 +44,20 @@
 #include "context.h"
 
 #define VFIO_IOMMU_TYPE1_IOVA_RESERVED 0x10000
+
+/*
+ * VFIO Container-Group Model
+ *
+ * - Container: User explicitly creates (/dev/vfio/vfio open)
+ * - Group: User explicitly attaches to Container (VFIO_GROUP_SET_CONTAINER)
+ * - All Groups in the same Container share the same IOVA address space
+ *
+ * Implementation:
+ * - Create a separate container for each IOMMU group (per-group container)
+ * - Devices in the same group share the same container
+ * - Devices in different groups can share IOVA if explicitly attached to the
+ *   same container (currently simplified to per-group container)
+ */
 
 struct vfio_group {
 	int fd;
@@ -76,14 +90,18 @@ struct vfio_container {
 	struct skiplist free_iovas;
 
 	bool iommu_set;
+
+	int refcount;
+	struct list_node list;
 };
 
-static struct vfio_container vfio_default_container = {
-	.ctx.iommufd = false,
-	.fd = -1,
-	.name = "default",
-	.nr_groups = 0,
-};
+/*
+ * Active containers list.
+ * Each container is created per IOMMU group for isolation.
+ * Devices in the same group share the same container (and thus same IOVA space).
+ */
+static LIST_HEAD(active_containers);
+static pthread_mutex_t active_containers_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
@@ -554,6 +572,9 @@ static int vfio_iommu_type1_init(struct vfio_container *vfio)
 	return 0;
 }
 
+/* Forward declaration */
+static int vfio_init_container(struct vfio_container *vfio);
+
 static int vfio_group_set_container(struct vfio_group *group, struct vfio_container *vfio)
 {
 	log_info("adding group '%s' to container\n", group->path);
@@ -735,39 +756,169 @@ static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 	return ret_fd;
 }
 
+static void free_iova_range_node(void *opaque UNUSED, struct skiplist_node *n)
+{
+	struct vfio_iova_free_range *range = container_of_var(n, range, list);
+
+	free(range);
+}
+
+static void vfio_container_free(struct vfio_container *vfio)
+{
+	skiplist_clear_with(&vfio->free_iovas, free_iova_range_node, NULL);
+	free(vfio->ctx.iova_ranges);
+	free(vfio->name);
+	free(vfio);
+}
+
+/*
+ * Find a container that already has the given IOMMU group attached.
+ * This ensures that devices in the same group share the same container
+ * (and thus the same IOVA address space).
+ */
+static struct vfio_container *vfio_find_container_by_group(const char *group_path)
+{
+	struct vfio_container *vfio;
+	int i;
+
+	list_for_each(&active_containers, vfio, list) {
+		for (i = 0; i < VFN_MAX_VFIO_GROUPS; i++) {
+			if (vfio->groups[i].path && streq(vfio->groups[i].path, group_path))
+				return vfio;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * vfio_get_iommu_context - Get or create an IOMMU container for the given device
+ * @bdf: PCI BDF string of the device
+ *
+ * This implementation creates one container per IOMMU group for simplicity.
+ * Devices in the same group will share the same container.
+ *
+ * Return: &struct iommu_ctx for the container, or %NULL on failure.
+ */
+struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
+{
+	struct vfio_container *vfio, *existing = NULL;
+	__autofree char *group_path = NULL;
+
+	group_path = pci_get_iommu_group(bdf);
+	if (!group_path) {
+		log_debug("could not determine iommu group for device %s\n", bdf);
+		return NULL;
+	}
+
+	/*
+	 * Hold the lock for the entire function to simplify concurrency handling.
+	 * This avoids double-lock/unlock and race conditions between threads
+	 * creating containers for the same group.
+	 */
+	pthread_mutex_lock(&active_containers_lock);
+
+	/* Check if there's already a container with this group attached */
+	existing = vfio_find_container_by_group(group_path);
+	if (existing) {
+		existing->refcount++;
+		pthread_mutex_unlock(&active_containers_lock);
+
+		log_info("reusing container '%s' for device %s (group %s)\n",
+			 existing->name, bdf, group_path);
+		return &existing->ctx;
+	}
+
+	/*
+	 * No existing container found - create a new container for this group.
+	 * Per VFIO documentation:
+	 * 1. Open /dev/vfio/vfio to create a container
+	 * 2. Open the group and attach it to the container
+	 * 3. Set IOMMU type for the container
+	 */
+	vfio = znew_t(struct vfio_container, 1);
+
+	iommu_ctx_init(&vfio->ctx);
+
+	if (vfio_init_container(vfio) < 0) {
+		pthread_mutex_unlock(&active_containers_lock);
+		free(vfio->ctx.iova_ranges);
+		free(vfio);
+		return NULL;
+	}
+
+	vfio->name = strdup(group_path);
+	vfio->refcount = 1;
+
+	/*
+	 * Reserve the first group slot with this device's group path.  The
+	 * actual VFIO_GROUP_SET_CONTAINER attach happens later in
+	 * vfio_get_device_fd(); until then, a concurrent
+	 * vfio_get_iommu_context() for the same group must still be able to
+	 * find this container via vfio_find_container_by_group().
+	 */
+	vfio->groups[0].fd = -1;
+	vfio->groups[0].path = strdup(group_path);
+
+	list_add(&active_containers, &vfio->list);
+	pthread_mutex_unlock(&active_containers_lock);
+
+	log_info("created new container '%s' for device %s (group %s)\n",
+		 vfio->name, bdf, group_path);
+
+	return &vfio->ctx;
+}
+
 static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 	struct vfio_group *group;
+	bool do_free = false;
+
+	/*
+	 * Hold active_containers_lock across the entire state transition to
+	 * prevent races between concurrent closes on the same container.
+	 */
+	pthread_mutex_lock(&active_containers_lock);
 
 	group = vfio_get_group(vfio, bdf);
 	if (!group) {
+		pthread_mutex_unlock(&active_containers_lock);
 		log_debug("could not find iommu group for device %s\n", bdf);
 		errno = ENODEV;
 		return -1;
 	}
 
-	if (atomic_dec_fetch(&group->nr_devs) == 0) {
+	if (--group->nr_devs == 0) {
 		close(group->fd);
 		group->fd = -1;
+		free(group->path);
+		group->path = NULL;
 
-		/*
-		 * Kernel vfio driver will remove IOMMU driver and data from
-		 * the container if the current detached group is the last one
-		 * of the container.  We should reset the container instance
-		 * for cases re-opening vfio container only if it's
-		 * `vfio_default_container`.
-		 */
-		if (atomic_dec_fetch(&vfio->nr_groups) == 0) {
+		if (--vfio->nr_groups == 0) {
+			/*
+			 * Last group removed: close container and reset state.
+			 * The container structure remains for potential reuse.
+			 */
 			close(vfio->fd);
-
 			vfio->fd = -1;
 			vfio->iommu_set = false;
 			vfio->next = (iova_t)0;
 			vfio->next_ephemeral = (iova_t)0;
 			vfio->nephemerals = 0;
+			skiplist_clear_with(&vfio->free_iovas, free_iova_range_node, NULL);
 		}
 	}
+
+	if (--vfio->refcount == 0) {
+		list_del(&vfio->list);
+		do_free = true;
+	}
+
+	pthread_mutex_unlock(&active_containers_lock);
+
+	if (do_free)
+		vfio_container_free(vfio);
 
 	return 0;
 }
@@ -925,32 +1076,4 @@ static int vfio_init_container(struct vfio_container *vfio)
 	memcpy(&vfio->ctx.ops, &vfio_ops, sizeof(vfio->ctx.ops));
 
 	return 0;
-}
-
-struct iommu_ctx *vfio_get_iommu_context(const char *name)
-{
-	struct vfio_container *vfio = znew_t(struct vfio_container, 1);
-
-	iommu_ctx_init(&vfio->ctx);
-
-	if (vfio_init_container(vfio) < 0) {
-		free(vfio);
-		return NULL;
-	}
-
-	vfio->name = strdup(name);
-
-	return &vfio->ctx;
-}
-
-struct iommu_ctx *vfio_get_default_iommu_context(void)
-{
-	if (vfio_default_container.fd == -1) {
-		iommu_ctx_init(&vfio_default_container.ctx);
-
-		log_fatal_if(vfio_init_container(&vfio_default_container),
-			     "init default container\n");
-	}
-
-	return &vfio_default_container.ctx;
 }
