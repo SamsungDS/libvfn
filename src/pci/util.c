@@ -293,6 +293,23 @@ bool pci_is_vf(const char *bdf)
 	return access(path, F_OK) == 0;
 }
 
+bool pci_is_pf(const char *bdf)
+{
+	__autofree char *path = NULL;
+
+	if (asprintf(&path, "/sys/bus/pci/devices/%s/sriov_numvfs", bdf) < 0) {
+		log_debug("asprintf failed\n");
+		return false;
+	}
+
+	return access(path, F_OK) == 0;
+}
+
+bool pci_is_sriov_supported(const char *bdf)
+{
+	return pci_is_pf(bdf) || pci_is_vf(bdf);
+}
+
 int pci_vf_get_vfnum(const char *bdf)
 {
 	__autofree char *path = NULL;
