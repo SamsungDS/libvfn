@@ -132,6 +132,29 @@ char *pci_get_vf_bdf(const char *pf_bdf, int vfnum);
 bool pci_is_vf(const char *bdf);
 
 /**
+ * pci_is_pf - Determine if a device is a physical function which support sriov.
+ * @bdf: device address
+ *
+ * Determine if the given device is a physical function which supports sriov.
+ *
+ * Return: ``true`` if the device is a physical function which supports sriov;
+ * ``false`` otherwise.
+ */
+bool pci_is_pf(const char *bdf);
+
+/**
+ * pci_is_sriov_supported - Determine if a device is involved in SR-IOV
+ * @bdf: device address
+ *
+ * Determine if the given device is either an SR-IOV capable physical function
+ * or a virtual function.
+ *
+ * Return: ``true`` if the device supports SR-IOV or is a virtual function;
+ * ``false`` otherwise.
+ */
+bool pci_is_sriov_supported(const char *bdf);
+
+/**
  * pci_vf_get_pf_bdf - Determine the physical function bdf given the bdf of a
  *                     virtual function
  * @bdf: virtual function device address

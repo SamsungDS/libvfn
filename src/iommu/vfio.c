@@ -700,12 +700,15 @@ static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 
 	vf_token = getenv("VFTOKEN");
 	if (vf_token) {
-		log_info("using vf_token\n");
+		if (pci_is_sriov_supported(bdf)) {
+			log_info("using vf_token\n");
 
-		if (asprintf(&buf, "%s vf_token=%s", bdf, vf_token) < 0)
-			return -1;
+			if (asprintf(&buf, "%s vf_token=%s", bdf, vf_token) < 0)
+				return -1;
 
-		bdf = buf;
+			bdf = buf;
+		} else
+			log_info("VFTOKEN is set but ignored (device is not SR-IOV capable)\n");
 	}
 
 	ret_fd = ioctl(gfd, VFIO_GROUP_GET_DEVICE_FD, bdf);
