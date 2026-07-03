@@ -617,6 +617,8 @@ static int vfio_get_group_fd(struct vfio_container *vfio,
 
 free_group_path:
 	free(group->path);
+	group->path = NULL;
+	group->fd = -1;
 
 	return -1;
 }
