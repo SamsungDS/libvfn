@@ -116,6 +116,13 @@ static int __nvme_configure_cq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	uint8_t dstrd;
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	if (cap == UINT64_MAX) {
+		log_error("failed to read cap; controller not accessible\n");
+
+		errno = ENODEV;
+		return -1;
+	}
+
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid && qid > ctrl->config.ncqa + 1) {
@@ -209,6 +216,13 @@ static int __nvme_configure_sq(struct nvme_ctrl *ctrl, int qid, int qsize,
 	pagesize = __mps_to_pagesize(ctrl->config.mps);
 
 	cap = le64_to_cpu(mmio_read64(ctrl->regs + NVME_REG_CAP));
+	if (cap == UINT64_MAX) {
+		log_error("failed to read cap; controller not accessible\n");
+
+		errno = ENODEV;
+		return -1;
+	}
+
 	dstrd = NVME_FIELD_GET(cap, CAP_DSTRD);
 
 	if (qid && qid > ctrl->config.nsqa + 1) {
