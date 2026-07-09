@@ -1,7 +1,7 @@
 {
   description = "provides the libvfn package for NixOS and Nix environments";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
   };
 
   outputs = { self, nixpkgs }:
@@ -26,7 +26,6 @@
             "-Ddocs=disabled"
             "-Dlibnvme=disabled"
             "-Dprofiling=false"
-            "-Dlinux-headers=${kernelHeaders}/include"
           ];
           nativeBuildInputs = with pkgs; [ meson ninja pkg-config perl ];
         };
