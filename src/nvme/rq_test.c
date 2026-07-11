@@ -22,6 +22,9 @@
 
 #define __max_prps 513
 
+/* for mps=0: one prplist page holds this many entries */
+#define __max_prps_per_page (1 << (__mps_to_pageshift(0) - 3))
+
 bool iommu_translate_vaddr(struct iommu_ctx *ctx UNUSED, void *vaddr, iova_t *iova)
 {
 	*iova = (uint64_t)vaddr;
@@ -64,13 +67,21 @@ int main(void)
 	struct iovec iov[8];
 	struct iova_vec iovav[8];
 
-	plan_tests(179);
+	/* multi-page prplist: two contiguous mapped pages used as one array */
+	leint64_t *mprplists;
+	void *mppages;
+
+	plan_tests(179 + 12);
 
 	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
 	rq.page.iova = (uint64_t)rq.page.vaddr;
 	prplist = rq.page.vaddr;
 	sglds = rq.page.vaddr;
+
+	/* two contiguous pages for multi-page prplist chaining */
+	assert(pgmapn(&mppages, 2, __VFN_PAGESIZE) > 0);
+	mprplists = mppages;
 
 	/* test 512b aligned */
 	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
@@ -329,6 +340,7 @@ int main(void)
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
 
+
 	/*
 	 * PRPs with iova tests
 	 */
@@ -473,6 +485,65 @@ int main(void)
 	iovav[1] = (struct iova_vec) {.iova = (iova_t)0x1001000, .len = __max_prps * 0x1000};
 	ok1(nvme_rq_mapv_iova_prp(&ctrl, &rq, &cmd, iovav, 2) == -1);
 
+
+	/*
+	 * Multi-page prplist chaining (direct nvme_map_prp/nvme_mapv_prp with two
+	 * pages). For mps=0, max_prps is 512 and two pages hold up to
+	 * (2 - 1) * (512 - 1) + 512 = 1023 data PRPs.
+	 */
+
+	/*
+	 * (__max_prps_per_page + 1) PRPs (prp1 + __max_prps_per_page list entries)
+	 * overflow a single page. With two pages the list is chained: the last list
+	 * entry is written to the second page, and the first page's last slot holds
+	 * the chain link.
+	 */
+	memset(mppages, 0x0, 2 * __VFN_PAGESIZE);
+	ok1(nvme_map_prp(&ctrl, mprplists, 2, &cmd, (iova_t)0x1000000,
+			 (__max_prps_per_page + 1) * 0x1000) == 0);
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == (uint64_t)mprplists);
+	/* last slot of the first page chains to the second page */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page - 1]) ==
+	    (uint64_t)mprplists + __VFN_PAGESIZE);
+	/* the chained entry on the second page is the last list PRP */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page]) ==
+	    0x1000000 + (uint64_t)__max_prps_per_page * 0x1000);
+
+	/*
+	 * Two pages hold at most __max_prps_per_page + (__max_prps_per_page - 1)
+	 * list PRPs (i.e. that many + 1 total). Requiring one more total PRP must
+	 * fail.
+	 */
+	memset(mppages, 0x0, 2 * __VFN_PAGESIZE);
+	ok1(nvme_map_prp(&ctrl, mprplists, 2, &cmd, (iova_t)0x1000000,
+			 (2 * __max_prps_per_page) * 0x1000 + 0x1000) == -1);
+
+	/*
+	 * Multi-page chaining across iovec segments: the first iovec fills the
+	 * first page and spills one entry onto the second page, the second iovec
+	 * appends a further entry on the second page.
+	 */
+	memset(mppages, 0x0, 2 * __VFN_PAGESIZE);
+	iov[0] = (struct iovec) {
+		.iov_base = (void *)0x1000000,
+		.iov_len = (__max_prps_per_page + 1) * 0x1000,
+	};
+	iov[1] = (struct iovec) {
+		.iov_base = (void *)(0x1000000 + (__max_prps_per_page + 1) * 0x1000),
+		.iov_len = 0x1000,
+	};
+	ok1(nvme_mapv_prp(&ctrl, mprplists, 2, &cmd, iov, 2) == 0);
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == (uint64_t)mprplists);
+	/* first page chains to the second */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page - 1]) ==
+	    (uint64_t)mprplists + __VFN_PAGESIZE);
+	/* second page: first entry is the spill from iov[0], next is iov[1] */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page]) ==
+	    0x1000000 + (uint64_t)__max_prps_per_page * 0x1000);
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page + 1]) ==
+	    0x1000000 + (uint64_t)(__max_prps_per_page + 1) * 0x1000);
 
 	/*
 	 * SGLs

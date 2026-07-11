@@ -142,8 +142,96 @@ int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t le
 	return nvme_sync(ctrl, ctrl->adminq.sq, sqe, buf, len, cqe_copy);
 }
 
-static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, iova_t iova, size_t len,
-				  int pageshift)
+/*
+ * PRP list chaining cursor.
+ *
+ * A PRP list page holds at most @max_prps entries. When a buffer requires more
+ * entries than fit in a single page, the list is chained: the last slot of a
+ * non-final page holds the iova of the next page. The cursor tracks the page
+ * (@page) and the slot within it (@slot) so that callers building a list across
+ * multiple segments (see __map_prp_first / __map_prp_append) share a single
+ * position.
+ *
+ * @prplists is a contiguous array of @nprplists pages, each one MPS page in
+ * size, that the caller has allocated and mapped. Because the array is
+ * contiguous in both virtual and iova space, page @p sits at
+ * @prplists + @p * @max_prps and its iova is @prplist_iova + @p * pagesize.
+ */
+struct __prp_cursor {
+	leint64_t *prplists;
+	uint64_t prplist_iova;
+	int nprplists;
+	int page;
+	int slot;
+};
+
+static inline void __prp_cursor_init(struct __prp_cursor *c, leint64_t *prplists,
+				     uint64_t prplist_iova, int nprplists)
+{
+	c->prplists = prplists;
+	c->prplist_iova = prplist_iova;
+	c->nprplists = nprplists;
+	c->page = 0;
+	c->slot = 0;
+}
+
+/*
+ * Number of data PRP entries that may be stored across @nprplists pages: the
+ * final page contributes @max_prps entries, every other page contributes
+ * @max_prps - 1 (its last slot is consumed by the chain link).
+ */
+static inline int __prplist_capacity(int nprplists, int max_prps)
+{
+	return (nprplists - 1) * (max_prps - 1) + max_prps;
+}
+
+/*
+ * Append one data PRP entry to the chain.
+ *
+ * A page holds @max_prps entries; the last one (index @max_prps - 1) of a
+ * non-final page is repurposed as the chain link to the next page. To avoid
+ * reserving that slot prematurely (which would needlessly chain a list that
+ * ends exactly at a page boundary), chaining is deferred until the slot is
+ * actually required: when the cursor sits at the last slot of a non-final page
+ * and a further entry is appended, the link is written into that last slot and
+ * the entry is placed at the start of the next page instead.
+ *
+ * Return: ``0`` on success, ``-1`` if @prplists has been exhausted.
+ */
+static inline int __prp_cursor_put(struct __prp_cursor *c, uint64_t iova, int max_prps,
+				   int pageshift)
+{
+	leint64_t *page;
+
+	/*
+	 * The cursor is parked at the last slot of a non-final page. Writing the
+	 * incoming entry there would leave no room for a chain link if yet
+	 * another entry follows, so consume this slot as the link to the next
+	 * page and continue there. If no further entry ever follows, the slot
+	 * stays unused (harmless) and no chain is created.
+	 */
+	if (c->slot == max_prps - 1 && c->page + 1 < c->nprplists) {
+		page = c->prplists + (c->page << (pageshift - 3));
+		page[max_prps - 1] =
+			cpu_to_le64(c->prplist_iova + ((uint64_t)(c->page + 1) << pageshift));
+
+		c->page++;
+		c->slot = 0;
+	}
+
+	if (c->page >= c->nprplists || c->slot >= max_prps) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	page = c->prplists + (c->page << (pageshift - 3));
+	page[c->slot++] = cpu_to_le64(iova);
+
+	return 0;
+}
+
+static inline int __map_prp_first(leint64_t *prp1, struct __prp_cursor *c, iova_t iova,
+				  size_t len, int pageshift)
 {
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
@@ -160,41 +248,33 @@ static inline int __map_prp_first(leint64_t *prp1, leint64_t *prplist, iova_t io
 	if (len)
 		prpcount += (int)ALIGN_UP(len, pagesize) >> pageshift;
 
-	if (prpcount > 1 && !ALIGNED(iova, pagesize))
-		/* align down to simplify loop below */
-		iova = ALIGN_DOWN(iova, pagesize);
-
-	if (prpcount > max_prps) {
+	/* prp1 is stored in the command, so only prpcount - 1 go into the list */
+	if (prpcount - 1 > __prplist_capacity(c->nprplists, max_prps)) {
 		errno = EINVAL;
 		return -1;
 	}
+
+	if (prpcount > 1 && !ALIGNED(iova, pagesize))
+		/* align down to simplify loop below */
+		iova = ALIGN_DOWN(iova, pagesize);
 
 	/*
 	 * Map the remaining parts of the buffer into prp2/prplist. iova will be
 	 * aligned from the above, which simplifies this.
 	 */
-	for (int i = 1; i < prpcount; i++)
-		prplist[i - 1] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
+	for (int i = 1; i < prpcount; i++) {
+		if (__prp_cursor_put(c, iova + ((uint64_t)i << pageshift), max_prps, pageshift))
+			return -1;
+	}
 
-	/*
-	 * prpcount may be zero if the buffer length was less than the page
-	 * size, so clamp it to 1 in that case.
-	 */
-	return clamp_t(int, prpcount, 1, prpcount);
+	return prpcount;
 }
 
-static inline int __map_prp_append(leint64_t *prplist, iova_t iova, size_t len, int max_prps,
+static inline int __map_prp_append(struct __prp_cursor *c, iova_t iova, size_t len, int max_prps,
 				   int pageshift)
 {
 	int prpcount = max_t(int, 1, (int)len >> pageshift);
 	size_t pagesize = 1 << pageshift;
-
-	if (prpcount > max_prps) {
-		log_error("too many prps required\n");
-
-		errno = EINVAL;
-		return -1;
-	}
 
 	if (!ALIGNED(iova, pagesize)) {
 		log_error("unaligned iova 0x%" PRIx64 "\n", iova);
@@ -203,42 +283,53 @@ static inline int __map_prp_append(leint64_t *prplist, iova_t iova, size_t len, 
 		return -1;
 	}
 
-	for (int i = 0; i < prpcount; i++)
-		prplist[i] = cpu_to_le64(iova + ((uint64_t)i << pageshift));
+	for (int i = 0; i < prpcount; i++) {
+		if (__prp_cursor_put(c, iova + ((uint64_t)i << pageshift), max_prps, pageshift))
+			return -1;
+	}
 
 	return prpcount;
 }
 
-static inline void __set_prp2(leint64_t *prp2, leint64_t prplist, leint64_t prplist0, int prpcount)
+static inline void __set_prp2(leint64_t *prp2, leint64_t prplist_iova, leint64_t *prplist,
+			      int prpcount)
 {
 	if (prpcount == 2)
-		*prp2 = prplist0;
+		*prp2 = prplist[0];
 	else if (prpcount > 2)
-		*prp2 = prplist;
+		*prp2 = prplist_iova;
 	else
 		*prp2 = 0x0;
 }
 
-int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd,
-		 iova_t iova, size_t len)
+int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplists, int nprplists,
+		 union nvme_cmd *cmd, iova_t iova, size_t len)
 {
 	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
-	int prpcount;
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
+	struct __prp_cursor c;
 	iova_t prplist_iova;
+	int prpcount;
 
-	if (!iommu_translate_vaddr(ctx, prplist, &prplist_iova)) {
+	if (nprplists < 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!iommu_translate_vaddr(ctx, prplists, &prplist_iova)) {
 		errno = EFAULT;
 		return -1;
 	}
 
-	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
+	__prp_cursor_init(&c, prplists, prplist_iova, nprplists);
+
+	prpcount = __map_prp_first(&cmd->dptr.prp1, &c, iova, len, pageshift);
 	if (prpcount < 0) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplist[0], prpcount);
+	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplists, prpcount);
 
 	return 0;
 }
@@ -291,7 +382,7 @@ int nvme_vm_assign_max_flexible(struct nvme_ctrl *ctrl, uint16_t scid)
 	return 0;
 }
 
-int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
+int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplists, int nprplists,
 		  union nvme_cmd *cmd, struct iovec *iov, int niov)
 {
 	struct iommu_ctx *ctx = __iommu_ctx(ctrl);
@@ -301,15 +392,28 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iov
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
 	int ret, prpcount;
-	iova_t iova;
+	iova_t iova, prplist_iova;
+	struct __prp_cursor c;
+
+	if (nprplists < 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (!iommu_translate_vaddr(ctx, iov->iov_base, &iova)) {
 		errno = EFAULT;
 		return -1;
 	}
 
+	if (!iommu_translate_vaddr(ctx, prplists, &prplist_iova)) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	__prp_cursor_init(&c, prplists, prplist_iova, nprplists);
+
 	/* map the first segment */
-	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iova, len, pageshift);
+	prpcount = __map_prp_first(&cmd->dptr.prp1, &c, iova, len, pageshift);
 	if (prpcount < 0)
 		goto invalid;
 
@@ -345,15 +449,14 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iov
 			goto invalid;
 		}
 
-		ret = __map_prp_append(&prplist[prpcount - 1], iova, len, max_prps - prpcount,
-				       pageshift);
+		ret = __map_prp_append(&c, iova, len, max_prps, pageshift);
 		if (ret < 0)
 			goto invalid;
 
 		prpcount += ret;
 	}
 
-	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplist[0], prpcount);
+	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplists, prpcount);
 
 	return 0;
 
@@ -362,16 +465,35 @@ invalid:
 	return -1;
 }
 
-int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
+int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplists, int nprplists,
 		       union nvme_cmd *cmd, struct iova_vec *iov, int niov)
 {
 	int pageshift = __mps_to_pageshift(ctrl->config.mps);
 	size_t pagesize = 1 << pageshift;
 	int max_prps = 1 << (pageshift - 3);
+	iova_t prplist_iova;
+	struct __prp_cursor c;
 	int ret, prpcount;
 
+	if (nprplists < 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * @prplists is described by a physical (iova) address in the command,
+	 * but the caller still provides a kernel-accessible mapping so that the
+	 * list entries can be filled in; derive its iova from the vaddr.
+	 */
+	if (!iommu_translate_vaddr(__iommu_ctx(ctrl), prplists, &prplist_iova)) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	__prp_cursor_init(&c, prplists, prplist_iova, nprplists);
+
 	/* map the first segment */
-	prpcount = __map_prp_first(&cmd->dptr.prp1, prplist, iov[0].iova, iov[0].len, pageshift);
+	prpcount = __map_prp_first(&cmd->dptr.prp1, &c, iov[0].iova, iov[0].len, pageshift);
 	if (prpcount < 0)
 		goto invalid;
 
@@ -400,15 +522,14 @@ int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplis
 			goto invalid;
 		}
 
-		ret = __map_prp_append(&prplist[prpcount - 1], iov[i].iova, iov[i].len,
-				       max_prps - prpcount, pageshift);
+		ret = __map_prp_append(&c, iov[i].iova, iov[i].len, max_prps, pageshift);
 		if (ret < 0)
 			goto invalid;
 
 		prpcount += ret;
 	}
 
-	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplist[0], prpcount);
+	__set_prp2(&cmd->dptr.prp2, cpu_to_le64(prplist_iova), prplists, prpcount);
 
 	return 0;
 

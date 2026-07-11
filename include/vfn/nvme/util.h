@@ -115,24 +115,37 @@ int nvme_admin(struct nvme_ctrl *ctrl, union nvme_cmd *sqe, void *buf, size_t le
  *                command from a buffer that is contiguous in iova mapped
  *                memory.
  * @ctrl: &struct nvme_ctrl
- * @prplist: The first PRP list page address
+ * @prplists: contiguous array of PRP list pages, each one MPS page in size,
+ *            allocated and iova-mapped by the caller
+ * @nprplists: number of pages in @prplists
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iova: I/O Virtual Address
  * @len: Length of buffer
  *
  * Map a buffer of size @len into the command payload.
  *
+ * When the buffer requires more PRP entries than fit in a single page, the PRP
+ * list is chained across @prplists: the last entry of a non-final page holds
+ * the iova of the next page. The number of data PRPs that may be stored in
+ * @prplists is therefore ``(nprplists - 1) * (max_prps - 1) + max_prps``, where
+ * ``max_prps`` is the number of PRP entries per page; if @len requires more,
+ * ``-1`` is returned.
+ *
+ * @prplists must be a single contiguous mapping that is contiguous in both
+ * virtual and iova space, so that page @p sits at
+ * ``prplists + p * max_prps`` and its iova is ``base_iova + p * pagesize``.
+ *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd,
-		 iova_t iova, size_t len);
+int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplists, int nprplists,
+		 union nvme_cmd *cmd, iova_t iova, size_t len);
 
 /**
  * nvme_mapv_prp - Set up the Physical Region Pages in the data pointer of
  *                 the command from an iovec.
  * @ctrl: &struct nvme_ctrl
- * @prplist: The first PRP list page address
- * @prplist_iova: The first PRP list iova address
+ * @prplists: contiguous array of PRP list pages, see nvme_map_prp()
+ * @nprplists: number of pages in @prplists
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iov: array of iovecs
  * @niov: number of iovec in @iovec
@@ -141,17 +154,19 @@ int nvme_map_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, union nvme_cmd *cmd
  * allowed to be unaligned, but the entry MUST end on a page boundary. All
  * subsequent entries MUST be page aligned.
  *
+ * See nvme_map_prp() for the chaining semantics and capacity of @prplists.
+ *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
+int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplists, int nprplists,
 		  union nvme_cmd *cmd, struct iovec *iov, int niov);
 
 /**
  * nvme_mapv_iova_prp - Set up the Physical Region Pages in the data pointer of
  *                      the command from an iova_vec.
  * @ctrl: &struct nvme_ctrl
- * @prplist: The first PRP list page address
- * @prplist_iova: The first PRP list iova address
+ * @prplists: contiguous array of PRP list pages, see nvme_map_prp()
+ * @nprplists: number of pages in @prplists
  * @cmd: NVMe command prototype (&union nvme_cmd)
  * @iov: array of iova_vecs
  * @niov: number of iova_vec in @iovec
@@ -160,9 +175,11 @@ int nvme_mapv_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iov
  * allowed to be unaligned, but the entry MUST end on a page boundary. All
  * subsequent entries MUST be page aligned.
  *
+ * See nvme_map_prp() for the chaining semantics and capacity of @prplists.
+ *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
-int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplist, iova_t prplist_iova,
+int nvme_mapv_iova_prp(struct nvme_ctrl *ctrl, leint64_t *prplists, int nprplists,
 		       union nvme_cmd *cmd, struct iova_vec *iov, int niov);
 
 /**

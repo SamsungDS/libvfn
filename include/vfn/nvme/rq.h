@@ -212,8 +212,11 @@ static inline void nvme_rq_exec(struct nvme_rq *rq, union nvme_cmd *cmd)
  *
  * Map a buffer of size @len into the command payload.
  *
- * This helper uses a pre-allocated PRP list page within @rq and same with
- * calling ``nvme_map_prp(ctrl, rq->page.vaddr, ...)``.
+ * This helper uses a pre-allocated PRP list page within @rq and is equivalent
+ * to calling ``nvme_map_prp(ctrl, rq->page.vaddr, 1, cmd, iova, len)``. Since a
+ * single page is used, the buffer length is limited to what fits in one PRP
+ * list page; for larger buffers, allocate a multi-page PRP list and call
+ * nvme_map_prp() directly.
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
@@ -233,8 +236,11 @@ int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *
  * allowed to be unaligned, but the entry MUST end on a page boundary. All
  * subsequent entries MUST be page aligned.
  *
- * This helper uses a pre-allocated PRP list page within @rq and same with
- * calling ``nvme_mapv_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iova, niov)``;
+ * This helper uses a pre-allocated PRP list page within @rq and is equivalent
+ * to calling ``nvme_mapv_prp(ctrl, rq->page.vaddr, 1, cmd, iova, niov)``. Since
+ * a single page is used, the total buffer length is limited to what fits in one
+ * PRP list page; for larger buffers, allocate a multi-page PRP list and call
+ * nvme_mapv_prp() directly.
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */
@@ -254,8 +260,11 @@ int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd 
  * allowed to be unaligned, but the entry MUST end on a page boundary. All
  * subsequent entries MUST be page aligned.
  *
- * This helper uses a pre-allocated PRP list page within @rq and same with
- * calling ``nvme_mapv_iova_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iova, niov)``;
+ * This helper uses a pre-allocated PRP list page within @rq and is equivalent
+ * to calling ``nvme_mapv_iova_prp(ctrl, rq->page.vaddr, 1, cmd, iova, niov)``.
+ * Since a single page is used, the total buffer length is limited to what fits
+ * in one PRP list page; for larger buffers, allocate a multi-page PRP list and
+ * call nvme_mapv_iova_prp() directly.
  *
  * Return: ``0`` on success, ``-1`` on error and sets errno.
  */

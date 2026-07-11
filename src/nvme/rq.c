@@ -41,19 +41,19 @@
 int nvme_rq_map_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		    iova_t iova, size_t len)
 {
-	return nvme_map_prp(ctrl, rq->page.vaddr, cmd, iova, len);
+	return nvme_map_prp(ctrl, rq->page.vaddr, 1, cmd, iova, len);
 }
 
 int nvme_rq_mapv_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 		     struct iovec *iov, int niov)
 {
-	return nvme_mapv_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iov, niov);
+	return nvme_mapv_prp(ctrl, rq->page.vaddr, 1, cmd, iov, niov);
 }
 
 int nvme_rq_mapv_iova_prp(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
 			  struct iova_vec *iov, int niov)
 {
-	return nvme_mapv_iova_prp(ctrl, rq->page.vaddr, rq->page.iova, cmd, iov, niov);
+	return nvme_mapv_iova_prp(ctrl, rq->page.vaddr, 1, cmd, iov, niov);
 }
 
 int nvme_rq_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_rq *rq, union nvme_cmd *cmd,
