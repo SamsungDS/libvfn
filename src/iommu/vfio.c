@@ -101,7 +101,12 @@ struct vfio_container {
  * Devices in the same group share the same container (and thus same IOVA space).
  */
 static LIST_HEAD(active_containers);
-static pthread_mutex_t active_containers_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t active_containers_lock;
+
+static void __attribute__((constructor)) init_active_containers_lock(void)
+{
+	pthread_mutex_init(&active_containers_lock, NULL);
+}
 
 #ifdef VFIO_IOMMU_INFO_CAPS
 # ifdef VFIO_IOMMU_TYPE1_INFO_CAP_IOVA_RANGE
