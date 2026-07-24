@@ -104,7 +104,7 @@ static int vfio_pci_init_irq(struct vfio_pci_device *pci)
 		}
 	} while (!pci->dev.irq_info.count);
 
-	log_info("irq_info.count %d\n", pci->dev.irq_info.count);
+	log_debug("irq_info.count %d\n", pci->dev.irq_info.count);
 
 	return 0;
 }
