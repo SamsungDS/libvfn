@@ -71,7 +71,7 @@ int main(void)
 	leint64_t *mprplists;
 	void *mppages;
 
-	plan_tests(179 + 12);
+	plan_tests(179 + 18);
 
 	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
@@ -493,22 +493,42 @@ int main(void)
 	 */
 
 	/*
-	 * (__max_prps_per_page + 1) PRPs (prp1 + __max_prps_per_page list entries)
-	 * overflow a single page. With two pages the list is chained: the last list
-	 * entry is written to the second page, and the first page's last slot holds
-	 * the chain link.
+	 * __max_prps_per_page list PRPs (prp1 + __max_prps_per_page list entries)
+	 * fit exactly in a single page. Even though a second page is offered, it
+	 * must not be used: the list ends exactly at the page boundary, so the
+	 * last slot holds data, not a chain link.
 	 */
 	memset(mppages, 0x0, 2 * __VFN_PAGESIZE);
 	ok1(nvme_map_prp(&ctrl, mprplists, 2, &cmd, (iova_t)0x1000000,
 			 (__max_prps_per_page + 1) * 0x1000) == 0);
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == (uint64_t)mprplists);
+	/* last slot of the first page holds the last list PRP, not a chain link */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page - 1]) ==
+	    0x1000000 + (uint64_t)__max_prps_per_page * 0x1000);
+	/* the second page is untouched */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page]) == 0x0);
+
+	/*
+	 * One more list PRP than fits in a single page (__max_prps_per_page + 1)
+	 * genuinely overflows: with two pages the list is chained, the last list
+	 * entry is written to the second page, and the first page's last slot
+	 * holds the chain link.
+	 */
+	memset(mppages, 0x0, 2 * __VFN_PAGESIZE);
+	ok1(nvme_map_prp(&ctrl, mprplists, 2, &cmd, (iova_t)0x1000000,
+			 (__max_prps_per_page + 2) * 0x1000) == 0);
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == (uint64_t)mprplists);
 	/* last slot of the first page chains to the second page */
 	ok1(le64_to_cpu(mprplists[__max_prps_per_page - 1]) ==
 	    (uint64_t)mprplists + __VFN_PAGESIZE);
-	/* the chained entry on the second page is the last list PRP */
+	/* the chained entry on the second page is the second-to-last list PRP */
 	ok1(le64_to_cpu(mprplists[__max_prps_per_page]) ==
 	    0x1000000 + (uint64_t)__max_prps_per_page * 0x1000);
+	/* the last list PRP follows on the second page */
+	ok1(le64_to_cpu(mprplists[__max_prps_per_page + 1]) ==
+	    0x1000000 + (uint64_t)(__max_prps_per_page + 1) * 0x1000);
 
 	/*
 	 * Two pages hold at most __max_prps_per_page + (__max_prps_per_page - 1)
