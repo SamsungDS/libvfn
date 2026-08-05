@@ -443,15 +443,20 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 int nvme_delete_iocq(struct nvme_ctrl *ctrl, int qid)
 {
 	union nvme_cmd cmd;
-
-	nvme_discard_cq(ctrl, &ctrl->cq[qid]);
+	int ret;
 
 	cmd.delete_q = (struct nvme_cmd_delete_q) {
 		.opcode = NVME_ADMIN_DELETE_CQ,
 		.qid = cpu_to_le16((uint16_t)qid),
 	};
 
-	return __admin(ctrl, &cmd);
+	ret = __admin(ctrl, &cmd);
+	if (ret)
+		return ret;
+
+	nvme_discard_cq(ctrl, &ctrl->cq[qid]);
+
+	return 0;
 }
 
 int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize, struct nvme_cq *cq,
@@ -480,15 +485,20 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize, struct nvme_cq 
 int nvme_delete_iosq(struct nvme_ctrl *ctrl, int qid)
 {
 	union nvme_cmd cmd;
-
-	nvme_discard_sq(ctrl, &ctrl->sq[qid]);
+	int ret;
 
 	cmd.delete_q = (struct nvme_cmd_delete_q) {
 		.opcode = NVME_ADMIN_DELETE_SQ,
 		.qid = cpu_to_le16((uint16_t)qid),
 	};
 
-	return __admin(ctrl, &cmd);
+	ret = __admin(ctrl, &cmd);
+	if (ret)
+		return ret;
+
+	nvme_discard_sq(ctrl, &ctrl->sq[qid]);
+
+	return 0;
 }
 
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector, unsigned long flags)
