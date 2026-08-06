@@ -371,7 +371,9 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector);
  * @ctrl: See &struct nvme_ctrl
  * @qid: Queue identifier
  *
- * Delete the I/O Completion queue associated with @qid.
+ * Delete the I/O Completion queue associated with @qid. The queue's
+ * host-side resources are only freed once the device has confirmed the
+ * queue is gone, rather than before asking it to delete the queue.
  *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
@@ -404,7 +406,11 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize,
  * @ctrl: See &struct nvme_ctrl
  * @qid: Queue identifier
  *
- * Delete the I/O Submission queue associated with @qid.
+ * Delete the I/O Submission queue associated with @qid. Deleting a
+ * submission queue aborts any command still outstanding on it, and its
+ * host-side resources (including its request trackers) are only freed
+ * once the device has confirmed this, so a request tracker acquired from
+ * this queue remains valid to release until this call returns.
  *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
@@ -437,7 +443,9 @@ int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector,
  * @ctrl: See &struct nvme_ctrl
  * @qid: Queue identifier
  *
- * Delete both the I/O Submission and Completion queues associated with @qid.
+ * Delete both the I/O Submission and Completion queues associated with
+ * @qid (see &nvme_delete_iosq for what this guarantees about commands
+ * still outstanding on the pair).
  *
  * Return: On success, returns ``0``. On error, returns ``-1`` and sets
  * ``errno``.
