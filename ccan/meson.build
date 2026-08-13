@@ -123,7 +123,7 @@ ccan_config.set10('HAVE_SYS_UNISTD_H',
 ccan_config.set10('HAVE_TYPEOF',
   cc.compiles('''
     int main(void) {
-      int x;
+      int x = 0;
       __typeof__(x) y;
       y = x;
       return y == x ? 0 : 1;
