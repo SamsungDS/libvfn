@@ -169,6 +169,11 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 	if (!pci->dev.ctx)
 		pci->dev.ctx = iommu_get_context(bdf);
 
+	if (!pci->dev.ctx) {
+		log_debug("failed to get IOMMU context\n");
+		return -1;
+	}
+
 	pci->dev.fd = pci->dev.ctx->ops.get_device_fd(pci->dev.ctx, bdf);
 	if (pci->dev.fd < 0) {
 		log_debug("failed to get device fd\n");
