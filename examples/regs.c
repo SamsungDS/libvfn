@@ -106,9 +106,9 @@ int main(int argc, char **argv)
 	printf("%-16s %lx\n",  "CAP.PMRS", NVME_CAP_PMRS(cap));
 
 	printf("%-16s %x\n",   "VS", vs);
-	printf("%-16s %x\n",   "VS.MJR", NVME_VS_TER(vs));
+	printf("%-16s %x\n",   "VS.MJR", NVME_VS_MJR(vs));
 	printf("%-16s %x\n",   "VS.MNR", NVME_VS_MNR(vs));
-	printf("%-16s %x\n",   "VS.TER", NVME_VS_MJR(vs));
+	printf("%-16s %x\n",   "VS.TER", NVME_VS_TER(vs));
 
 	printf("%-16s %x\n",   "INTMS", intms);
 	printf("%-16s %x\n",   "INTMC", intmc);
