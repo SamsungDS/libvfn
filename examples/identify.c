@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 	case NVME_IDENTIFY_CNS_CTRL:
 		id_ctrl = vaddr;
 
-		printf("vid 0x%"PRIx8"\n", id_ctrl->vid);
+		printf("vid 0x%"PRIx16"\n", id_ctrl->vid);
 
 		break;
 

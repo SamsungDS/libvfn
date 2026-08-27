@@ -38,7 +38,7 @@ Issuing a crafted command using the high-level API can be as simple as:
 
      nvme_admin(&ctrl, &cmd, vaddr, NVME_IDENTIFY_DATA_SIZE, NULL);
 
-     printf("vid 0x%"PRIx8"\n", ((struct nvme_id_ctrl *)vaddr)->vid);
+     printf("vid 0x%"PRIx16"\n", ((struct nvme_id_ctrl *)vaddr)->vid);
 
      return 0;
    }
