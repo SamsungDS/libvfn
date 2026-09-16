@@ -166,7 +166,9 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 
 	log_info("pci class code is 0x%06llx\n", pci->classcode);
 
-	if (!pci->dev.ctx)
+	if (pci->dev.ctx)
+		iommu_ctx_get(pci->dev.ctx);
+	else
 		pci->dev.ctx = iommu_get_context(bdf);
 
 	if (!pci->dev.ctx) {
