@@ -64,8 +64,13 @@
  */
 #define STORE_PTR(ptr, val) __STORE_PTR(typeof(ptr), ptr, val)
 
-#define likely(cond) __builtin_expect(!!(cond), 1)
-#define unlikely(cond) __builtin_expect(!!(cond), 0)
+#ifndef likely
+# define likely(cond) __builtin_expect(!!(cond), 1)
+#endif
+
+#ifndef unlikely
+# define unlikely(cond) __builtin_expect(!!(cond), 0)
+#endif
 
 #ifdef __CHECKER__
 # ifndef __bitwise
