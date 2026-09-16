@@ -232,10 +232,13 @@ static void iommufd_put_context(struct iommu_ctx *ctx)
 		iommu_ioas_destroy(ioas);
 }
 
-static int iommufd_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
+static int iommufd_put_device_fd(struct iommu_ctx *ctx, const char *bdf, int fd)
 {
 	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
 	struct iommufd_device_info *info, *next;
+
+	/* closing the device fd unbinds it from iommufd */
+	log_fatal_if(close(fd), "close\n");
 
 	list_for_each_safe(&iommufd_devices, info, next, list) {
 		if (info->ioas == ioas && strcmp(info->bdf, bdf) == 0) {

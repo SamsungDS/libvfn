@@ -226,10 +226,8 @@ int vfio_pci_close(struct vfio_pci_device *pci)
 	struct iommu_ctx *ctx = pci->dev.ctx;
 	int ret = 0;
 
-	log_fatal_if(close(pci->dev.fd), "close");
-
 	if (ctx->ops.put_device_fd)
-		ret = ctx->ops.put_device_fd(ctx, pci->bdf);
+		ret = ctx->ops.put_device_fd(ctx, pci->bdf, pci->dev.fd);
 
 	iommu_put_context(ctx);
 

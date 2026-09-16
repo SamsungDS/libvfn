@@ -903,10 +903,12 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
 	return &vfio->ctx;
 }
 
-static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
+static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf, int fd)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 	struct vfio_group *group;
+
+	log_fatal_if(close(fd), "close\n");
 
 	/*
 	 * Hold active_containers_lock across the entire state transition to
