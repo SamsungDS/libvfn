@@ -776,6 +776,12 @@ static void free_iova_range_node(void *opaque UNUSED, struct skiplist_node *n)
 
 static void vfio_container_free(struct vfio_container *vfio)
 {
+	if (vfio->fd >= 0)
+		close(vfio->fd);
+
+	for (int i = 0; i < VFN_MAX_VFIO_GROUPS; i++)
+		free(vfio->groups[i].path);
+
 	skiplist_clear_with(&vfio->free_iovas, free_iova_range_node, NULL);
 	free(vfio->ctx.iova_ranges);
 	free(vfio->name);
