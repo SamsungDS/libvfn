@@ -215,6 +215,18 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 	return 0;
 }
 
+static void __free_mapping(void *opaque UNUSED, struct skiplist_node *n)
+{
+	struct iova_mapping *m = container_of_var(n, m, list);
+
+	free(m);
+}
+
+void iommu_clear_mappings(struct iommu_ctx *ctx)
+{
+	iova_map_clear_with(&ctx->map, __free_mapping, NULL);
+}
+
 static void __unmap_mapping(void *opaque, struct skiplist_node *n)
 {
 	struct iommu_ctx *ctx = opaque;

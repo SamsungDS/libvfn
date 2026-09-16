@@ -69,6 +69,7 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf);
 struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 
 void iommu_ctx_init(struct iommu_ctx *ctx);
+void iommu_clear_mappings(struct iommu_ctx *ctx);
 void iommu_ctx_get(struct iommu_ctx *ctx);
 int iommu_iova_range_to_string(struct iommu_iova_range *range, char **str);
 
