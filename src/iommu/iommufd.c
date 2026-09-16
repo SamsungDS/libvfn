@@ -440,6 +440,7 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 	}
 
 	ioas->name = strdup(name);
+	ioas->ctx.iommufd = true;
 
 	return &ioas->ctx;
 }
