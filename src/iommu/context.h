@@ -50,6 +50,8 @@ struct iommu_ctx {
 	struct iova_map map;
 	struct iommu_ctx_ops ops;
 
+	int refcount;
+
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
 	iova_t iova_max;

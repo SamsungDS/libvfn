@@ -63,6 +63,7 @@ fallback:
 
 void iommu_ctx_init(struct iommu_ctx *ctx)
 {
+	ctx->refcount = 1;
 	ctx->nranges = 1;
 	ctx->iova_ranges = znew_t(struct iommu_iova_range, ctx->nranges);
 

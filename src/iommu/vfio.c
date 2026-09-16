@@ -91,7 +91,6 @@ struct vfio_container {
 
 	bool iommu_set;
 
-	int refcount;
 	struct list_node list;
 };
 
@@ -826,7 +825,7 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
 	/* Check if there's already a container with this group attached */
 	existing = vfio_find_container_by_group(group_path);
 	if (existing) {
-		existing->refcount++;
+		existing->ctx.refcount++;
 		pthread_mutex_unlock(&active_containers_lock);
 
 		log_info("reusing container '%s' for device %s (group %s)\n",
@@ -853,7 +852,6 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
 	}
 
 	vfio->name = strdup(group_path);
-	vfio->refcount = 1;
 
 	/*
 	 * Reserve the first group slot with this device's group path.  The
@@ -915,7 +913,7 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		}
 	}
 
-	if (--vfio->refcount == 0) {
+	if (--vfio->ctx.refcount == 0) {
 		list_del(&vfio->list);
 		do_free = true;
 	}
