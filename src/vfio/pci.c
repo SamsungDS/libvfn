@@ -222,12 +222,17 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 int vfio_pci_close(struct vfio_pci_device *pci)
 {
 	struct iommu_ctx *ctx = pci->dev.ctx;
+	int ret = 0;
 
 	log_fatal_if(close(pci->dev.fd), "close");
 
 	if (ctx->ops.put_device_fd)
-		if (ctx->ops.put_device_fd(ctx, pci->bdf))
-			return -1;
+		ret = ctx->ops.put_device_fd(ctx, pci->bdf);
+
+	iommu_put_context(ctx);
+
+	if (ret)
+		return -1;
 
 	free(pci->bdf);
 	memset(pci, 0x0, sizeof(*pci));

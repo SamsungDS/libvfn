@@ -81,6 +81,16 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 	pthread_rwlock_init(&ctx->map.lock, NULL);
 }
 
+void iommu_ctx_get(struct iommu_ctx *ctx)
+{
+	ctx->ops.get_context(ctx);
+}
+
+void iommu_put_context(struct iommu_ctx *ctx)
+{
+	ctx->ops.put_context(ctx);
+}
+
 bool iommu_ctx_is_iommufd(struct iommu_ctx *ctx)
 {
 	return ctx->iommufd;

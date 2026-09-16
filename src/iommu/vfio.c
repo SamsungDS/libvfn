@@ -717,6 +717,13 @@ static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
 	return __vfio_get_group(vfio, bdf, false);
 }
 
+static void vfio_get_context(struct iommu_ctx *ctx)
+{
+	pthread_mutex_lock(&active_containers_lock);
+	ctx->refcount++;
+	pthread_mutex_unlock(&active_containers_lock);
+}
+
 static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
@@ -773,6 +780,24 @@ static void vfio_container_free(struct vfio_container *vfio)
 	free(vfio->ctx.iova_ranges);
 	free(vfio->name);
 	free(vfio);
+}
+
+static void vfio_put_context(struct iommu_ctx *ctx)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+	bool do_free = false;
+
+	pthread_mutex_lock(&active_containers_lock);
+
+	if (--ctx->refcount == 0) {
+		list_del(&vfio->list);
+		do_free = true;
+	}
+
+	pthread_mutex_unlock(&active_containers_lock);
+
+	if (do_free)
+		vfio_container_free(vfio);
 }
 
 /*
@@ -876,7 +901,6 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 	struct vfio_group *group;
-	bool do_free = false;
 
 	/*
 	 * Hold active_containers_lock across the entire state transition to
@@ -913,15 +937,7 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		}
 	}
 
-	if (--vfio->ctx.refcount == 0) {
-		list_del(&vfio->list);
-		do_free = true;
-	}
-
 	pthread_mutex_unlock(&active_containers_lock);
-
-	if (do_free)
-		vfio_container_free(vfio);
 
 	return 0;
 }
@@ -1043,6 +1059,9 @@ static int vfio_iommu_type1_do_dma_unmap_all(struct iommu_ctx *ctx)
 #endif
 
 static const struct iommu_ctx_ops vfio_ops = {
+	.get_context = vfio_get_context,
+	.put_context = vfio_put_context,
+
 	.get_device_fd = vfio_get_device_fd,
 	.put_device_fd = vfio_put_device_fd,
 

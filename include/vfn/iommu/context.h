@@ -24,6 +24,16 @@
 struct iommu_ctx *iommu_get_context(const char *name);
 
 /**
+ * iommu_put_context - Release a reference to an iommu context
+ * @ctx: &struct iommu_ctx
+ *
+ * Drop the reference returned by iommu_get_context(). The context is
+ * destroyed when the last reference is dropped. A context created on
+ * behalf of a device by vfio_pci_open() is released by vfio_pci_close().
+ */
+void iommu_put_context(struct iommu_ctx *ctx);
+
+/**
  * iommu_ctx_is_iommufd - Check whether the given @ctx is binded to iommufd
  * @ctx: &struct iommu_ctx
  *
