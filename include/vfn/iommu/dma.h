@@ -54,6 +54,29 @@ enum iommu_map_flags {
 };
 
 /**
+ * struct iommu_dma_ops - dma mapping done by the owner of a container
+ * @map: map @len bytes at @vaddr and store the iova used in @iova
+ * @unmap: unmap @len bytes at @iova
+ * @opaque: passed as the first argument of @map and @unmap
+ *
+ * A context that shares an iova space with another library has no space of its
+ * own to allocate from. Both would allocate out of that one space with no
+ * knowledge of each other, so the owner does the mapping and picks the iovas.
+ *
+ * @map is given the iova to use when @flags has %IOMMU_MAP_FIXED_IOVA and picks
+ * one otherwise. Both functions return ``0`` on success and ``-1`` on error,
+ * with ``errno`` set.
+ *
+ * A context that maps this way does not support iommu_map_vaddr_align().
+ */
+struct iommu_dma_ops {
+	int (*map)(void *opaque, void *vaddr, size_t len, iova_t *iova, unsigned long flags);
+	int (*unmap)(void *opaque, iova_t iova, size_t len);
+
+	void *opaque;
+};
+
+/**
  * iommu_map_vaddr - Map a virtual memory address to an I/O virtual address
  * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to map
