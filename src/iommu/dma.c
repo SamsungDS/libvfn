@@ -113,6 +113,29 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, iova_t *iova)
 	return false;
 }
 
+/*
+ * Record a mapping the context did not make itself, so that a vaddr inside it
+ * still translates. iommu_get_dmabuf() needs this for the buffers it takes
+ * from the owner of the iova space, which arrive already mapped.
+ */
+int iommu_add_mapping(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t iova,
+		      unsigned long flags)
+{
+	return iova_map_add(&ctx->map, vaddr, len, iova, flags);
+}
+
+void iommu_del_mapping(struct iommu_ctx *ctx, void *vaddr)
+{
+	struct iova_mapping *m = iova_map_find(&ctx->map, vaddr);
+
+	if (!m || m->vaddr != vaddr)
+		return;
+
+	iova_map_remove(&ctx->map, m->vaddr);
+
+	free(m);
+}
+
 int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
 		    unsigned long flags)
 {

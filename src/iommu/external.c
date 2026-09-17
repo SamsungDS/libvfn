@@ -152,6 +152,20 @@ static int external_dma_unmap_all(struct iommu_ctx *ctx UNUSED)
 	return -1;
 }
 
+static void *external_dma_alloc(struct iommu_ctx *ctx, size_t len, iova_t *iova)
+{
+	struct iommu_external *external = container_of_var(ctx, external, ctx);
+
+	return external->dma_ops.alloc(external->dma_ops.opaque, len, iova);
+}
+
+static void external_dma_free(struct iommu_ctx *ctx, void *vaddr, size_t len)
+{
+	struct iommu_external *external = container_of_var(ctx, external, ctx);
+
+	external->dma_ops.free(external->dma_ops.opaque, vaddr, len);
+}
+
 static const struct iommu_ctx_ops external_ops = {
 	.get_context = external_get_context,
 	.put_context = external_put_context,
@@ -210,6 +224,12 @@ struct iommu_ctx *iommu_get_context_external(const struct iommu_dma_ops *dma_ops
 		return NULL;
 	}
 
+	if (!dma_ops->alloc != !dma_ops->free) {
+		log_debug("dma ops must set both alloc and free, or neither\n");
+		errno = EINVAL;
+		return NULL;
+	}
+
 	external = znew_t(struct iommu_external, 1);
 
 	iommu_ctx_init(&external->ctx);
@@ -219,6 +239,11 @@ struct iommu_ctx *iommu_get_context_external(const struct iommu_dma_ops *dma_ops
 
 	external->dma_ops = *dma_ops;
 	external->ctx.ops = external_ops;
+
+	if (dma_ops->alloc) {
+		external->ctx.ops.dma_alloc = external_dma_alloc;
+		external->ctx.ops.dma_free = external_dma_free;
+	}
 
 	return &external->ctx;
 }

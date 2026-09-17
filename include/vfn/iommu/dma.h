@@ -54,22 +54,33 @@ enum iommu_map_flags {
 };
 
 /**
- * struct iommu_dma_ops - dma mapping done by the owner of a container
+ * struct iommu_dma_ops - dma memory owned by another library
+ * @alloc: allocate @len bytes of dma memory and store its iova in @iova
+ * @free: release @len bytes of dma memory at @vaddr
  * @map: map @len bytes at @vaddr and store the iova used in @iova
  * @unmap: unmap @len bytes at @iova
- * @opaque: passed as the first argument of @map and @unmap
+ * @opaque: passed as the first argument of the operations
  *
  * A context that shares an iova space with another library has no space of its
  * own to allocate from. Both would allocate out of that one space with no
  * knowledge of each other, so the owner does the mapping and picks the iovas.
  *
  * @map is given the iova to use when @flags has %IOMMU_MAP_FIXED_IOVA and picks
- * one otherwise. Both functions return ``0`` on success and ``-1`` on error,
- * with ``errno`` set.
+ * one otherwise. @map and @unmap return ``0`` on success and ``-1`` on error,
+ * with ``errno`` set. For memory the owner has mapped in advance, @map has
+ * nothing left to do but report the iova.
+ *
+ * @alloc and @free are optional, and iommu_get_dmabuf() uses them for the
+ * queues and buffers libvfn allocates for itself. Supply them when the owner
+ * only maps memory that came from its own allocator, as spdk_mem_register()
+ * does in wanting huge pages. @alloc returns ``NULL`` on failure.
  *
  * A context that maps this way does not support iommu_map_vaddr_align().
  */
 struct iommu_dma_ops {
+	void *(*alloc)(void *opaque, size_t len, iova_t *iova);
+	void (*free)(void *opaque, void *vaddr, size_t len);
+
 	int (*map)(void *opaque, void *vaddr, size_t len, iova_t *iova, unsigned long flags);
 	int (*unmap)(void *opaque, iova_t iova, size_t len);
 
