@@ -279,12 +279,44 @@ int iommu_unmap_all(struct iommu_ctx *ctx)
 	return 0;
 }
 
+/*
+ * The owner of the iova space picks an iova as it allocates, so there is no
+ * address to ask it for. Take what it gives and check it.
+ */
+static void *iommu_alloc_delegated_same_iova(struct iommu_ctx *ctx, size_t len)
+{
+	iova_t iova;
+	void *vaddr;
+
+	vaddr = ctx->ops.dma_alloc(ctx, len, &iova);
+	if (!vaddr)
+		return NULL;
+
+	if (iova != same_iova(vaddr)) {
+		log_debug("allocator returned iova 0x%" PRIx64 " for %p\n",
+			  iova, vaddr);
+		ctx->ops.dma_free(ctx, vaddr, len);
+		errno = EOPNOTSUPP;
+		return NULL;
+	}
+
+	if (iommu_add_mapping(ctx, vaddr, len, iova, 0x0)) {
+		ctx->ops.dma_free(ctx, vaddr, len);
+		return NULL;
+	}
+
+	return vaddr;
+}
+
 void *iommu_alloc_same_iova(struct iommu_ctx *ctx, size_t len)
 {
 	iova_t iova;
 	void *vaddr;
 
 	len = ALIGN_UP(len, __VFN_PAGESIZE);
+
+	if (ctx->ops.dma_alloc)
+		return iommu_alloc_delegated_same_iova(ctx, len);
 
 retry:
 	if (ctx->iova_next_same + len >= ctx->iova_max ||
@@ -322,7 +354,23 @@ retry:
 
 int iommu_free_same_iova(struct iommu_ctx *ctx, void *vaddr)
 {
+	struct iova_mapping *m;
 	size_t len;
+
+	if (ctx->ops.dma_free) {
+		m = iova_map_find(&ctx->map, vaddr);
+		if (!m) {
+			errno = ENOENT;
+			return -1;
+		}
+
+		len = m->len;
+
+		iommu_del_mapping(ctx, vaddr);
+		ctx->ops.dma_free(ctx, vaddr, len);
+
+		return 0;
+	}
 
 	if (iommu_unmap_vaddr(ctx, vaddr, &len))
 		return -1;

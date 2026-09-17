@@ -165,6 +165,10 @@ int iommu_unmap_all(struct iommu_ctx *ctx);
  * to pass around both a virtual address and iova, allocate memory that
  * has the same virtual address as the iova.
  *
+ * On a context created with iommu_get_context_external(), the memory comes
+ * from &iommu_dma_ops.alloc. That picks the iova itself, so the call fails
+ * with ``EOPNOTSUPP`` if the iova it picks is not the virtual address.
+ *
  * Return: pointer to allocated memory or ``NULL`` on failure.
  */
 void *iommu_alloc_same_iova(struct iommu_ctx *ctx, size_t len);
