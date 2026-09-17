@@ -48,15 +48,19 @@ def build_path(s):
 
 ccjson_path = build_path(sys.argv[1])
 with open(ccjson_path, 'r') as fd:
-    def exclude_directories(command):
-        dirs = ['../ccan/', '../subprojects/', 'subprojects/']
-        for d in dirs:
-            if command['file'].startswith(d):
+    def exclude_paths(command):
+        # dpdk's headers, and the avx512 intrinsics they pull in, are more
+        # than sparse can parse
+        paths = ['../ccan/', '../subprojects/', 'subprojects/',
+                 '../examples/dpdk-nvme.c']
+
+        for p in paths:
+            if command['file'].startswith(p):
                 return False
 
         return True
 
-    compile_commands = filter(exclude_directories, json.load(fd))
+    compile_commands = filter(exclude_paths, json.load(fd))
 
 sparse = sys.argv[2:]
 sparse_env = os.environ.copy()
