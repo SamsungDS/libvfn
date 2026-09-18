@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: checkout libnvme
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: linux-nvme/libnvme
           path: libnvme
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: install build dependencies
         run: sudo pip install meson ninja
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: install build dependencies
         run: sudo pip install meson ninja
@@ -96,7 +96,7 @@ jobs:
         run: scan-build -o /tmp/scan-build-report --status-bugs ninja -C build
 
       - name: grab bug report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: scan-build-report
@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: install build dependencies
         run: sudo pip install meson ninja
@@ -143,10 +143,9 @@ jobs:
           - {os: 'debian', ver: 'forky'}
           - {os: 'debian', ver: 'trixie'}
           - {os: 'debian', ver: 'bookworm'}
-          - {os: 'debian', ver: 'bullseye'}
           - {os: 'fedora', ver: 'rawhide'}
+          - {os: 'fedora', ver: '44'}
           - {os: 'fedora', ver: '43'}
-          - {os: 'fedora', ver: '42'}
           - {os: 'rockylinux', ver: '9'}
           - {os: 'rockylinux', ver: '8'}
           - {os: 'ubuntu', ver: 'questing'}
@@ -159,7 +158,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: install dependencies
         env:
@@ -173,7 +172,7 @@ jobs:
         run: ninja -C build
 
       - name: upload log
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: meson log
@@ -183,7 +182,7 @@ jobs:
         run: meson test -C build "libvfn:"
 
       - name: upload log
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: meson test log
@@ -198,7 +197,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: install nix
         uses: DeterminateSystems/nix-installer-action@main
@@ -235,7 +234,7 @@ jobs:
 
     steps:
       - name: checkout libvfn
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: create dist package
         run: |

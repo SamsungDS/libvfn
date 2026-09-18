@@ -1,1 +1,1 @@
-debian-setup.sh
+debian-setup-forky.sh
