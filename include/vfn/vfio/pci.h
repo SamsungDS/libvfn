@@ -17,6 +17,8 @@
 # define PCI_STD_NUM_BARS 6
 #endif
 
+struct vfn_mmio_synth_region;
+
 /**
  * struct vfio_pci_device - vfio pci device state
  * @dev: &struct vfio_device
@@ -24,6 +26,7 @@
  * @bdf: pci device identifier ("bus:device:function")
  * @config_region_info: pci configuration space region information
  * @bar_region_info: pci BAR region information
+ * @synth_bars: synthetic (non-mmap) BAR mappings owned by this device
  */
 struct vfio_pci_device {
 	struct vfio_device dev;
@@ -33,6 +36,9 @@ struct vfio_pci_device {
 
 	struct vfio_region_info config_region_info;
 	struct vfio_region_info bar_region_info[PCI_STD_NUM_BARS];
+
+	/* a BAR may be mapped twice (e.g. BAR0: register page + doorbells) */
+	struct vfn_mmio_synth_region *synth_bars[2 * PCI_STD_NUM_BARS];
 };
 
 /**

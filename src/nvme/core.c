@@ -864,6 +864,20 @@ int nvme_configure_cmb(struct nvme_ctrl *ctrl)
 		return -1;
 	}
 
+	/*
+	 * The CMB needs real, page-backed memory (queue entries are copied
+	 * with ordinary stores and the pages are pinned below); a synthetic
+	 * BAR only fronts pread()/pwrite() and cannot support it.
+	 */
+	if (vfn_mmio_synth_is(ctrl->cmb.vaddr)) {
+		log_debug("cmb unsupported: bar %d region is not memory-mappable\n", bar);
+		vfio_pci_unmap_bar(&ctrl->pci, bar, ctrl->cmb.vaddr, ctrl->cmb.size,
+				   NVME_FIELD_GET(cmbloc, CMBLOC_OFST));
+		ctrl->cmb.vaddr = NULL;
+		errno = ENOTSUP;
+		return -1;
+	}
+
 	if (iommu_map_vaddr(__iommu_ctx(ctrl), ctrl->cmb.vaddr,
 				ctrl->cmb.size, &ctrl->cmb.iova, 0x0)) {
 		log_debug("could not map bar vaddr to iommu\n");

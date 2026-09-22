@@ -13,6 +13,37 @@
 #ifndef LIBVFN_SUPPORT_MMIO_H
 #define LIBVFN_SUPPORT_MMIO_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
+/*
+ * On some platforms (notably s390x/zPCI) VFIO BARs cannot be mmap()ed and
+ * are reachable only via pread()/pwrite() on the device fd; the accessors
+ * below route such accesses through vfn_mmio_synth_* instead of dereferencing.
+ */
+enum vfn_mmio_synth_result {
+	/* @addr is not synthetic; access it as ordinary memory-mapped I/O */
+	VFN_MMIO_NOT_SYNTH = 0,
+
+	/* @addr is synthetic; the access was serviced via fd I/O */
+	VFN_MMIO_SYNTH_DONE,
+
+	/* @addr is synthetic but the access failed and was logged */
+	VFN_MMIO_SYNTH_ERROR,
+};
+
+extern enum vfn_mmio_synth_result vfn_mmio_synth_read(void *addr, void *buf,
+							 size_t len);
+extern enum vfn_mmio_synth_result vfn_mmio_synth_write(void *addr,
+							  const void *buf, size_t len);
+
+/*
+ * vfn_mmio_synth_is - is @addr a synthetic BAR address?
+ *
+ * Return: true if @addr falls inside a live synthetic region.
+ */
+extern bool vfn_mmio_synth_is(const void *addr);
+
 /**
  * mmio_read32 - read 4 bytes in memory-mapped register
  * @addr: memory-mapped register
@@ -21,6 +52,19 @@
  */
 static inline leint32_t mmio_read32(void *addr)
 {
+	leint32_t v;
+
+	switch (vfn_mmio_synth_read(addr, &v, sizeof(v))) {
+	case VFN_MMIO_SYNTH_DONE:
+		return v;
+	case VFN_MMIO_SYNTH_ERROR:
+		/* @addr is a PROT_NONE window: all-ones, never dereference */
+		return cpu_to_le32(0xffffffffu);
+	case VFN_MMIO_NOT_SYNTH:
+	default:
+		break;
+	}
+
 	/* memory-mapped register */
 	return *(const volatile leint32_t __force *)addr;
 }
@@ -57,6 +101,9 @@ static inline leint64_t mmio_lh_read64(void *addr)
  */
 static inline void mmio_write32(void *addr, leint32_t v)
 {
+	if (vfn_mmio_synth_write(addr, &v, sizeof(v)) != VFN_MMIO_NOT_SYNTH)
+		return;
+
 	/* memory-mapped register */
 	*(volatile leint32_t __force *)addr = v;
 }

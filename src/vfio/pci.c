@@ -45,6 +45,260 @@
 
 #include "iommu/context.h"
 
+/*
+ * Emulated BAR access for regions that VFIO will not let us mmap(). On
+ * s390x/zPCI the guest kernel compiles out CONFIG_VFIO_PCI_MMAP, so the vfio
+ * region never advertises VFIO_REGION_INFO_FLAG_MMAP and mmap() fails with
+ * EINVAL. Instead of a real mapping we hand out synthetic addresses inside a
+ * reserved PROT_NONE window and service the accesses with pread()/pwrite() on
+ * the device fd; vfn_mmio_synth_{read,write}() (support/mmio.h) decode them.
+ */
+#define VFN_MMIO_SYNTH_SLOTS	16
+#define VFN_MMIO_SYNTH_STRIDE	(4UL * 1024 * 1024)
+
+struct vfn_mmio_synth_region {
+	bool used;
+	int fd;
+	uint64_t file_off;
+	size_t size;
+	uintptr_t vbase;
+};
+
+static struct vfn_mmio_synth_region vfn_mmio_synth[VFN_MMIO_SYNTH_SLOTS];
+static uintptr_t vfn_mmio_synth_base;
+static size_t vfn_mmio_synth_span;
+
+/*
+ * Serializes slot allocation and release. The decode path (vfn_mmio_synth_read/
+ * write, called from the mmio.h accessors) stays lock-free: a slot is immutable
+ * once ->used is published with release semantics, and a cleared slot decodes to
+ * "not synthetic" -- a racy access after unmap then faults on the PROT_NONE
+ * window rather than operating on a reused slot.
+ *
+ * Slot ownership lives in the mapping device's pci->synth_bars[], drained by
+ * vfio_pci_close() so no synthetic region can outlive its device fd.
+ */
+static pthread_mutex_t vfn_mmio_synth_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* in-arena, regardless of slot liveness */
+static bool vfn_mmio_synth_arena_contains(const void *addr)
+{
+	uintptr_t a = (uintptr_t)addr;
+
+	return vfn_mmio_synth_span && a >= vfn_mmio_synth_base &&
+	       a - vfn_mmio_synth_base < vfn_mmio_synth_span;
+}
+
+static void *vfn_mmio_synth_map(struct vfio_pci_device *pci,
+				uint64_t file_off, size_t size)
+{
+	struct vfn_mmio_synth_region *r;
+	size_t i;
+	void *ret = NULL;
+
+	if (size > VFN_MMIO_SYNTH_STRIDE) {
+		errno = E2BIG;
+		return NULL;
+	}
+
+	pthread_mutex_lock(&vfn_mmio_synth_lock);
+
+	if (!vfn_mmio_synth_span) {
+		size_t span = VFN_MMIO_SYNTH_SLOTS * VFN_MMIO_SYNTH_STRIDE;
+		void *win;
+
+		win = mmap(NULL, span, PROT_NONE,
+			   MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+		if (win == MAP_FAILED)
+			goto out;
+
+		vfn_mmio_synth_base = (uintptr_t)win;
+		vfn_mmio_synth_span = span;
+	}
+
+	/* find (and reserve) an ownership slot for this device */
+	for (i = 0; i < ARRAY_SIZE(pci->synth_bars); i++) {
+		if (pci->synth_bars[i])
+			continue;
+
+		for (size_t s = 0; s < VFN_MMIO_SYNTH_SLOTS; s++) {
+			r = &vfn_mmio_synth[s];
+
+			if (__atomic_load_n(&r->used, __ATOMIC_ACQUIRE))
+				continue;
+
+			r->fd = pci->dev.fd;
+			r->file_off = file_off;
+			r->size = size;
+			r->vbase = vfn_mmio_synth_base +
+				   (uintptr_t)s * VFN_MMIO_SYNTH_STRIDE;
+
+			pci->synth_bars[i] = r;
+			/* publish last: accessors only trust ->used */
+			__atomic_store_n(&r->used, true, __ATOMIC_RELEASE);
+
+			ret = (void *)r->vbase;
+			goto out;
+		}
+
+		break; /* device slot free but address space exhausted */
+	}
+
+	errno = ENOSPC;
+out:
+	pthread_mutex_unlock(&vfn_mmio_synth_lock);
+	return ret;
+}
+
+static struct vfn_mmio_synth_region *vfn_mmio_synth_lookup(const void *addr)
+{
+	uintptr_t a = (uintptr_t)addr;
+	struct vfn_mmio_synth_region *r;
+
+	if (!vfn_mmio_synth_span || a < vfn_mmio_synth_base ||
+	    a - vfn_mmio_synth_base >= vfn_mmio_synth_span)
+		return NULL;
+
+	r = &vfn_mmio_synth[(a - vfn_mmio_synth_base) / VFN_MMIO_SYNTH_STRIDE];
+	if (!__atomic_load_n(&r->used, __ATOMIC_ACQUIRE))
+		return NULL;
+
+	return r;
+}
+
+bool vfn_mmio_synth_is(const void *addr)
+{
+	return !!vfn_mmio_synth_lookup(addr);
+}
+
+enum vfn_mmio_synth_result vfn_mmio_synth_read(void *addr, void *buf, size_t len)
+{
+	struct vfn_mmio_synth_region *r = vfn_mmio_synth_lookup(addr);
+	size_t off;
+	ssize_t n;
+
+	if (!r)
+		return VFN_MMIO_NOT_SYNTH;
+
+	/*
+	 * The window is larger than the region, so the address decode is not
+	 * enough: bound against the mapped size. This must not report "not
+	 * synthetic" or the caller would dereference the PROT_NONE window.
+	 */
+	off = (uintptr_t)addr - r->vbase;
+	if (off > r->size || len > r->size - off) {
+		log_debug("synthetic bar read out of bounds (off %#zx len %zu, size %#zx)\n",
+			  off, len, r->size);
+		return VFN_MMIO_SYNTH_ERROR;
+	}
+
+	do {
+		n = pread(r->fd, buf, len, r->file_off + off);
+	} while (n < 0 && errno == EINTR);
+
+	if (n != (ssize_t)len) {
+		log_debug("failed to read synthetic bar region (off %#zx len %zu): %s\n",
+			  off, len, n < 0 ? strerror(errno) : "short read");
+		return VFN_MMIO_SYNTH_ERROR;
+	}
+
+	return VFN_MMIO_SYNTH_DONE;
+}
+
+enum vfn_mmio_synth_result vfn_mmio_synth_write(void *addr, const void *buf, size_t len)
+{
+	struct vfn_mmio_synth_region *r = vfn_mmio_synth_lookup(addr);
+	size_t off;
+	ssize_t n;
+
+	if (!r)
+		return VFN_MMIO_NOT_SYNTH;
+
+	off = (uintptr_t)addr - r->vbase;
+	if (off > r->size || len > r->size - off) {
+		log_debug("synthetic bar write out of bounds (off %#zx len %zu, size %#zx)\n",
+			  off, len, r->size);
+		return VFN_MMIO_SYNTH_ERROR;
+	}
+
+	do {
+		n = pwrite(r->fd, buf, len, r->file_off + off);
+	} while (n < 0 && errno == EINTR);
+
+	if (n != (ssize_t)len) {
+		log_debug("failed to write synthetic bar region (off %#zx len %zu): %s\n",
+			  off, len, n < 0 ? strerror(errno) : "short write");
+		return VFN_MMIO_SYNTH_ERROR;
+	}
+
+	return VFN_MMIO_SYNTH_DONE;
+}
+
+/*
+ * Release the synthetic mapping at @mem, but only if it is owned by @pci.
+ *
+ * Return: true if @mem is (or was) an arena address and must NOT be
+ * munmap()ed -- the arena is pre-reserved and munmap()ing part of it would
+ * silently destroy the window (and a future mmap() could then alias a
+ * synthetic slot). A stale or double unmap, or an unmap of a region owned
+ * by another device, logs and stops here rather than releasing someone
+ * else's live slot.
+ */
+static bool vfn_mmio_synth_release(struct vfio_pci_device *pci, void *mem)
+{
+	size_t i;
+
+	if (!vfn_mmio_synth_arena_contains(mem))
+		return false;
+
+	pthread_mutex_lock(&vfn_mmio_synth_lock);
+
+	for (i = 0; i < ARRAY_SIZE(pci->synth_bars); i++) {
+		struct vfn_mmio_synth_region *r = pci->synth_bars[i];
+
+		if (!r || (void *)r->vbase != mem)
+			continue;
+
+		pci->synth_bars[i] = NULL;
+		__atomic_store_n(&r->used, false, __ATOMIC_RELEASE);
+
+		pthread_mutex_unlock(&vfn_mmio_synth_lock);
+		return true;
+	}
+
+	pthread_mutex_unlock(&vfn_mmio_synth_lock);
+
+	log_debug("unmapping synthetic bar %p not owned by this device (stale or double unmap?)\n",
+		  mem);
+	return true;
+}
+
+/*
+ * Release any synthetic mappings still owned by @pci. Called from
+ * vfio_pci_close() before the fd is closed; a mapping that survived this
+ * long means the caller leaked (unmap-before-close is expected).
+ */
+static void vfn_mmio_synth_drain(struct vfio_pci_device *pci)
+{
+	size_t i;
+
+	pthread_mutex_lock(&vfn_mmio_synth_lock);
+
+	for (i = 0; i < ARRAY_SIZE(pci->synth_bars); i++) {
+		struct vfn_mmio_synth_region *r = pci->synth_bars[i];
+
+		if (!r)
+			continue;
+
+		log_debug("releasing leaked synthetic bar mapping %p\n",
+			  (void *)r->vbase);
+		__atomic_store_n(&r->used, false, __ATOMIC_RELEASE);
+		pci->synth_bars[i] = NULL;
+	}
+
+	pthread_mutex_unlock(&vfn_mmio_synth_lock);
+}
+
 static int pci_set_bus_master(struct vfio_pci_device *pci)
 {
 	leint16_t le_cmd;
@@ -134,11 +388,22 @@ void *vfio_pci_map_bar(struct vfio_pci_device *pci, int idx, size_t len, uint64_
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 	offset = pci->bar_region_info[idx].offset + offset;
 
-	mem = mmap(NULL, len, prot, MAP_SHARED, pci->dev.fd, offset);
-	if (mem == MAP_FAILED) {
-		log_debug("failed to map bar region\n");
-		mem = NULL;
+	if (!(pci->bar_region_info[idx].flags & VFIO_REGION_INFO_FLAG_MMAP)) {
+		/*
+		 * FLAG_MMAP is unset (s390x/zPCI compiles out CONFIG_VFIO_PCI_MMAP),
+		 * so fall back to pread()/pwrite(). Key off the flag, not an
+		 * mmap() failure, so a real mmap() error on a mappable region
+		 * still fails loudly instead of silently switching mechanism.
+		 */
+		mem = vfn_mmio_synth_map(pci, offset, len);
+	} else {
+		mem = mmap(NULL, len, prot, MAP_SHARED, pci->dev.fd, offset);
+		if (mem == MAP_FAILED)
+			mem = NULL;
 	}
+
+	if (!mem)
+		log_debug("failed to map bar region\n");
 
 	return mem;
 }
@@ -147,6 +412,9 @@ void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t 
 			uint64_t offset)
 {
 	assert(idx < PCI_STD_NUM_BARS);
+
+	if (vfn_mmio_synth_release(pci, mem))
+		return;
 
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 
@@ -224,6 +492,8 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 int vfio_pci_close(struct vfio_pci_device *pci)
 {
 	struct iommu_ctx *ctx = pci->dev.ctx;
+
+	vfn_mmio_synth_drain(pci);
 
 	log_fatal_if(close(pci->dev.fd), "close");
 
