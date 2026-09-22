@@ -17,7 +17,7 @@
  * mmio_read32 - read 4 bytes in memory-mapped register
  * @addr: memory-mapped register
  *
- * Return: read value (native endian)
+ * Return: read value (little endian)
  */
 static inline leint32_t mmio_read32(void *addr)
 {
@@ -31,18 +31,21 @@ static inline leint32_t mmio_read32(void *addr)
  *
  * Read the low 4 bytes first, then the high 4 bytes.
  *
- * Return: read value (native endian)
+ * Return: read value (little endian)
  */
 static inline leint64_t mmio_lh_read64(void *addr)
 {
-	uint32_t lo, hi;
+	uint32_t a, b;
 
-	/* memory-mapped register */
-	lo = *(const volatile uint32_t __force *)addr;
-	/* memory-mapped register */
-	hi = *(const volatile uint32_t __force *)((char *)addr + 4);
+	/* read the low-addressed word first (devices may latch the high one) */
+	a = mmio_read32(addr);
+	b = mmio_read32((char *)addr + 4);
 
-	return (leint64_t __force)(((uint64_t)hi << 32) | lo);
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	return (leint64_t __force)(((uint64_t)b << 32) | a);
+#else
+	return (leint64_t __force)(((uint64_t)a << 32) | b);
+#endif
 }
 
 #define mmio_read64(addr) mmio_lh_read64(addr)
@@ -61,29 +64,33 @@ static inline void mmio_write32(void *addr, leint32_t v)
 /**
  * mmio_lh_write64 - write 8 bytes to memory-mapped register
  * @addr: memory-mapped register
- * @v: value to write (native endian)
+ * @v: value to write (little endian)
  *
  * Write 8 bytes to memory-mapped register as two 4 byte writes (low bytes
  * first, then high).
  */
 static inline void mmio_lh_write64(void *addr, leint64_t v)
 {
-	mmio_write32(addr, (leint32_t __force)v);
-	mmio_write32((char *)addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
+	uint64_t x = le64_to_cpu(v);
+
+	mmio_write32(addr, cpu_to_le32((uint32_t)x));
+	mmio_write32((char *)addr + 4, cpu_to_le32((uint32_t)(x >> 32)));
 }
 
 /**
  * mmio_hl_write64 - write 8 bytes to memory-mapped register
  * @addr: memory-mapped register
- * @v: value to write (native endian)
+ * @v: value to write (little endian)
  *
  * Write 8 bytes to memory-mapped register as two 4 byte writes (high bytes
  * first, then low).
  */
 static inline void mmio_hl_write64(void *addr, leint64_t v)
 {
-	mmio_write32((char *)addr + 4, (leint32_t __force)((uint64_t __force)v >> 32));
-	mmio_write32(addr, (leint32_t __force)v);
+	uint64_t x = le64_to_cpu(v);
+
+	mmio_write32((char *)addr + 4, cpu_to_le32((uint32_t)(x >> 32)));
+	mmio_write32(addr, cpu_to_le32((uint32_t)x));
 }
 
 #endif /* LIBVFN_SUPPORT_MMIO_H */

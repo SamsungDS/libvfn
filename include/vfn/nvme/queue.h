@@ -115,13 +115,13 @@ static inline int nvme_try_dbbuf(uint16_t v, struct nvme_dbbuf *dbbuf)
 	/* force submission queue write */
 	wmb();
 
-	old = __LOAD_PTR(uint32_t *, dbbuf->doorbell);
-	__STORE_PTR(uint32_t *, dbbuf->doorbell, v);
+	old = le32_to_cpu(__LOAD_PTR(leint32_t *, dbbuf->doorbell));
+	__STORE_PTR(leint32_t *, dbbuf->doorbell, cpu_to_le32(v));
 
 	/* do not reorder the eventidx load with the doorbell store */
 	mb();
 
-	eventidx = __LOAD_PTR(uint32_t *, dbbuf->eventidx);
+	eventidx = le32_to_cpu(__LOAD_PTR(leint32_t *, dbbuf->eventidx));
 
 	if (!__nvme_need_mmio((uint16_t)eventidx, v, (uint16_t)old)) {
 		trace_guard(NVME_SKIP_MMIO) {

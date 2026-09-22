@@ -47,16 +47,18 @@
 
 static int pci_set_bus_master(struct vfio_pci_device *pci)
 {
+	leint16_t le_cmd;
 	uint16_t pci_cmd;
 
-	if (vfio_pci_read_config(pci, &pci_cmd, sizeof(pci_cmd), PCI_COMMAND) < 0) {
+	if (vfio_pci_read_config(pci, &le_cmd, sizeof(le_cmd), PCI_COMMAND) < 0) {
 		log_debug("failed to read pci config region\n");
 		return -1;
 	}
 
-	pci_cmd |= PCI_COMMAND_MASTER;
+	pci_cmd = le16_to_cpu(le_cmd) | PCI_COMMAND_MASTER;
+	le_cmd = cpu_to_le16(pci_cmd);
 
-	if (vfio_pci_write_config(pci, &pci_cmd, sizeof(pci_cmd), PCI_COMMAND) < 0) {
+	if (vfio_pci_write_config(pci, &le_cmd, sizeof(le_cmd), PCI_COMMAND) < 0) {
 		log_debug("failed to write pci config region\n");
 		return -1;
 	}
