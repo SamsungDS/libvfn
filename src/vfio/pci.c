@@ -47,16 +47,18 @@
 
 static int pci_set_bus_master(struct vfio_pci_device *pci)
 {
+	leint16_t le_cmd;
 	uint16_t pci_cmd;
 
-	if (vfio_pci_read_config(pci, &pci_cmd, sizeof(pci_cmd), PCI_COMMAND) < 0) {
+	if (vfio_pci_read_config(pci, &le_cmd, sizeof(le_cmd), PCI_COMMAND) < 0) {
 		log_debug("failed to read pci config region\n");
 		return -1;
 	}
 
-	pci_cmd |= PCI_COMMAND_MASTER;
+	pci_cmd = le16_to_cpu(le_cmd) | PCI_COMMAND_MASTER;
+	le_cmd = cpu_to_le16(pci_cmd);
 
-	if (vfio_pci_write_config(pci, &pci_cmd, sizeof(pci_cmd), PCI_COMMAND) < 0) {
+	if (vfio_pci_write_config(pci, &le_cmd, sizeof(le_cmd), PCI_COMMAND) < 0) {
 		log_debug("failed to write pci config region\n");
 		return -1;
 	}
@@ -132,11 +134,22 @@ void *vfio_pci_map_bar(struct vfio_pci_device *pci, int idx, size_t len, uint64_
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 	offset = pci->bar_region_info[idx].offset + offset;
 
-	mem = mmap(NULL, len, prot, MAP_SHARED, pci->dev.fd, offset);
-	if (mem == MAP_FAILED) {
-		log_debug("failed to map bar region\n");
-		mem = NULL;
+	if (!(pci->bar_region_info[idx].flags & VFIO_REGION_INFO_FLAG_MMAP)) {
+		/*
+		 * FLAG_MMAP is unset (s390x/zPCI compiles out CONFIG_VFIO_PCI_MMAP),
+		 * so fall back to pread()/pwrite(). Key off the flag, not an
+		 * mmap() failure, so a real mmap() error on a mappable region
+		 * still fails loudly instead of silently switching mechanism.
+		 */
+		mem = vfn_mmio_synth_map(pci, pci->dev.fd, offset, len);
+	} else {
+		mem = mmap(NULL, len, prot, MAP_SHARED, pci->dev.fd, offset);
+		if (mem == MAP_FAILED)
+			mem = NULL;
 	}
+
+	if (!mem)
+		log_debug("failed to map bar region\n");
 
 	return mem;
 }
@@ -145,6 +158,9 @@ void vfio_pci_unmap_bar(struct vfio_pci_device *pci, int idx, void *mem, size_t 
 			uint64_t offset)
 {
 	assert(idx < PCI_STD_NUM_BARS);
+
+	if (vfn_mmio_synth_unmap(pci, mem))
+		return;
 
 	len = min_t(size_t, len, pci->bar_region_info[idx].size - offset);
 
@@ -222,6 +238,8 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 int vfio_pci_close(struct vfio_pci_device *pci)
 {
 	struct iommu_ctx *ctx = pci->dev.ctx;
+
+	vfn_mmio_synth_drain(pci);
 
 	log_fatal_if(close(pci->dev.fd), "close");
 
