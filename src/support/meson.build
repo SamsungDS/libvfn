@@ -8,6 +8,8 @@ support_sources = files(
 
 if host_machine.cpu_family() == 'x86_64'
   subdir('arch/x86_64')
+elif host_machine.cpu_family() == 's390x'
+  subdir('arch/s390x')
 endif
 
 vfn_sources += support_sources

@@ -37,6 +37,15 @@
 # define wmb()		asm volatile("sfence" ::: "memory")
 # define mb()		asm volatile("mfence" ::: "memory")
 # define dma_rmb()	barrier()
+#elif defined(__s390x__)
+static inline void bcr_serialize(void)
+{
+	asm volatile("bcr 15,0" ::: "memory");
+}
+# define rmb()		barrier()
+# define wmb()		barrier()
+# define mb()		bcr_serialize()
+# define dma_rmb()	bcr_serialize()
 #else
 # error unsupported architecture
 #endif

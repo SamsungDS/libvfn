@@ -21,6 +21,8 @@
 # include <vfn/support/arch/x86_64/rdtsc.h>
 #elif defined(__aarch64__)
 # include <vfn/support/arch/arm64/cnt.h>
+#elif defined(__s390x__)
+# include <vfn/support/arch/s390x/tod.h>
 #else
 # error unsupported architecture
 #endif

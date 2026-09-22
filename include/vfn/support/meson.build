@@ -23,4 +23,6 @@ if host_machine.cpu_family() == 'x86_64'
   subdir('arch/x86_64')
 elif host_machine.cpu_family() == 'aarch64'
   subdir('arch/arm64')
+elif host_machine.cpu_family() == 's390x'
+  subdir('arch/s390x')
 endif
