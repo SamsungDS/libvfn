@@ -166,7 +166,9 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 
 	log_info("pci class code is 0x%06llx\n", pci->classcode);
 
-	if (!pci->dev.ctx)
+	if (pci->dev.ctx)
+		iommu_ctx_get(pci->dev.ctx);
+	else
 		pci->dev.ctx = iommu_get_context(bdf);
 
 	if (!pci->dev.ctx) {
@@ -222,12 +224,15 @@ int vfio_pci_open(struct vfio_pci_device *pci, const char *bdf)
 int vfio_pci_close(struct vfio_pci_device *pci)
 {
 	struct iommu_ctx *ctx = pci->dev.ctx;
-
-	log_fatal_if(close(pci->dev.fd), "close");
+	int ret = 0;
 
 	if (ctx->ops.put_device_fd)
-		if (ctx->ops.put_device_fd(ctx, pci->bdf))
-			return -1;
+		ret = ctx->ops.put_device_fd(ctx, pci->bdf, pci->dev.fd);
+
+	iommu_put_context(ctx);
+
+	if (ret)
+		return -1;
 
 	free(pci->bdf);
 	memset(pci, 0x0, sizeof(*pci));

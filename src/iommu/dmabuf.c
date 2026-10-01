@@ -21,10 +21,33 @@
 
 #include <vfn/support.h>
 
+#include "context.h"
+
 int iommu_get_dmabuf(struct iommu_ctx *ctx, struct iommu_dmabuf *buffer, size_t len,
 		     unsigned long flags)
 {
+	size_t alloc_len = ALIGN_UP(len, __VFN_PAGESIZE);
+	void *vaddr;
+	iova_t iova;
+
 	buffer->ctx = ctx;
+
+	if (ctx->ops.dma_alloc) {
+		vaddr = ctx->ops.dma_alloc(ctx, alloc_len, &iova);
+		if (!vaddr)
+			return -1;
+
+		if (iommu_add_mapping(ctx, vaddr, alloc_len, iova, flags)) {
+			ctx->ops.dma_free(ctx, vaddr, alloc_len);
+			return -1;
+		}
+
+		buffer->vaddr = vaddr;
+		buffer->iova = iova;
+		buffer->len = (ssize_t)alloc_len;
+
+		return 0;
+	}
 
 	buffer->len = pgmap(&buffer->vaddr, len);
 	if (buffer->len < 0)
@@ -40,10 +63,22 @@ int iommu_get_dmabuf(struct iommu_ctx *ctx, struct iommu_dmabuf *buffer, size_t 
 
 void iommu_put_dmabuf(struct iommu_dmabuf *buffer)
 {
+	struct iommu_ctx *ctx = buffer->ctx;
+
 	if (!buffer->len)
 		return;
 
-	log_fatal_if(iommu_unmap_vaddr(buffer->ctx, buffer->vaddr, NULL), "iommu_unmap_vaddr");
+	if (ctx->ops.dma_free) {
+		iommu_del_mapping(ctx, buffer->vaddr);
+
+		ctx->ops.dma_free(ctx, buffer->vaddr, (size_t)buffer->len);
+
+		memset(buffer, 0x0, sizeof(*buffer));
+
+		return;
+	}
+
+	log_fatal_if(iommu_unmap_vaddr(ctx, buffer->vaddr, NULL), "iommu_unmap_vaddr");
 
 	pgunmap(buffer->vaddr, buffer->len);
 

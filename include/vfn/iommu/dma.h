@@ -54,6 +54,40 @@ enum iommu_map_flags {
 };
 
 /**
+ * struct iommu_dma_ops - dma memory owned by another library
+ * @alloc: allocate @len bytes of dma memory and store its iova in @iova
+ * @free: release @len bytes of dma memory at @vaddr
+ * @map: map @len bytes at @vaddr and store the iova used in @iova
+ * @unmap: unmap @len bytes at @iova
+ * @opaque: passed as the first argument of the operations
+ *
+ * A context that shares an iova space with another library has no space of its
+ * own to allocate from. Both would allocate out of that one space with no
+ * knowledge of each other, so the owner does the mapping and picks the iovas.
+ *
+ * @map is given the iova to use when @flags has %IOMMU_MAP_FIXED_IOVA and picks
+ * one otherwise. @map and @unmap return ``0`` on success and ``-1`` on error,
+ * with ``errno`` set. For memory the owner has mapped in advance, @map has
+ * nothing left to do but report the iova.
+ *
+ * @alloc and @free are optional, and iommu_get_dmabuf() uses them for the
+ * queues and buffers libvfn allocates for itself. Supply them when the owner
+ * only maps memory that came from its own allocator, as spdk_mem_register()
+ * does in wanting huge pages. @alloc returns ``NULL`` on failure.
+ *
+ * A context that maps this way does not support iommu_map_vaddr_align().
+ */
+struct iommu_dma_ops {
+	void *(*alloc)(void *opaque, size_t len, iova_t *iova);
+	void (*free)(void *opaque, void *vaddr, size_t len);
+
+	int (*map)(void *opaque, void *vaddr, size_t len, iova_t *iova, unsigned long flags);
+	int (*unmap)(void *opaque, iova_t iova, size_t len);
+
+	void *opaque;
+};
+
+/**
  * iommu_map_vaddr - Map a virtual memory address to an I/O virtual address
  * @ctx: &struct iommu_ctx
  * @vaddr: virtual memory address to map
@@ -130,6 +164,10 @@ int iommu_unmap_all(struct iommu_ctx *ctx);
  * In order to avoid having to look up an iova from a virtual address or
  * to pass around both a virtual address and iova, allocate memory that
  * has the same virtual address as the iova.
+ *
+ * On a context created with iommu_get_context_external(), the memory comes
+ * from &iommu_dma_ops.alloc. That picks the iova itself, so the call fails
+ * with ``EOPNOTSUPP`` if the iova it picks is not the virtual address.
  *
  * Return: pointer to allocated memory or ``NULL`` on failure.
  */

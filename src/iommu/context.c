@@ -63,6 +63,7 @@ fallback:
 
 void iommu_ctx_init(struct iommu_ctx *ctx)
 {
+	ctx->refcount = 1;
 	ctx->nranges = 1;
 	ctx->iova_ranges = znew_t(struct iommu_iova_range, ctx->nranges);
 
@@ -78,6 +79,16 @@ void iommu_ctx_init(struct iommu_ctx *ctx)
 
 	skiplist_init(&ctx->map.list);
 	pthread_rwlock_init(&ctx->map.lock, NULL);
+}
+
+void iommu_ctx_get(struct iommu_ctx *ctx)
+{
+	ctx->ops.get_context(ctx);
+}
+
+void iommu_put_context(struct iommu_ctx *ctx)
+{
+	ctx->ops.put_context(ctx);
 }
 
 bool iommu_ctx_is_iommufd(struct iommu_ctx *ctx)

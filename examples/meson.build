@@ -28,3 +28,13 @@ foreach example, sources : examples
     include_directories: [ccan_inc, vfn_inc, linux_headers],
   )
 endforeach
+
+dpdk_dep = dependency('libdpdk', required: get_option('dpdk'))
+
+if dpdk_dep.found()
+  executable('dpdk-nvme', [example_sources, 'dpdk-nvme.c'],
+    dependencies: [libnvme, dpdk_dep],
+    link_with: [ccan_lib, vfn_lib],
+    include_directories: [ccan_inc, vfn_inc, linux_headers],
+  )
+endif

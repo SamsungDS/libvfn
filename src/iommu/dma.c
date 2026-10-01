@@ -113,6 +113,29 @@ bool iommu_translate_vaddr(struct iommu_ctx *ctx, void *vaddr, iova_t *iova)
 	return false;
 }
 
+/*
+ * Record a mapping the context did not make itself, so that a vaddr inside it
+ * still translates. iommu_get_dmabuf() needs this for the buffers it takes
+ * from the owner of the iova space, which arrive already mapped.
+ */
+int iommu_add_mapping(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t iova,
+		      unsigned long flags)
+{
+	return iova_map_add(&ctx->map, vaddr, len, iova, flags);
+}
+
+void iommu_del_mapping(struct iommu_ctx *ctx, void *vaddr)
+{
+	struct iova_mapping *m = iova_map_find(&ctx->map, vaddr);
+
+	if (!m || m->vaddr != vaddr)
+		return;
+
+	iova_map_remove(&ctx->map, m->vaddr);
+
+	free(m);
+}
+
 int iommu_map_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
 		    unsigned long flags)
 {
@@ -215,6 +238,18 @@ int iommu_unmap_vaddr(struct iommu_ctx *ctx, void *vaddr, size_t *len)
 	return 0;
 }
 
+static void __free_mapping(void *opaque UNUSED, struct skiplist_node *n)
+{
+	struct iova_mapping *m = container_of_var(n, m, list);
+
+	free(m);
+}
+
+void iommu_clear_mappings(struct iommu_ctx *ctx)
+{
+	iova_map_clear_with(&ctx->map, __free_mapping, NULL);
+}
+
 static void __unmap_mapping(void *opaque, struct skiplist_node *n)
 {
 	struct iommu_ctx *ctx = opaque;
@@ -244,12 +279,44 @@ int iommu_unmap_all(struct iommu_ctx *ctx)
 	return 0;
 }
 
+/*
+ * The owner of the iova space picks an iova as it allocates, so there is no
+ * address to ask it for. Take what it gives and check it.
+ */
+static void *iommu_alloc_delegated_same_iova(struct iommu_ctx *ctx, size_t len)
+{
+	iova_t iova;
+	void *vaddr;
+
+	vaddr = ctx->ops.dma_alloc(ctx, len, &iova);
+	if (!vaddr)
+		return NULL;
+
+	if (iova != same_iova(vaddr)) {
+		log_debug("allocator returned iova 0x%" PRIx64 " for %p\n",
+			  iova, vaddr);
+		ctx->ops.dma_free(ctx, vaddr, len);
+		errno = EOPNOTSUPP;
+		return NULL;
+	}
+
+	if (iommu_add_mapping(ctx, vaddr, len, iova, 0x0)) {
+		ctx->ops.dma_free(ctx, vaddr, len);
+		return NULL;
+	}
+
+	return vaddr;
+}
+
 void *iommu_alloc_same_iova(struct iommu_ctx *ctx, size_t len)
 {
 	iova_t iova;
 	void *vaddr;
 
 	len = ALIGN_UP(len, __VFN_PAGESIZE);
+
+	if (ctx->ops.dma_alloc)
+		return iommu_alloc_delegated_same_iova(ctx, len);
 
 retry:
 	if (ctx->iova_next_same + len >= ctx->iova_max ||
@@ -287,7 +354,23 @@ retry:
 
 int iommu_free_same_iova(struct iommu_ctx *ctx, void *vaddr)
 {
+	struct iova_mapping *m;
 	size_t len;
+
+	if (ctx->ops.dma_free) {
+		m = iova_map_find(&ctx->map, vaddr);
+		if (!m) {
+			errno = ENOENT;
+			return -1;
+		}
+
+		len = m->len;
+
+		iommu_del_mapping(ctx, vaddr);
+		ctx->ops.dma_free(ctx, vaddr, len);
+
+		return 0;
+	}
 
 	if (iommu_unmap_vaddr(ctx, vaddr, &len))
 		return -1;

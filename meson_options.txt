@@ -18,3 +18,6 @@ option('linux-headers', type: 'string', value: '',
 
 option('iommufd', type: 'feature', value: 'auto',
   description: 'enable/disable iommufd support')
+
+option('dpdk', type: 'feature', value: 'disabled',
+  description: 'build examples depending on dpdk')

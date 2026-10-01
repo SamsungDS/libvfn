@@ -219,37 +219,41 @@ static void iommu_ioas_destroy(struct iommu_ioas *ioas)
 	free(ioas);
 }
 
-static int iommufd_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
+static void iommufd_get_context(struct iommu_ctx *ctx)
+{
+	atomic_inc(&ctx->refcount);
+}
+
+static void iommufd_put_context(struct iommu_ctx *ctx)
+{
+	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
+
+	if (atomic_dec_fetch(&ctx->refcount) == 0)
+		iommu_ioas_destroy(ioas);
+}
+
+static int iommufd_put_device_fd(struct iommu_ctx *ctx, const char *bdf, int fd)
 {
 	struct iommu_ioas *ioas = container_of_var(ctx, ioas, ctx);
 	struct iommufd_device_info *info, *next;
-	bool ioas_in_use = false;
-	bool found = false;
+
+	/* closing the device fd unbinds it from iommufd */
+	log_fatal_if(close(fd), "close\n");
 
 	list_for_each_safe(&iommufd_devices, info, next, list) {
-		if (!found && info->ioas == ioas && strcmp(info->bdf, bdf) == 0) {
+		if (info->ioas == ioas && strcmp(info->bdf, bdf) == 0) {
 			list_del(&info->list);
 
 			free(info->bdf);
 			free(info);
 
-			found = true;
-			continue;
+			return 0;
 		}
-
-		if (info->ioas == ioas)
-			ioas_in_use = true;
 	}
 
-	if (!found) {
-		errno = ENOENT;
-		return -1;
-	}
+	errno = ENOENT;
 
-	if (!ioas_in_use)
-		iommu_ioas_destroy(ioas);
-
-	return 0;
+	return -1;
 }
 
 static int iommu_ioas_do_dma_map(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t *iova,
@@ -329,6 +333,9 @@ static int iommu_ioas_do_dma_unmap_all(struct iommu_ctx *ctx)
 }
 
 static const struct iommu_ctx_ops iommufd_ops = {
+	.get_context = iommufd_get_context,
+	.put_context = iommufd_put_context,
+
 	.get_device_fd = iommufd_get_device_fd,
 	.put_device_fd = iommufd_put_device_fd,
 
@@ -440,6 +447,7 @@ struct iommu_ctx *iommufd_get_iommu_context(const char *name)
 	}
 
 	ioas->name = strdup(name);
+	ioas->ctx.iommufd = true;
 
 	return &ioas->ctx;
 }

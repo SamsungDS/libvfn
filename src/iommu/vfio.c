@@ -91,7 +91,6 @@ struct vfio_container {
 
 	bool iommu_set;
 
-	int refcount;
 	struct list_node list;
 };
 
@@ -718,6 +717,13 @@ static struct vfio_group *vfio_get_group(struct vfio_container *vfio,
 	return __vfio_get_group(vfio, bdf, false);
 }
 
+static void vfio_get_context(struct iommu_ctx *ctx)
+{
+	pthread_mutex_lock(&active_containers_lock);
+	ctx->refcount++;
+	pthread_mutex_unlock(&active_containers_lock);
+}
+
 static int vfio_get_device_fd(struct iommu_ctx *ctx, const char *bdf)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
@@ -770,10 +776,34 @@ static void free_iova_range_node(void *opaque UNUSED, struct skiplist_node *n)
 
 static void vfio_container_free(struct vfio_container *vfio)
 {
+	if (vfio->fd >= 0)
+		close(vfio->fd);
+
+	for (int i = 0; i < VFN_MAX_VFIO_GROUPS; i++)
+		free(vfio->groups[i].path);
+
 	skiplist_clear_with(&vfio->free_iovas, free_iova_range_node, NULL);
 	free(vfio->ctx.iova_ranges);
 	free(vfio->name);
 	free(vfio);
+}
+
+static void vfio_put_context(struct iommu_ctx *ctx)
+{
+	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
+	bool do_free = false;
+
+	pthread_mutex_lock(&active_containers_lock);
+
+	if (--ctx->refcount == 0) {
+		list_del(&vfio->list);
+		do_free = true;
+	}
+
+	pthread_mutex_unlock(&active_containers_lock);
+
+	if (do_free)
+		vfio_container_free(vfio);
 }
 
 /*
@@ -826,7 +856,7 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
 	/* Check if there's already a container with this group attached */
 	existing = vfio_find_container_by_group(group_path);
 	if (existing) {
-		existing->refcount++;
+		existing->ctx.refcount++;
 		pthread_mutex_unlock(&active_containers_lock);
 
 		log_info("reusing container '%s' for device %s (group %s)\n",
@@ -853,7 +883,6 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
 	}
 
 	vfio->name = strdup(group_path);
-	vfio->refcount = 1;
 
 	/*
 	 * Reserve the first group slot with this device's group path.  The
@@ -874,11 +903,12 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf)
 	return &vfio->ctx;
 }
 
-static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
+static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf, int fd)
 {
 	struct vfio_container *vfio = container_of_var(ctx, vfio, ctx);
 	struct vfio_group *group;
-	bool do_free = false;
+
+	log_fatal_if(close(fd), "close\n");
 
 	/*
 	 * Hold active_containers_lock across the entire state transition to
@@ -915,15 +945,7 @@ static int vfio_put_device_fd(struct iommu_ctx *ctx, const char *bdf)
 		}
 	}
 
-	if (--vfio->refcount == 0) {
-		list_del(&vfio->list);
-		do_free = true;
-	}
-
 	pthread_mutex_unlock(&active_containers_lock);
-
-	if (do_free)
-		vfio_container_free(vfio);
 
 	return 0;
 }
@@ -1045,6 +1067,9 @@ static int vfio_iommu_type1_do_dma_unmap_all(struct iommu_ctx *ctx)
 #endif
 
 static const struct iommu_ctx_ops vfio_ops = {
+	.get_context = vfio_get_context,
+	.put_context = vfio_put_context,
+
 	.get_device_fd = vfio_get_device_fd,
 	.put_device_fd = vfio_put_device_fd,
 

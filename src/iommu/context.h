@@ -15,6 +15,10 @@
 struct iommu_ctx;
 
 struct iommu_ctx_ops {
+	/* context ops */
+	void (*get_context)(struct iommu_ctx *ctx);
+	void (*put_context)(struct iommu_ctx *ctx);
+
 	/* container/ioas ops */
 	int (*iova_reserve)(struct iommu_ctx *ctx, size_t len, iova_t *iova,
 			    unsigned long flags);
@@ -25,10 +29,12 @@ struct iommu_ctx_ops {
 		       unsigned long flags);
 	int (*dma_unmap)(struct iommu_ctx *ctx, iova_t iova, size_t len);
 	int (*dma_unmap_all)(struct iommu_ctx *ctx);
+	void *(*dma_alloc)(struct iommu_ctx *ctx, size_t len, iova_t *iova);
+	void (*dma_free)(struct iommu_ctx *ctx, void *vaddr, size_t len);
 
 	/* device ops */
 	int (*get_device_fd)(struct iommu_ctx *ctx, const char *bdf);
-	int (*put_device_fd)(struct iommu_ctx *ctx, const char *bdf);
+	int (*put_device_fd)(struct iommu_ctx *ctx, const char *bdf, int fd);
 };
 
 struct iova_mapping {
@@ -50,6 +56,8 @@ struct iommu_ctx {
 	struct iova_map map;
 	struct iommu_ctx_ops ops;
 
+	int refcount;
+
 	int nranges;
 	struct iommu_iova_range *iova_ranges;
 	iova_t iova_max;
@@ -63,6 +71,11 @@ struct iommu_ctx *vfio_get_iommu_context(const char *bdf);
 struct iommu_ctx *iommufd_get_iommu_context(const char *name);
 
 void iommu_ctx_init(struct iommu_ctx *ctx);
+void iommu_clear_mappings(struct iommu_ctx *ctx);
+int iommu_add_mapping(struct iommu_ctx *ctx, void *vaddr, size_t len, iova_t iova,
+		      unsigned long flags);
+void iommu_del_mapping(struct iommu_ctx *ctx, void *vaddr);
+void iommu_ctx_get(struct iommu_ctx *ctx);
 int iommu_iova_range_to_string(struct iommu_iova_range *range, char **str);
 
 /*
