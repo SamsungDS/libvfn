@@ -27,11 +27,14 @@ int iommu_get_dmabuf(struct iommu_ctx *ctx, struct iommu_dmabuf *buffer, size_t 
 	buffer->ctx = ctx;
 
 	buffer->len = pgmap(&buffer->vaddr, len);
-	if (buffer->len < 0)
+	if (buffer->len < 0) {
+		memset(buffer, 0x0, sizeof(*buffer));
 		return -1;
+	}
 
 	if (iommu_map_vaddr(ctx, buffer->vaddr, buffer->len, &buffer->iova, flags)) {
 		pgunmap(buffer->vaddr, buffer->len);
+		memset(buffer, 0x0, sizeof(*buffer));
 		return -1;
 	}
 
