@@ -414,6 +414,7 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 {
 	struct nvme_cq *cq = &ctrl->cq[qid];
 	union nvme_cmd cmd;
+	int err;
 
 	uint16_t qflags = NVME_Q_PC;
 	uint16_t iv = 0;
@@ -437,7 +438,14 @@ int nvme_create_iocq(struct nvme_ctrl *ctrl, int qid, int qsize, int vector)
 		.iv     = cpu_to_le16(iv),
 	};
 
-	return __admin(ctrl, &cmd);
+	if (__admin(ctrl, &cmd)) {
+		err = errno;
+		nvme_discard_cq(ctrl, cq);
+		errno = err;
+		return -1;
+	}
+
+	return 0;
 }
 
 int nvme_delete_iocq(struct nvme_ctrl *ctrl, int qid)
@@ -464,6 +472,7 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize, struct nvme_cq 
 {
 	struct nvme_sq *sq = &ctrl->sq[qid];
 	union nvme_cmd cmd;
+	int err;
 
 	if (nvme_configure_sq(ctrl, qid, qsize, cq, flags)) {
 		log_debug("could not configure io submission queue\n");
@@ -479,7 +488,14 @@ int nvme_create_iosq(struct nvme_ctrl *ctrl, int qid, int qsize, struct nvme_cq 
 		.cqid   = cpu_to_le16((uint16_t)cq->id),
 	};
 
-	return __admin(ctrl, &cmd);
+	if (__admin(ctrl, &cmd)) {
+		err = errno;
+		nvme_discard_sq(ctrl, sq);
+		errno = err;
+		return -1;
+	}
+
+	return 0;
 }
 
 int nvme_delete_iosq(struct nvme_ctrl *ctrl, int qid)
