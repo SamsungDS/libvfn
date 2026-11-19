@@ -519,13 +519,20 @@ int nvme_delete_iosq(struct nvme_ctrl *ctrl, int qid)
 
 int nvme_create_ioqpair(struct nvme_ctrl *ctrl, int qid, int qsize, int vector, unsigned long flags)
 {
+	int err;
+
 	if (nvme_create_iocq(ctrl, qid, qsize, vector)) {
 		log_debug("could not create io completion queue\n");
 		return -1;
 	}
 
 	if (nvme_create_iosq(ctrl, qid, qsize, &ctrl->cq[qid], flags)) {
+		err = errno;
 		log_debug("could not create io submission queue\n");
+
+		nvme_delete_iocq(ctrl, qid);
+		errno = err;
+
 		return -1;
 	}
 
