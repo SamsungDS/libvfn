@@ -71,7 +71,7 @@ int main(void)
 	leint64_t *mprplists;
 	void *mppages;
 
-	plan_tests(179 + 18);
+	plan_tests(189 + 18);
 
 	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
@@ -339,6 +339,17 @@ int main(void)
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
 
+	/* test last iovec entry longer than a page with an unaligned length */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
+	iov[1] = (struct iovec) {.iov_base = (void *)0x1001000, .iov_len = 0x1800};
+	ok1(nvme_rq_mapv_prp(&ctrl, &rq, &cmd, iov, 2) == 0);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
+
 
 
 	/*
@@ -456,6 +467,17 @@ int main(void)
 
 	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
 	ok1(le64_to_cpu(cmd.dptr.prp2) == 0x1001000);
+
+	/* test last iovec entry longer than a page with an unaligned length */
+	memset((void *)prplist, 0x0, __VFN_PAGESIZE);
+	iovav[0] = (struct iova_vec) {.iova = (iova_t)0x1000000, .len = 0x1000};
+	iovav[1] = (struct iova_vec) {.iova = (iova_t)0x1001000, .len = 0x1800};
+	ok1(nvme_rq_mapv_iova_prp(&ctrl, &rq, &cmd, iovav, 2) == 0);
+
+	ok1(le64_to_cpu(cmd.dptr.prp1) == 0x1000000);
+	ok1(le64_to_cpu(cmd.dptr.prp2) == rq.page.iova);
+	ok1(le64_to_cpu(prplist[0]) == 0x1001000);
+	ok1(le64_to_cpu(prplist[1]) == 0x1002000);
 
 
 	/*

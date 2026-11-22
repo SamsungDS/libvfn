@@ -266,8 +266,8 @@ static inline int __map_prp_first(leint64_t *prp1, struct __prp_cursor *c, iova_
 static inline int __map_prp_append(struct __prp_cursor *c, iova_t iova, size_t len, int max_prps,
 				   int pageshift, bool last_segment)
 {
-	int prpcount = max_t(int, 1, (int)len >> pageshift);
 	size_t pagesize = 1 << pageshift;
+	int prpcount = max_t(int, 1, (int)ALIGN_UP(len, pagesize) >> pageshift);
 
 	if (!ALIGNED(iova, pagesize)) {
 		log_error("unaligned iova 0x%" PRIx64 "\n", iova);
