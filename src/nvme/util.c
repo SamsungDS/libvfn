@@ -569,6 +569,8 @@ int nvme_mapv_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, iova_t seg_iova
 
 		__sgl_data(&cmd->dptr.sgl, iova, iov->iov_len);
 
+		cmd->flags |= NVME_FIELD_SET(NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG, CMD_FLAGS_PSDT);
+
 		return 0;
 	}
 
@@ -607,6 +609,9 @@ int nvme_mapv_iova_sgl(struct nvme_ctrl *ctrl, struct nvme_sgld *seg, iova_t seg
 
 	if (niov == 1) {
 		__sgl_data(&cmd->dptr.sgl, iov->iova, iov->len);
+
+		cmd->flags |= NVME_FIELD_SET(NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG, CMD_FLAGS_PSDT);
+
 		return 0;
 	}
 
