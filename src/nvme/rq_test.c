@@ -71,7 +71,7 @@ int main(void)
 	leint64_t *mprplists;
 	void *mppages;
 
-	plan_tests(179 + 18);
+	plan_tests(179 + 18 + 4);
 
 	assert(pgmap((void **)&rq.page.vaddr, __VFN_PAGESIZE) > 0);
 
@@ -570,11 +570,13 @@ int main(void)
 	 */
 
 	memset((void *)sglds, 0x0, __VFN_PAGESIZE);
+	memset(&cmd, 0x0, sizeof(cmd));
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
 	ok1(nvme_rq_mapv_sgl(&ctrl, &rq, &cmd, iov, 1) == 0);
 	ok1(le64_to_cpu(cmd.dptr.sgl.addr) == 0x1000000);
 	ok1(le32_to_cpu(cmd.dptr.sgl.len) == 0x1000);
 	ok1(cmd.dptr.sgl.type == NVME_SGLD_TYPE_DATA_BLOCK);
+	ok1(NVME_FIELD_GET(cmd.flags, CMD_FLAGS_PSDT) == NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG);
 
 	memset((void *)sglds, 0x0, __VFN_PAGESIZE);
 	iov[0] = (struct iovec) {.iov_base = (void *)0x1000000, .iov_len = 0x1000};
@@ -582,6 +584,7 @@ int main(void)
 	ok1(nvme_rq_mapv_sgl(&ctrl, &rq, &cmd, iov, 2) == 0);
 	ok1(le64_to_cpu(sglds[0].addr) == 0x1000000);
 	ok1(le64_to_cpu(sglds[1].addr) == 0x1002000);
+	ok1(NVME_FIELD_GET(cmd.flags, CMD_FLAGS_PSDT) == NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG);
 
 
 	/*
@@ -589,11 +592,13 @@ int main(void)
 	 */
 
 	memset((void *)sglds, 0x0, __VFN_PAGESIZE);
+	memset(&cmd, 0x0, sizeof(cmd));
 	iovav[0] = (struct iova_vec) {.iova = (iova_t)0x1000000, .len = 0x1000};
 	ok1(nvme_rq_mapv_iova_sgl(&ctrl, &rq, &cmd, iovav, 1) == 0);
 	ok1(le64_to_cpu(cmd.dptr.sgl.addr) == 0x1000000);
 	ok1(le32_to_cpu(cmd.dptr.sgl.len) == 0x1000);
 	ok1(cmd.dptr.sgl.type == NVME_SGLD_TYPE_DATA_BLOCK);
+	ok1(NVME_FIELD_GET(cmd.flags, CMD_FLAGS_PSDT) == NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG);
 
 	memset((void *)sglds, 0x0, __VFN_PAGESIZE);
 	iovav[0] = (struct iova_vec) {.iova = (iova_t)0x1000000, .len = 0x1000};
@@ -601,6 +606,7 @@ int main(void)
 	ok1(nvme_rq_mapv_iova_sgl(&ctrl, &rq, &cmd, iovav, 2) == 0);
 	ok1(le64_to_cpu(sglds[0].addr) == 0x1000000);
 	ok1(le64_to_cpu(sglds[1].addr) == 0x1002000);
+	ok1(NVME_FIELD_GET(cmd.flags, CMD_FLAGS_PSDT) == NVME_CMD_FLAGS_PSDT_SGL_MPTR_CONTIG);
 
 	return exit_status();
 }
